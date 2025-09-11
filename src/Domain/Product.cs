@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Web.Mvc;
 
 namespace Domain
 {
@@ -17,10 +16,6 @@ namespace Domain
             Images = new List<Image>();
         }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
-        [Key]
         public long Id { get; set; }
 
         [DisplayName("نام فارسی")]
@@ -51,7 +46,6 @@ namespace Domain
         [Required(ErrorMessage = "لطفا درصد تخفیف را تعیین نمایید .")]
         public byte DiscountPercent { get; set; }
 
-        [AllowHtml]
         [Required(ErrorMessage = "لطفا توضیحات محصول را وارد کنید")]
         [DisplayName(" توضیحات محصول")]
         [Display(Name = " توضیحات محصول")]

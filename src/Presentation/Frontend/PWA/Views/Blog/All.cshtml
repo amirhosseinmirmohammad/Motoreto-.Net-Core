@@ -1,7 +1,9 @@
 ﻿@using Application.DTOs.ViewModels
-@model Application.DTOs.ViewModels.BlogListViewModel
+@model BlogListViewModel
+@using X.PagedList
 @using X.PagedList.Mvc.Core
 @using X.PagedList.Web.Common
+
 @{
     ViewBag.Title = "بلاگ موتورتو";
     Layout = "~/Views/Shared/_Layout.cshtml";
@@ -36,7 +38,6 @@
                 font-size: 26px;
             }
 
-        /* ستون‌بندی صفحه */
         .content .col-md-9, .content .col-md-3 {
             float: right;
         }
@@ -48,7 +49,6 @@
             }
         }
 
-        /* کارت‌های وبلاگ */
         .blog-card {
             margin-bottom: 24px;
             background: #fff;
@@ -126,7 +126,6 @@
             border-radius: 10px;
         }
 
-        /* صفحه‌بندی */
         .loadmore1 {
             margin-top: 8px;
         }
@@ -140,7 +139,6 @@
                 border-radius: 8px !important;
             }
 
-        /* سایدبار */
         .sidebar-instagram, .widget {
             background: #fff;
             border: 1px solid #eee;
@@ -186,7 +184,6 @@
                         color: #0d6efd;
                     }
 
-        /* باکس یافت نشد */
         .notfound a {
             text-decoration: none;
             color: #000;
@@ -215,7 +212,7 @@
 
         <!-- لیست مقالات -->
         <div class="col-md-9 pull-right">
-            @foreach (var item in Model.Pager.data)
+            @foreach (var item in Model.PagedBlogs)
             {
                 <div class="blog-card">
                     <div class="row">
@@ -248,7 +245,7 @@
                                     <i class="fa fa-user"></i> تیم موتورتو
                                     <span>|</span>
                                     <i class="fa fa-calendar"></i>
-                                    @Shared.Helpers.FunctionsHelper.GetPersianDateTime((DateTime)item.CreateDate, false, false)
+                                    @item.CreateDate?.ToString("yyyy/MM/dd")
                                     <span>|</span>
                                     <i class="fa fa-eye"></i> @item.Survey
                                 </div>
@@ -266,7 +263,7 @@
             <div class="loadmore1">
                 <ul class="pagination">
                     @Html.PagedListPager(
-                    Model.Pager.data.ToPagedList(Model.Pager.CurrentPage, 4),  // ← تبدیل IEnumerable به IPagedList
+                    Model.PagedBlogs,
                                         page => Url.Action("All", new { page }),
                                         new PagedListRenderOptions
                                         {
@@ -288,6 +285,7 @@
                     </a>
                 </p>
             </div>
+
             <aside id="recent-posts-2" class="widget widget_recent_entries">
                 <div id="secondary">
                     <h3 class="widget-title">نوشته‌های پربازدید</h3>
@@ -299,10 +297,8 @@
                     }
                 </ul>
             </aside>
-
         </div>
     </div>
 </div>
 
-@section Scripts {
-}
+@section Scripts { }

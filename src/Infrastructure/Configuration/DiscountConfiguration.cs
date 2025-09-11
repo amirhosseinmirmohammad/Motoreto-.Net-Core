@@ -10,14 +10,17 @@ namespace Infrastructure.Configuration
         {
             builder.HasKey(current => current.Id);
 
+            builder.Property(t => t.Id)
+                   .ValueGeneratedOnAdd();
+
             builder.Property(current => current.Percent)
-                .IsRequired(false);
+                   .IsRequired(false);
 
             builder.Property(current => current.Title)
-                .IsRequired();
+                   .IsRequired();
 
             builder.Property(current => current.Code)
-                .IsRequired();
+                   .IsRequired();
 
             builder.HasMany(current => current.Users)
                 .WithMany(user => user.Discounts)

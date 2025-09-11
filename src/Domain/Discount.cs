@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Domain
 {
@@ -13,9 +12,6 @@ namespace Domain
             Users = new List<User>();
         }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [DisplayName("کد تخفیف")]
@@ -55,6 +51,7 @@ namespace Domain
         [DisplayName("فعال یا غیر فعال ؟")]
         [Display(Name = "فعال یا غیر فعال ؟")]
         public bool IsActived { get; set; }
+
         public virtual ICollection<User> Users { get; set; }
 
         [DisplayName("تخفیف ویترین میباشد ؟")]

@@ -6,9 +6,6 @@ namespace Domain
 {
     public class BlogComment
     {
-        [Key]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [DisplayName("نام کامل")]

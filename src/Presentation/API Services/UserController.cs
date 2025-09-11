@@ -120,11 +120,11 @@ namespace GladcherryShopping.API_Services
 
         [AcceptVerbs("GET")]
         [Route("UserInformation/GetUser")]
-        public IHttpActionResult UserInformation(string UserId, string GuId)
+        public IHttpActionResult UserInformation(Guid UserId, string GuId)
         {
 
             #region Validation
-            if (string.IsNullOrWhiteSpace(UserId))
+            if (UserId == null)
                 return Ok(new { Status = 0, Text = "لطفا شناسه کاربری را وارد نمایید ." });
             #endregion Validation
 
@@ -279,10 +279,10 @@ namespace GladcherryShopping.API_Services
 
         [AcceptVerbs("GET")]
         [Route("Order/MyActivities")]
-        public IHttpActionResult GetActivity(string UserId, string GuId)
+        public IHttpActionResult GetActivity(Guid UserId, string GuId)
         {
             #region Validation
-            if (string.IsNullOrEmpty(UserId))
+            if (UserId == null)
                 return Ok(new { Status = 0, Text = "لطفا شناسه کاربری را وارد نمایید ." });
             var Orders = _db.Orders.Where(current => current.UserId == UserId).Include(current => current.Products).OrderByDescending(current => current.OrderDate).Take(10).ToList();
             if (Orders.Count == 0)

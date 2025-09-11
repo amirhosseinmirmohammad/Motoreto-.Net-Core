@@ -10,10 +10,13 @@ namespace Infrastructure.Configuration
         {
             builder.HasKey(current => current.Id);
 
+            builder.Property(t => t.Id)
+                   .ValueGeneratedOnAdd();
+
             builder.HasOne(current => current.Parent)
-                .WithMany(category => category.SubCategories)
-                .HasForeignKey(current => current.ParentId)
-                .OnDelete(DeleteBehavior.NoAction);
+                   .WithMany(category => category.SubCategories)
+                   .HasForeignKey(current => current.ParentId)
+                   .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }

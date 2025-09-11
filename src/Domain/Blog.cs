@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Web.Mvc;
 
 namespace Domain
 {
@@ -16,9 +14,6 @@ namespace Domain
             BlogComments = new List<BlogComment>();
         }
 
-        [Key]
-        [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [DisplayName("تعداد بازدید")]
@@ -49,7 +44,6 @@ namespace Domain
         [DataType(DataType.MultilineText)]
         public string ShortDesc { get; set; }
 
-        [AllowHtml]
         [DisplayName("متن اصلی")]
         [MinLength(20, ErrorMessage = "توضیحات بلاگ باید حداقل شامل 20 حرف باشد .")]
         [Required(ErrorMessage = "لطفا متن اصلی بلاگ را وارد نمایید.")]
@@ -84,7 +78,7 @@ namespace Domain
         public virtual ICollection<File> Images { get; set; }
 
         [DisplayName("نام کاربری")]
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
 
         public virtual User User { get; set; }
 

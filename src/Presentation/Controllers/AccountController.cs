@@ -472,18 +472,18 @@ namespace Presentation.Controllers
                 var adminRole = _roleManager.FindByNameAsync("Administrator").Result;
                 var operatorRole = _roleManager.FindByNameAsync("Operator").Result;
 
-                    var user = _db.Users
-                                      .Include(u => u.Roles) // 👈 در Core به این شکله
-                                      .FirstOrDefault(u => u.UserName == model.Email);
+                var user = await _userManager.FindByNameAsync(model.Email);
+                var roles = await _userManager.GetRolesAsync(user);
 
-                    if (user != null)
-                    {
-                        if (adminRole != null && user.Roles.Any(r => r.RoleId == adminRole.Id))
-                            return RedirectToAction("AdminPanel", "Account");
+                if (roles.Contains("Administrator"))
+                {
+                    return RedirectToAction("Index", "AdminPanel");
+                }
 
-                        if (operatorRole != null && user.Roles.Any(r => r.RoleId == operatorRole.Id))
-                            return RedirectToAction("OperatorPanel", "Account");
-                    }
+                if (roles.Contains("Operator"))
+                {
+                    return RedirectToAction("Index", "OperatorPanel");
+                }
 
                 return RedirectToAction("Index", "Home");
             }

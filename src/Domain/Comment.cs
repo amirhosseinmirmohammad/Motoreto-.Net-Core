@@ -6,10 +6,6 @@ namespace Domain
 {
     public partial class Comment
     {
-
-        [Key]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [DisplayName("متن نظر")]
@@ -34,7 +30,7 @@ namespace Domain
         public string Fullname { get; set; }
 
         [DisplayName("نام کاربری")]
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
 
         public virtual User User { get; set; }
 

@@ -10,6 +10,9 @@ namespace Infrastructure.Configuration
         {
             builder.HasKey(t => t.Id);
 
+            builder.Property(t => t.Id)
+                   .ValueGeneratedOnAdd();
+
             builder.Property(t => t.Text)
                    .IsRequired()
                    .HasMaxLength(500);

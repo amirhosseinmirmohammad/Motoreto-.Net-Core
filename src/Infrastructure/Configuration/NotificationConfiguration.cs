@@ -11,6 +11,9 @@ namespace Infrastructure.Configuration
             builder.Property(current => current.Id)
                    .IsRequired();
 
+            builder.Property(t => t.Id)
+                   .ValueGeneratedOnAdd();
+
             builder.Property(current => current.Text)
                    .IsRequired()
                    .IsUnicode();

@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Domain
 {
@@ -13,9 +12,6 @@ namespace Domain
             Products = new List<Product>();
         }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [DisplayName("نام فارسی")]

@@ -23,14 +23,8 @@ namespace Infrastructure.Configuration
             builder.Property(current => current.TotalPrice)
                    .IsRequired(false);
 
-            builder.Property(current => current.UserId)
-                   .IsRequired(false);
-
             builder.Property(current => current.FactorNumber)
                    .IsRequired(false);
-
-            builder.Property(current => current.IsCanceled)
-                    .IsRequired(false);
 
             builder.Property(current => current.CancelDescription)
                    .IsRequired(false);

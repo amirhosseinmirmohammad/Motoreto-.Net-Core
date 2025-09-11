@@ -14,9 +14,6 @@ namespace Domain
             Products = new List<ProductInOrder>();
         }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [DisplayName("دریافت کننده سفارش")]
@@ -52,7 +49,7 @@ namespace Domain
 
         [DisplayName("کاربر مربوطه")]
         [Display(Name = "کاربر مربوطه")]
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
         public virtual User User { get; set; }
 
         [DisplayName("لغو شده ؟")]

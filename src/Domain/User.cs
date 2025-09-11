@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNet.Identity.EntityFramework;
+﻿using Microsoft.AspNetCore.Identity;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -7,7 +7,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Domain
 {
-    public class User : IdentityUser
+    public class User : IdentityUser<Guid>
     {
         [DisplayName("نام")]
         public string FirstName { get; set; }

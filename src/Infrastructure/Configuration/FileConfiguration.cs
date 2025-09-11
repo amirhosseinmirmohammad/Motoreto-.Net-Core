@@ -10,8 +10,8 @@ namespace Infrastructure.Configuration
             builder.HasKey(current => current.Id);
 
             builder.Property(current => current.Id)
-                .IsRequired()
-                .ValueGeneratedOnAdd();
+                   .IsRequired()
+                   .ValueGeneratedOnAdd();
 
             builder.Property(current => current.Extension)
                    .IsRequired()

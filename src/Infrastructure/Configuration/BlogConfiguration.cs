@@ -10,17 +10,20 @@ namespace Infrastructure.Configuration
         {
             builder.HasKey(t => t.Id);
 
+            builder.Property(t => t.Id)
+                   .ValueGeneratedOnAdd();
+
             builder.Property(t => t.UserId);
 
             builder.HasOne(current => current.User)
-                .WithMany(applicationUser => applicationUser.Blogs)
-                .HasForeignKey(current => current.UserId)
-                .OnDelete(DeleteBehavior.NoAction);
+                   .WithMany(applicationUser => applicationUser.Blogs)
+                   .HasForeignKey(current => current.UserId)
+                   .OnDelete(DeleteBehavior.NoAction);
 
             builder.HasOne(current => current.Category)
-                .WithMany(category => category.Blogs)
-                .HasForeignKey(current => current.CategoryId)
-                .OnDelete(DeleteBehavior.NoAction);
+                   .WithMany(category => category.Blogs)
+                   .HasForeignKey(current => current.CategoryId)
+                   .OnDelete(DeleteBehavior.NoAction);
         }
     }
 }

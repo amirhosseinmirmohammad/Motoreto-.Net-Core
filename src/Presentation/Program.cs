@@ -9,9 +9,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddEnvironmentVariables();
+
 // --- Identity ---
 builder.Services
-    .AddIdentity<User, IdentityRole>(options =>
+    .AddIdentity<User, IdentityRole<Guid>>(options =>
     {
         options.Password.RequireDigit = false;
         options.Password.RequireNonAlphanumeric = false;
@@ -29,21 +33,34 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    // اجرای خودکار مایگریشن‌ها
+    if ((await db.Database.GetPendingMigrationsAsync()).Any())
+    {
+        await db.Database.MigrateAsync();
+    }
+
     var services = scope.ServiceProvider;
 
-    var context = services.GetRequiredService<ApplicationDbContext>();
-    context.Database.Migrate();
+    var roleManager = services.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
 
-    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-    string[] roles = new[] { "Administrator", "User", "Operator" };
+    string[] roles = { "Administrator", "User", "Operator" };
 
     foreach (var role in roles)
     {
-        if (!await roleManager.RoleExistsAsync(role))
+        var roleExist = await roleManager.RoleExistsAsync(role);
+        if (!roleExist)
         {
-            await roleManager.CreateAsync(new IdentityRole(role));
+            await roleManager.CreateAsync(new IdentityRole<Guid>(role));
         }
     }
+}
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
 }
 
 // --- Middleware ---
@@ -54,10 +71,17 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseHttpsRedirection();
 
 app.UseAuthentication();   
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{area=Frontend}/{controller=Home}/{action=Index}/{id?}");
 
 app.Run();

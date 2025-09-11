@@ -9,6 +9,9 @@ namespace Infrastructure.Configuration
         public void Configure(EntityTypeBuilder<Gallery> builder)
         {
             builder.HasKey(t => t.Id);
+
+            builder.Property(t => t.Id)
+                   .ValueGeneratedOnAdd();
         }
     }
 }

@@ -1,10 +1,12 @@
 ﻿using Domain;
 using Infrastructure.Configuration;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure
 {
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> context) : base(context) { }
 
@@ -53,8 +55,6 @@ namespace Infrastructure
         public DbSet<Blog> Blogs { get; set; }
 
         public DbSet<BlogComment> BlogComments { get; set; }
-
-        public DbSet<User> Users { get; set; }
 
         public DbSet<Domain.File> Files { get; set; }
 

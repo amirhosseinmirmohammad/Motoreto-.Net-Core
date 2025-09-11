@@ -13,6 +13,9 @@ namespace Infrastructure.Configuration
                    .IsRequired()
                    .IsUnicode();
 
+            builder.Property(t => t.Id)
+                   .ValueGeneratedOnAdd();
+
             builder.Property(current => current.AcceptorPhoneNumber)
                    .IsRequired();
 
@@ -40,9 +43,6 @@ namespace Infrastructure.Configuration
 
             builder.Property(current => current.RecievedDocumentNumber)
                    .IsRequired();
-
-            builder.Property(current => current.RecievedDocumentDate)
-                   .IsRequired(false);
 
             builder.Property(current => current.TerminalNumber)
                    .IsRequired();

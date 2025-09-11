@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Web.Mvc;
 
 namespace Domain
 {
@@ -16,16 +14,12 @@ namespace Domain
             NewsLetters = new List<NewsLetter>();
         }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [DisplayName("تاریخ ارسال")]
         [Display(Name = "تاریخ ارسال")]
         public DateTime ForwardDate { get; set; }
 
-        [AllowHtml]
         [DisplayName("متن پیام")]
         [Display(Name = "متن پیام")]
         [Required(ErrorMessage ="لطفا متن پیام خود را تعیین نمایید .")]

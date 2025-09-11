@@ -11,7 +11,7 @@ namespace Domain
 
         public long id { get; set; }
 
-        public string userId { get; set; }
+        public Guid userId { get; set; }
 
         public DateTime visitDateTime { get; set; }
     }

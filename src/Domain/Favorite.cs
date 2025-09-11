@@ -28,14 +28,11 @@ namespace Domain
             }
         }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [Display(Name = "نام کاربر")]
         [DisplayName("نام کاربر")]
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
 
         public virtual User Users { get; set; }
 

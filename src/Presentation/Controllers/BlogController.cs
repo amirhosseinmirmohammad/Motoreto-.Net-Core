@@ -61,7 +61,9 @@ namespace Presentation.Controllers
                     b.SefUrl.Contains(q));
             }
 
-            var list = await query.OrderByDescending(b => b.CreateDate).ToPagedListAsync(page, pageSize);
+            var pagedList = await query
+                .OrderByDescending(b => b.CreateDate)
+                .ToPagedListAsync(page, pageSize);
 
             var sidebar = new BlogSidebarViewModel
             {
@@ -74,12 +76,7 @@ namespace Presentation.Controllers
 
             var vm = new BlogListViewModel
             {
-                Pager = new PagerViewModels<Blog>
-                {
-                    data = list,
-                    CurrentPage = list.PageNumber,
-                    TotalItemCount = list.TotalItemCount
-                },
+                PagedBlogs = pagedList,
                 Sidebar = sidebar
             };
 

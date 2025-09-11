@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Domain
 {
@@ -13,15 +12,11 @@ namespace Domain
             ProductInBaskets = new List<ProductInBasket>();
         }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
-        [Key]
         public long Id { get; set; }
 
         [DisplayName("شناسه کاربر")]
         [Display(Name = "شناسه کاربر")]
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
 
         [DisplayName("شناسه مهمان")]
         [Display(Name = "شناسه مهمان")]

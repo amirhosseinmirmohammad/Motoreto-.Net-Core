@@ -9,9 +9,6 @@ namespace Domain
     {
         public SiteMessage() { }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [Display(Name = "نام و نام خانوادگی")]
@@ -24,6 +21,7 @@ namespace Domain
         [Required(ErrorMessage = "لطفا متن پیام خود را تعیین نمایید")]
         [DataType(dataType: DataType.MultilineText)]
         public string Body { get; set; }
+
         public DateTime RegisterDate { get; set; }
     }
 }

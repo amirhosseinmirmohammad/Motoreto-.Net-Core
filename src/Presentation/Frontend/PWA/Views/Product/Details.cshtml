@@ -29,7 +29,12 @@
     <meta name="description" content="@productDesc" />
     <meta property="og:title" content="@productName | موتورتو" />
     <meta property="og:image" content="@productImage" />
-    <meta property="og:url" content="@Url.Action("Details","Product", new { id=Model?.product?.Id}, Request.Url.Scheme)" />
+    @{
+        var productUrl = $"{Context.Request.Scheme}://{Context.Request.Host}" +
+                         Url.Action("Details", "Product", new { id = Model?.product?.Id });
+    }
+    <meta property="og:url" content="@productUrl" />
+
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="@productImage" />
 }

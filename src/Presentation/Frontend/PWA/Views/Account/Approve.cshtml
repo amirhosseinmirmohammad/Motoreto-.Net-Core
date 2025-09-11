@@ -345,8 +345,8 @@
                     <div class="form-left-to-w3l">
                         <span class="fa fa-mobile" aria-hidden="true"></span>
                         <input type="text" name="Code" class="tell" placeholder="کد ارسالی" required>
-                        <input type="hidden" name="PhoneNumber" value="@Request.QueryString["PhoneNumber"]" />
-                        <input type="hidden" name="ReturnUrl" value="@Request.QueryString["ReturnUrl"]" />
+                        <input type="hidden" name="PhoneNumber" value="@Context.Request.Query["PhoneNumber"]" />
+                        <input type="hidden" name="ReturnUrl" value="@Context.Request.Query["ReturnUrl"]" />
                         <div class="clear"></div>
                     </div>
                     <div class="btnn">
@@ -423,7 +423,7 @@
 
       if(left <= 0){
         clearInterval(iv);
-        el.innerHTML = '<a href="/Account/ResendVerificationCode?PhoneNumber=@Request.QueryString["PhoneNumber"]">ارسال مجدد کد</a>';
+              el.innerHTML = '<a href="/Account/ResendVerificationCode?PhoneNumber=@Context.Request.Query["PhoneNumber"]">ارسال مجدد کد</a>';
       }
     }, 1000);
   })();

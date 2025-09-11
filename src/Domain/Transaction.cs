@@ -10,9 +10,6 @@ namespace Domain
     {
         public Transaction() { }
 
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [DisplayName("شماره تراکنش")]

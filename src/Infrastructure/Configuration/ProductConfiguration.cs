@@ -10,13 +10,13 @@ namespace Infrastructure.Configuration
         {
             builder.HasKey(current => current.Id);
 
+            builder.Property(t => t.Id)
+                   .ValueGeneratedOnAdd();
+
             builder.HasOne(current => current.Category)
                    .WithMany(category => category.Products)
                    .HasForeignKey(current => current.CategoryId)
                    .OnDelete(DeleteBehavior.NoAction);
-
-            builder.Property(current => current.Stock)
-                   .IsRequired(false);
         }
     }
 }
