@@ -3,6 +3,7 @@ using Domain;
 using Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using X.PagedList.EF;
 
 namespace Presentation.Controllers
 {
@@ -18,17 +19,25 @@ namespace Presentation.Controllers
             var blog = await _db.Blogs
                 .Include(b => b.Category)
                 .Include(b => b.Images)
-                .Include(b => b.User)                  
-                .FirstOrDefaultAsync(b => b.Id == id && b.Images.Any());
+                .Include(b => b.User)
+                .Include(b => b.BlogComments) // برای استفاده در ویو
+                .FirstOrDefaultAsync(b => b.Id == id);
 
             if (blog == null) return NotFound();
 
+            // افزایش بازدید
             blog.Survey++;
-            await _db.SaveChangesAsync();                
+            await _db.SaveChangesAsync();
 
-            ViewBag.comments = await _db.BlogComments
-                .Where(c => c.BlogId == id && c.IsApprove)
+            // لیست مطالب پربازدید همان دسته (غیر از همین پست)
+            var popular = await _db.Blogs
+                .Where(b => b.IsVisible && b.CategoryId == blog.CategoryId && b.Id != blog.Id)
+                .Include(b => b.Images)
+                .OrderByDescending(b => b.Survey)
+                .Take(2)
                 .ToListAsync();
+
+            ViewBag.PopularBlogs = popular; // ← به ویو بده
 
             return View(blog);
         }
@@ -52,20 +61,26 @@ namespace Presentation.Controllers
                     b.SefUrl.Contains(q));
             }
 
-            var list = await query
-                .OrderByDescending(b => b.CreateDate)
-                .ToListAsync();
+            var list = await query.OrderByDescending(b => b.CreateDate).ToPagedListAsync(page, pageSize);
 
-            if (!string.IsNullOrWhiteSpace(q) && list.Count == 0)
-                TempData["NotFound"] = "متاسفانه موردی پیدا نشد .";
-            else if (string.IsNullOrWhiteSpace(q) && list.Count == 0)
-                TempData["NotFound"] = "هنوز مطلبی در سایت وجود ندارد .";
-
-            var vm = new PagerViewModels<Blog>
+            var sidebar = new BlogSidebarViewModel
             {
-                data = list.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
-                CurrentPage = page,
-                TotalItemCount = list.Count
+                PopularBlogs = await _db.Blogs
+                    .Where(b => b.IsVisible)
+                    .OrderByDescending(b => b.Survey)
+                    .Take(4)
+                    .ToListAsync()
+            };
+
+            var vm = new BlogListViewModel
+            {
+                Pager = new PagerViewModels<Blog>
+                {
+                    data = list,
+                    CurrentPage = list.PageNumber,
+                    TotalItemCount = list.TotalItemCount
+                },
+                Sidebar = sidebar
             };
 
             return View(vm);

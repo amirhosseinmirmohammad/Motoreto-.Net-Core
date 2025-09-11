@@ -1,14 +1,12 @@
-﻿using Domain;
+﻿using Application.DTOs.ViewModels;
+using Domain;
 using Infrastructure;
-using Microsoft.AspNet.Identity.EntityFramework;
-using Microsoft.AspNetCore.Identity;
-using System.Data.Entity;
-using System.Net;
-using System.Text.RegularExpressions;
-using System.Web;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using Application.DTOs.ViewModels;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Shared.Helpers;
+using System.Data.Entity;
+using System.Text.RegularExpressions;
 
 namespace Presentation.Controllers
 {
@@ -24,6 +22,44 @@ namespace Presentation.Controllers
             _db = db;
             _userManager = userManager;
             _signInManager = signInManager;
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Dashboard()
+        {
+            var vm = new AdminDashboardViewModel();
+
+            vm.MessagesCount = await _db.SiteMessages.CountAsync();
+            vm.OrdersCount = await _db.Orders.CountAsync();
+
+            // ✅ شمارش یوزرهایی که نقش "User" دارند
+            var allUsers = await _userManager.Users.ToListAsync();
+            int usersWithRole = 0;
+            foreach (var u in allUsers)
+            {
+                if (await _userManager.IsInRoleAsync(u, "User"))
+                    usersWithRole++;
+            }
+            vm.UsersCount = usersWithRole;
+
+            vm.Today = Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now, false, false);
+
+            // نمودار ۷ روزه
+            for (int i = -3; i <= 3; i++)
+            {
+                var dayStart = DateTime.Today.AddDays(i);
+                var dayEnd = dayStart.AddDays(1).AddTicks(-1);
+
+                vm.Dates.Add(Shared.Helpers.FunctionsHelper.GetPersianDateTime(dayStart, false, false));
+
+                vm.OrdersPerDay.Add(await _db.Orders
+                    .CountAsync(o => o.OrderDate >= dayStart && o.OrderDate <= dayEnd));
+
+                vm.UsersPerDay.Add(allUsers
+                    .Count(u => u.RegistrationDate >= dayStart && u.RegistrationDate <= dayEnd));
+            }
+
+            return View(vm);
         }
 
         public bool DeleteImages(int id)
@@ -67,16 +103,69 @@ namespace Presentation.Controllers
 
         [HttpGet]
         [Authorize(Roles = "Administrator")]
-        public ActionResult AdminPanel()
+        public async Task<IActionResult> AdminPanel()
         {
-            return View();
+            var vm = new AdminDashboardViewModel();
+
+            vm.MessagesCount = await _db.SiteMessages.CountAsync();
+            vm.OrdersCount = await _db.Orders.CountAsync();
+
+            // ✅ شمارش یوزرهایی که نقش "User" دارند
+            var allUsers = await _userManager.Users.ToListAsync();
+            int usersWithRole = 0;
+            foreach (var u in allUsers)
+            {
+                if (await _userManager.IsInRoleAsync(u, "User"))
+                    usersWithRole++;
+            }
+            vm.UsersCount = usersWithRole;
+
+            vm.Today = FunctionsHelper.GetPersianDateTime(DateTime.Now, false, false);
+
+            // نمودار ۷ روزه
+            for (int i = -3; i <= 3; i++)
+            {
+                var dayStart = DateTime.Today.AddDays(i);
+                var dayEnd = dayStart.AddDays(1).AddTicks(-1);
+
+                vm.Dates.Add(FunctionsHelper.GetPersianDateTime(dayStart, false, false));
+
+                vm.OrdersPerDay.Add(await _db.Orders
+                    .CountAsync(o => o.OrderDate >= dayStart && o.OrderDate <= dayEnd));
+
+                vm.UsersPerDay.Add(allUsers
+                    .Count(u => u.RegistrationDate >= dayStart && u.RegistrationDate <= dayEnd));
+            }
+
+            return View(vm);
         }
 
         [HttpGet]
         [Authorize(Roles = "User")]
-        public ActionResult UserAccount()
+        public async Task<IActionResult> UserAcount()
         {
-            return View();
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return RedirectToAction("Login", "Account");
+
+            var orders = await _db.Orders.Where(o => o.UserId == user.Id).CountAsync();
+            var payments = await _db.Payments.Where(p => p.UserId == user.Id).CountAsync();
+            var messages = await _db.Notifications
+                .Where(n => n.Users.Any(u => u.Id == user.Id)) 
+                .OrderByDescending(n => n.ForwardDate)
+                .ToListAsync();
+
+            var vm = new UserDashboardViewModel
+            {
+                OrdersCount = orders,
+                PaymentsCount = payments,
+                MessagesCount = messages.Count,
+                UserScore = (int)user.UserScore,
+                Credit = user.Credit,
+                PersianToday = FunctionsHelper.GetPersianDateTime(DateTime.Now, false, false),
+                Messages = messages
+            };
+
+            return View(vm);
         }
 
         [HttpGet]

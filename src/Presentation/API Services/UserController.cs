@@ -118,33 +118,6 @@ namespace GladcherryShopping.API_Services
             #endregion FindUser
         }
 
-        //Main Api
-        [AcceptVerbs("GET")]
-        [Route("Categories/GetServices")]
-        public IHttpActionResult GetServices(string UserId, string GuId)
-        {
-
-            #region Validation
-            var Categories = _db.Categories.Where(current => current.SmallImage != null && current.ParentId == null).OrderByDescending(current => current.PersianName).ToList();
-            if (Categories.Count == 0)
-                return Ok(new { Status = 0, Text = "هنوز دسته بندی اصلی در سیستم وجود ندارد .", Count = 0 });
-            #endregion Validation
-
-            #region FindUser
-            List<dynamic> Services = new List<dynamic>();
-            foreach (var item in Categories)
-            {
-                Services.Add(new
-                {
-                    id = item.Id,
-                    title = item.PersianName,
-                    image = BaseUrl + item.SmallImage ?? "images/pushon_logo.PNG",
-                });
-            }
-            return Ok(new { Status = 1, Text = "", Categories = Services, Count = Services.Count, BasketCount = BasketCount(UserId, GuId) });
-            #endregion FindUser
-        }
-
         [AcceptVerbs("GET")]
         [Route("UserInformation/GetUser")]
         public IHttpActionResult UserInformation(string UserId, string GuId)

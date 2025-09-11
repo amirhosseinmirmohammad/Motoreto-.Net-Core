@@ -3,6 +3,7 @@ using Domain;
 using Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
 namespace Presentation.Controllers
@@ -18,7 +19,52 @@ namespace Presentation.Controllers
 
         public IActionResult Index()
         {
-            return View();
+            var vm = new HomeIndexViewModel
+            {
+                Sliders = _db.Sliders
+                             .Where(s => s.IsApp)
+                             .OrderByDescending(s => s.LastDate)
+                             .ToList(),
+
+                Application = _db.Applications.FirstOrDefault(),
+
+                Wonder = _db.Products
+                            .Include(p => p.Category)
+                            .FirstOrDefault(p =>
+                                p.Stock > 0 &&
+                                p.AppLargeImage != null &&
+                                p.IsWonderful &&
+                                p.Day != null &&
+                                p.Hour != null &&
+                                p.Minute != null),
+
+                Categories = _db.Categories
+                                .Where(c => c.ParentId == null)
+                                .OrderBy(c => c.PersianName == "سایر قطعات" ? 1 : 0)
+                                .ToList(),
+
+                CarCategories = _db.Categories
+                                   .Where(c => c.ParentId != null)
+                                   .AsNoTracking()
+                                   .GroupBy(c => c.PersianName)
+                                   .Select(g => g.FirstOrDefault())
+                                   .OrderBy(c => c.PersianName == "بدون مدل" ? 1 : 0)
+                                   .ThenBy(c => c.PersianName)
+                                   .ToList(),
+
+                LatestProducts = _db.Products
+                                    .AsNoTracking()
+                                    .OrderByDescending(p => p.CreateDate)
+                                    .Take(10)
+                                    .ToList(),
+
+                SpecialProducts = _db.Products
+                                     .Where(p => p.IsSpecial && p.SiteFirstImage != null)
+                                     .OrderByDescending(p => p.CreateDate)
+                                     .ToList()
+            };
+
+            return View(vm);
         }
 
         [HttpGet]
