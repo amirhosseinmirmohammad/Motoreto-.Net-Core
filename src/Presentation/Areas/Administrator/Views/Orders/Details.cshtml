@@ -1,0 +1,104 @@
+﻿@model DataLayer.Models.Order
+@{
+    ViewBag.Title = "جزییات سفارش";
+    Layout = "~/Areas/Administrator/Views/Shared/_Layout.cshtml";
+}
+
+<h2 class="mb-4">مدیریت سفارش‌ها</h2>
+
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="ibox">
+                <div class="ibox-title">
+                    <h5>جزئیات سفارش <span class="text-danger">@Model.Id</span></h5>
+                </div>
+                <div class="ibox-content">
+
+                    <!-- مشخصات سفارش -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><b>👤 نام و نام خانوادگی:</b> @Model.FullName</p>
+                            <p><b>📞 شماره تماس:</b> @Model.Phone</p>
+                            <p><b>📄 توضیحات کاربر:</b> @(string.IsNullOrEmpty(Model.UserOrderDescription) ? "—" : Model.UserOrderDescription)</p>
+                            <p><b>📦 نوع سفارش:</b> @Model.getType</p>
+                            <p><b>💳 نحوه پرداخت:</b> @Model.getPaymentType</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><b>🏠 آدرس:</b> @Model.UserAddress</p>
+                            <p><b>🕒 تاریخ سفارش:</b> @GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime((DateTime)Model.OrderDate, true, true)</p>
+                            <p><b>💰 مبلغ کل:</b> @string.Format("{0:n0}", Convert.ToInt32(Model.TotalPrice)) ریال</p>
+                            <p><b>📑 شماره فاکتور:</b> @Model.FactorNumber</p>
+                            <p><b>🔄 وضعیت:</b> @(Model.IsCanceled ? "لغو شده" : "فعال")</p>
+                        </div>
+                    </div>
+
+                    <hr />
+
+                    <!-- موقعیت جغرافیایی -->
+                    @if (Model.Latitude != null && Model.Longitude != null)
+                    {
+                        <div class="alert alert-info">
+                            <b>📍 موقعیت جغرافیایی:</b><br />
+                            عرض: @Model.Latitude | طول: @Model.Longitude
+                        </div>
+                    }
+                    else if (Model.Address != null)
+                    {
+                        <div class="alert alert-info">
+                            <b>🏠 جزئیات آدرس ثبت‌شده:</b><br />
+                            پلاک: @Model.Address.plaque | واحد: @Model.Address.unit | تلفن ثابت: @Model.Address.Tell
+                        </div>
+                    }
+
+                    <hr />
+
+                    <!-- محصولات -->
+                    <h4 class="mt-4 mb-3">📦 محصولات سفارش</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-striped">
+                            <thead>
+                                <tr>
+                                    <th style="width:70px;">تصویر</th>
+                                    <th>نام محصول</th>
+                                    <th>کد قطعه</th>
+                                    <th>قیمت واحد</th>
+                                    <th>تعداد</th>
+                                    <th>جمع کل</th>
+                                    <th>جزئیات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var pr in ViewBag.Products)
+                                {
+                                    var totalPrice = pr.Product.UnitPrice * pr.Count;
+                                    <tr>
+                                        <td>
+                                            <img src="@pr.Product.SiteFirstImage"
+                                                 alt="@pr.Product.PersianName"
+                                                 style="width:60px; height:60px; border-radius:8px;" />
+                                        </td>
+                                        <td>@pr.Product.PersianName</td>
+                                        <td>@pr.Product.Code</td>
+                                        <td>@string.Format("{0:n0}", pr.Product.UnitPrice) ریال</td>
+                                        <td>@pr.Count</td>
+                                        <td><b>@string.Format("{0:n0}", totalPrice)</b> ریال</td>
+                                        <td>
+                                            <a target="_blank" href="/Administrator/Products/Details/@pr.ProductId"
+                                               class="btn btn-info btn-xs">🔍 مشاهده</a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4">
+                        @Html.ActionLink("⬅ بازگشت به لیست", "Index", null, new { @class = "btn btn-secondary btn-md" })
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
