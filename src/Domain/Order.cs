@@ -1,11 +1,10 @@
-﻿using GladcherryShopping.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class Order : object
     {
@@ -54,7 +53,7 @@ namespace DataLayer.Models
         [DisplayName("کاربر مربوطه")]
         [Display(Name = "کاربر مربوطه")]
         public string UserId { get; set; }
-        public virtual ApplicationUser User { get; set; }
+        public virtual User User { get; set; }
 
         [DisplayName("لغو شده ؟")]
         [Display(Name = "لغو شده ؟")]
@@ -131,7 +130,6 @@ namespace DataLayer.Models
             set { }
         }
 
-
         [NotMapped]
         public string getPaymentType
         {
@@ -168,17 +166,15 @@ namespace DataLayer.Models
             set { }
         }
         public virtual ICollection<Transaction> Transactions { get; set; }
-        public virtual ICollection<ProductInOrder> Products { get; set; }
 
-        [DisplayName("آدرس انتخابی کاربر")]
-        [Display(Name = "آدرس انتخابی کاربر")]
-        public int? AddressId { get; set; }
-        public virtual Address Address { get; set; }
+        public virtual ICollection<ProductInOrder> Products { get; set; }
 
         [DisplayName("لیست گردش مالی")]
         [Display(Name = "لیست گردش مالی")]
         public virtual ICollection<Payment> Payments { get; set; }
+
         public int? StateId { get; set; }
+
         public int? CityId { get; set; }
 
     }

@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class Transaction
     {
@@ -94,22 +91,15 @@ namespace DataLayer.Models
             set { }
         }
 
-        //[DisplayName("سفارش مربوطه")]
-        //[Display(Name = "سفارش مربوطه")]
-        //[Key, ForeignKey("Order")]
-        //public int OrderId { get; set; }
-        //public virtual Order Order { get; set; }
-
         //یک به یک
         [DisplayName("سفارش مربوطه")]
         [Display(Name = "سفارش مربوطه")]
-        //[Key, ForeignKey("Order")]
         public int? OrderId { get; set; }
+
         public virtual Order Order { get; set; }
 
         [DisplayName("لیست گردش مالی")]
         [Display(Name = "لیست گردش مالی")]
         public virtual ICollection<Payment> Payments { get; set; }
-
     }
 }

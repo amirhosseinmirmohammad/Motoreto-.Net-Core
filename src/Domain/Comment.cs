@@ -1,9 +1,8 @@
-﻿using GladcherryShopping.Models;
-using System;
+﻿using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public partial class Comment
     {
@@ -36,11 +35,13 @@ namespace DataLayer.Models
 
         [DisplayName("نام کاربری")]
         public string UserId { get; set; }
-        public virtual ApplicationUser User { get; set; }
+
+        public virtual User User { get; set; }
 
         [DisplayName("نام محصول")]
         [Required(ErrorMessage = "لطفا محصول مرتبط را تعیین نمایید .")]
         public long ProductId { get; set; }
+
         public virtual Product Product { get; set; }
     }
 }

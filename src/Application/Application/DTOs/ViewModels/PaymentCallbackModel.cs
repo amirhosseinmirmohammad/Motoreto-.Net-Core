@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace Application.DTOs.ViewModels
 {
@@ -11,8 +6,10 @@ namespace Application.DTOs.ViewModels
     {
         public long? Token { get; set; }
 
+
         [Display(Name = "شناسه سفارش")]
         public long? OrderId { get; set; }
+
         public int? TerminalNo { get; set; }
 
         [Display(Name = "شماره مرجع تراکنش")]
@@ -29,7 +26,9 @@ namespace Application.DTOs.ViewModels
 
         [Display(Name = "TSP Token")]
         public string TspToken { get; set; }
+
         public string UserId { get; set; }
+
         public int? order { get; set; }
     }
     public class CreditCallbackModel
@@ -38,6 +37,7 @@ namespace Application.DTOs.ViewModels
 
         [Display(Name = "شناسه سفارش")]
         public long? OrderId { get; set; }
+
         public int? TerminalNo { get; set; }
 
         [Display(Name = "شماره مرجع تراکنش")]
@@ -54,6 +54,7 @@ namespace Application.DTOs.ViewModels
 
         [Display(Name = "TSP Token")]
         public string TspToken { get; set; }
+
         public string UserId { get; set; }
     }
     public class ContractorCreditCallbackModel
@@ -62,6 +63,7 @@ namespace Application.DTOs.ViewModels
 
         [Display(Name = "شناسه سفارش")]
         public long? OrderId { get; set; }
+
         public int? TerminalNo { get; set; }
 
         [Display(Name = "شماره مرجع تراکنش")]
@@ -78,7 +80,9 @@ namespace Application.DTOs.ViewModels
 
         [Display(Name = "TSP Token")]
         public string TspToken { get; set; }
+
         public int? ContractorId { get; set; }
+
         public long? Ammount { get; set; }
     }
 }

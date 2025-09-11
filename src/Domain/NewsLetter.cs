@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.Entity.ModelConfiguration;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class NewsLetter
     {
@@ -17,7 +17,7 @@ namespace DataLayer.Models
         {
             public configuration()
             {
-                this.Property(current => current.Email)
+                Property(current => current.Email)
                     .IsRequired();
             }
         }
@@ -34,6 +34,7 @@ namespace DataLayer.Models
         [DataType(DataType.EmailAddress)]
         [RegularExpression(@"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,4}", ErrorMessage = "لطفا ایمیل معتبری را وارد نمایید")]
         public string Email { get; set; }
+
         public virtual ICollection<Notification> Notifications { get; set; }
     }
 }

@@ -1,20 +1,16 @@
-﻿using GladcherryShopping.Models;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Web;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class State
     {
         public State()
         {
             Cities = new List<City>();
-            Users = new List<ApplicationUser>();
+            Users = new List<User>();
         }
         [ScaffoldColumn(false)]
         [Bindable(false)]
@@ -28,7 +24,9 @@ namespace DataLayer.Models
         [Required(ErrorMessage = "لطفا نام استان را وارد کنید")]
         [MaxLength(100, ErrorMessage = "نام استان حداکثر می تواند شامل 100 کاراکتر باشد")]
         public string Name { get; set; }
+
         public virtual ICollection<City> Cities { get; set; }
-        public virtual ICollection<ApplicationUser> Users { get; set; }
+
+        public virtual ICollection<User> Users { get; set; }
     }
 }

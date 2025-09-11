@@ -1,12 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class BlogComment
     {
@@ -29,7 +25,9 @@ namespace DataLayer.Models
 
         [DisplayName("تایید شده")]
         public bool IsApprove { get; set; }
+
         public int BlogId { get; set; }
+
         public virtual Blog Blog { get; set; }
     }
 }

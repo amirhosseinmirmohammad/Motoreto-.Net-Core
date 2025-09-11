@@ -1,0 +1,276 @@
+﻿@model DataLayer.ViewModels.PagerViewModel.PagerViewModels<DataLayer.Models.Product>
+@using MvcPager
+@{
+    ViewBag.Title = "لیست محصولات";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Metas{
+    <meta name="description" content="فروشگاه اینترنتی موتورتو فعال در زمینه فروش انواع قطعات مصرفی خودرو شامل فیلتر روغن ، فیلتر هوا ، فیلتر بنزین ، فیلتر کابین ، روغن موتور و روانکار و غیره است .">
+    <meta name="Keywords" content="قطعات مصرفی خودرو">
+    <meta property="og:title" content="موتورتو ، فروش آنلاین قطعات خودرو | Motoreto" />
+    <meta property="og:url" content="http://www.motoreto.ir/" />
+    <meta property="og:image" content="http://www.motoreto.ir/images/sadr_logo.png" />
+    <meta name="twitter:image" content="موتورتو ، فروش آنلاین قطعات خودرو | Motoreto">
+}
+
+@section Styles{
+    <style>
+        /* استایل چیپ‌ها */
+        .chips {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        .chip {
+            padding: 8px 14px;
+            border-radius: 16px;
+            background: #f0f0f0;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .chip.active {
+            background: #ff6600;
+            color: #fff;
+        }
+
+        /* بک‌دراپ پشت مودال */
+        .sort-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            z-index: 9998;
+        }
+        .sort-backdrop.active {
+            display: block;
+        }
+
+        /* مودال مرتب‌سازی (bottom sheet) */
+        .sort-sheet {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: -100%;
+            background: #fff;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+            transition: bottom 0.3s ease-in-out;
+            z-index: 9999;
+        }
+        .sort-sheet.active {
+            bottom: 0;
+        }
+        .sort-sheet .sheet-content {
+            padding: 20px;
+        }
+        .sort-sheet ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        .sort-sheet ul li {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+        }
+        .sort-sheet ul li:hover {
+            background: #f9f9f9;
+        }
+
+        /* لودر */
+        .spinner {
+            animation: rotate 2s linear infinite;
+            width: 50px;
+            height: 50px;
+        }
+        .spinner .path {
+            stroke: #ff6600;
+            stroke-linecap: round;
+            animation: dash 1.5s ease-in-out infinite;
+        }
+        @@keyframes rotate {
+            100% { transform: rotate(360deg); }
+        }
+        @@keyframes dash {
+            0% { stroke-dasharray: 1, 150; stroke-dashoffset: 0; }
+            50% { stroke-dasharray: 90, 150; stroke-dashoffset: -35; }
+            100% { stroke-dasharray: 90, 150; stroke-dashoffset: -124; }
+        }
+    </style>
+}
+
+<br />
+
+<div class="list-toolbar">
+    <!-- سرچ -->
+    <div class="searchbar-wide">
+        <i class="fa fa-search icon"></i>
+        <input id="q" type="search" placeholder="جستجو در محصولات…" />
+    </div>
+
+    <!-- چیپ‌های فیلتر -->
+    <div class="chips" id="chips">
+        <div class="chip active" data-filter="">همه</div>
+        <div class="chip" data-filter="inStock">موجود</div>
+        <div class="chip" data-filter="special">ویژه</div>
+        <div class="chip" data-filter="hasImage">دارای تصویر</div>
+        <div class="chip sort-chip" id="open-sort">🔽 مرتب‌سازی</div>
+    </div>
+</div>
+
+<!-- Backdrop -->
+<div id="sort-backdrop" class="sort-backdrop"></div>
+
+<!-- Bottom Sheet برای sort -->
+<div id="sort-sheet" class="sort-sheet">
+    <div class="sheet-content">
+        <h4>مرتب‌سازی بر اساس</h4>
+        <ul>
+            <li data-value="new">جدیدترین</li>
+            <li data-value="bestsellers">پرفروش‌ترین</li>
+            <li data-value="expensive">گران‌ترین</li>
+            <li data-value="cheap">ارزان‌ترین</li>
+            <li data-value="discount">بیشترین تخفیف</li>
+        </ul>
+    </div>
+</div>
+
+<!-- کانتینر محصولات -->
+<div class="container">
+    <div id="product-container" class="products-grid"></div>
+    <div id="infinite-sentinel"></div>
+    <div id="loader" class="text-center" style="display:none">
+        <svg class="spinner" viewBox="0 0 50 50">
+            <circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle>
+        </svg>
+    </div>
+</div>
+
+@section Scripts{
+    <script>
+        let page = 1;
+        let isLoading = false;
+        let hasMore = true;
+        const pageSize = 8;
+        let q = "";
+        let sort = "new";
+        let filter = "";
+
+        function loadMoreProducts(reset = false) {
+            if (reset) {
+                page = 1;
+                hasMore = true;
+                $("#product-container").empty();
+                $(window).off("scroll");
+                bindScroll();
+            }
+
+            if (isLoading || !hasMore) return;
+            isLoading = true;
+            $("#loader").show();
+
+            $.ajax({
+                url: '@Url.Action("LoadMoreProducts", "Product")',
+                type: "GET",
+                data: {
+                    page: page,
+                    pageSize: pageSize,
+                    q: q,
+                    sort: sort,
+                    filter: filter,
+                    name: "@ViewBag.CarName"
+                },
+                success: function (data) {
+                    let trimmed = $.trim(data);
+                    if (trimmed !== "") {
+                        let $html = $(trimmed);
+                        $("#product-container").append($html);
+                        page++;
+
+                        if ($("#product-container .end-of-list").length > 0) {
+                            hasMore = false;
+                            $(window).off("scroll");
+                        }
+                    } else {
+                        if (page === 1) {
+                            $("#product-container").html(`
+                                <div class="no-products text-center" style="direction: rtl; padding: 60px;">
+                                    <h3 style="margin-top:20px; color:#555; font-weight:bold; direction:rtl;">
+                                        محصولی یافت نشد
+                                    </h3>
+                                </div>
+                            `);
+                        }
+                        hasMore = false;
+                        $(window).off("scroll");
+                    }
+                    $("#loader").hide();
+                    isLoading = false;
+                },
+                error: function () {
+                    isLoading = false;
+                    $("#loader").hide();
+                }
+            });
+        }
+
+        function bindScroll() {
+            $(window).on("scroll", function () {
+                const scrollTop = $(window).scrollTop();
+                const windowHeight = $(window).height();
+                const containerBottom = $("#product-container").offset().top + $("#product-container").outerHeight();
+
+                if (scrollTop + windowHeight >= containerBottom - 200) {
+                    loadMoreProducts();
+                }
+            });
+        }
+
+        // 📌 سرچ
+        $("#q").on("input", function () {
+            q = $(this).val();
+            loadMoreProducts(true);
+        });
+
+        // 📌 فیلتر چیپ‌ها
+        $(document).on("click", "#chips .chip", function () {
+            if ($(this).attr("id") === "open-sort") return;
+            $("#chips .chip").removeClass("active");
+            $(this).addClass("active");
+            filter = $(this).data("filter");
+            loadMoreProducts(true);
+        });
+
+        // 📌 باز کردن مودال مرتب‌سازی
+        $(document).on("click", "#open-sort", function () {
+            $("#sort-sheet").addClass("active");
+            $("#sort-backdrop").addClass("active");
+        });
+
+        // 📌 انتخاب sort
+        $(document).on("click", "#sort-sheet ul li", function () {
+            sort = $(this).data("value");
+            $("#sort-sheet").removeClass("active");
+            $("#sort-backdrop").removeClass("active");
+            loadMoreProducts(true);
+        });
+
+        // 📌 کلیک روی بک‌دراپ → بستن مودال
+        $(document).on("click", "#sort-backdrop", function () {
+            $("#sort-sheet").removeClass("active");
+            $("#sort-backdrop").removeClass("active");
+        });
+
+        // 🚀 شروع اولیه
+        $(document).ready(function () {
+            loadMoreProducts();
+            bindScroll();
+        });
+    </script>
+}

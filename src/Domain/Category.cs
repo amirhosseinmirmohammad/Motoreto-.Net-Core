@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class Category
     {
@@ -56,7 +56,7 @@ namespace DataLayer.Models
         [DisplayName("لیست محصولات")]
         [Display(Name = "لیست محصولات")]
         public virtual ICollection<Product> Products { get; set; }
-        public virtual ICollection<Blog> Blogs { get; set; }
 
+        public virtual ICollection<Blog> Blogs { get; set; }
     }
 }

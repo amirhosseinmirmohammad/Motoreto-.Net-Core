@@ -1,0 +1,410 @@
+﻿@model DataLayer.ViewModels.ProductDetailViewModel
+@{
+    var productName = Model?.product?.PersianName ?? "محصول";
+    var productEnglishName = Model?.product?.EnglishName ?? "";
+    var productDesc = string.IsNullOrEmpty(Model?.product?.Description)
+        ? "توضیحات محصول در دسترس نیست."
+        : GladCherryShopping.Helpers.FunctionsHelper.Truncate(Model.product.Description, 160);
+
+    var productImage = string.IsNullOrEmpty(Model?.product?.SiteFirstImage)
+        ? Url.Content("~/images/sadr_logo.png")
+        : Model.product.SiteFirstImage;
+
+    var productCategory = Model?.product?.category?.PersianName ?? "بدون دسته‌بندی";
+    var parentCategory = Model?.product?.category?.Parent?.PersianName ?? "دسته اصلی";
+    var parentCategoryId = Model?.product?.category?.Parent?.Id ?? 0;
+    var categoryId = Model?.product?.category?.Id ?? 0;
+    var stock = Model?.product?.Stock ?? 0;
+    var minBuy = Model?.product?.Min ?? 0;
+    var unitPrice = Model?.product?.UnitPrice ?? 0;
+    var discountPercent = Model?.product?.DiscountPercent ?? 0;
+}
+
+@{
+    ViewBag.Title = productName + " | خرید آنلاین از موتورتو";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section Metas{
+    <meta name="description" content="@productDesc" />
+    <meta property="og:title" content="@productName | موتورتو" />
+    <meta property="og:image" content="@productImage" />
+    <meta property="og:url" content="@Url.Action("Details","Product", new { id=Model?.product?.Id}, Request.Url.Scheme)" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="@productImage" />
+}
+
+@section Styles{
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/css/lightbox.min.css" rel="stylesheet" />
+    <style>
+        .btn-addcartdetail {
+            z-index: 1 !important;
+        }
+    </style>
+}
+
+<!-- breadcrumb -->
+<nav class="breadcrumb">
+    <a href="/">صفحه اصلی</a> /
+    <a href="/product/bycar/@parentCategory">@parentCategory</a> /
+    <a href="/product/bycar/@productCategory/">@productCategory</a> /
+    <span>@productName</span>
+</nav>
+
+<div class="container">
+    <div class="row">
+        <!-- gallery -->
+        <div class="col-md-6">
+            <div class="product-gallery">
+                <div class="main-image">
+                    <a href="@productImage" data-lightbox="product-gallery">
+                        <img id="mainProductImage" src="@productImage" alt="@Model?.product?.PersianName" />
+                    </a>
+                </div>
+                <div class="thumbs">
+                    <a href="@productImage" data-lightbox="product-gallery">
+                        <img src="@productImage" alt="@Model?.product?.PersianName" />
+                    </a>
+
+                    @foreach (var img in Model.product.Images)
+                    {
+                        <a href="@img.Link" data-lightbox="product-gallery">
+                            <img src="@img.Link" alt="@Model?.product?.PersianName" />
+                        </a>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- info -->
+        <div class="col-md-6">
+            <div class="product-meta">
+                <h1>@productName</h1>
+                <h2>@productEnglishName</h2>
+                <div class="price">
+                    @if (discountPercent > 0)
+                    {
+                        <span class="discount">% @discountPercent</span>
+                        <del>
+                            <span class="amount">@string.Format("{0:n0}", unitPrice)</span>
+                            <span class="currency">ریال</span>
+                        </del>
+                        <ins>
+                            <span class="amount">
+                                @string.Format("{0:n0}", unitPrice - (unitPrice * discountPercent / 100))
+                            </span>
+                            <span class="currency">ریال</span>
+                        </ins>
+                    }
+                    else
+                    {
+                        <ins>
+                            <span class="amount">@string.Format("{0:n0}", unitPrice)</span>
+                            <span class="currency">ریال</span>
+                        </ins>
+                    }
+                </div>
+                <div class="stock">
+                    @if (stock > 0)
+                    {
+                        <span class="in-stock">موجود</span>
+                    }
+                    else
+                    {
+                        <span class="out-of-stock">ناموجود</span>
+                    }
+                </div>
+                <button class="btn-addcartdetail" productid="@Model.product.Id">
+                    <span class="btn-icon" aria-hidden="true">
+                        <!-- SVG سبد خرید راست‌چین -->
+                        <svg viewBox="0 0 24 24" width="22" height="22" class="cart-svg">
+                            <path d="M7 7h14l-1.5 8.5a2 2 0 0 1-2 1.6H9.2a2 2 0 0 1-2-1.6L5.3 4.8H3"
+                                  fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                            <circle cx="10" cy="19.5" r="1.5" fill="currentColor" />
+                            <circle cx="18" cy="19.5" r="1.5" fill="currentColor" />
+                        </svg>
+                    </span>
+                    <span class="btn-label">افزودن به سبد خرید</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- tabs -->
+    <div class="product-tabs">
+        <ul class="tab-nav">
+            <li class="active" data-tab="desc">توضیحات</li>
+            <li data-tab="specs">مشخصات</li>
+            <li data-tab="reviews">دیدگاه‌ها</li>
+        </ul>
+        <div class="tab-content active" id="desc">@Html.Raw(Model?.product?.Description ?? "توضیحی ثبت نشده")</div>
+        <div class="tab-content" id="specs">
+            <table class="table">
+                <tr><td>دسته‌بندی</td><td>@productCategory</td></tr>
+                <tr><td>موجودی</td><td>@(stock > 0 ? stock.ToString() : "ناموجود")</td></tr>
+                <tr><td>حداقل خرید</td><td>@(minBuy > 0 ? minBuy.ToString() : "ثبت نشده")</td></tr>
+            </table>
+        </div>
+        <div class="tab-content" id="reviews">
+            @if (Model?.product?.Comments != null && Model.product.Comments.Count() > 0)
+            {
+                foreach (var c in Model.product.Comments)
+                {
+                    <div class="review"><b>@c.Fullname</b><br /><p>@c.Text</p></div>
+                }
+            }
+            else
+            {
+                <p>هیچ دیدگاهی ثبت نشده است.</p>
+            }
+        </div>
+    </div>
+
+    <!-- related -->
+    @if (Model?.product?.RelatedProducts != null && Model.product.RelatedProducts.Count() > 0)
+    {
+        <h2>محصولات مرتبط</h2>
+        <div class="related-slider">
+            @foreach (var item in Model.product.RelatedProducts)
+            {
+                var relatedImage = string.IsNullOrEmpty(item.SiteFirstImage)
+                    ? Url.Content("~/images/sadr_logo.png")
+                    : item.SiteFirstImage;
+                <a href="/Product/@item.SefUrl" class="related-item">
+                    <img src="@relatedImage" alt="@item.PersianName" />
+                    <span>@item.PersianName</span><br />
+                    <span class="price">
+                        <span class="amount">@string.Format("{0:n0}", item.UnitPrice)</span>
+                        <span class="currency">ریال</span>
+                    </span>
+                </a>
+            }
+        </div>
+    }
+</div>
+
+<!-- Review (Fancy) -->
+<section class="fancy-review rtl" id="reviewSection" aria-labelledby="reviewTitle">
+    <!-- ذرات معلقِ سبک -->
+    <svg class="review-sparkles" viewBox="0 0 600 200" preserveAspectRatio="none" aria-hidden="true">
+        <g class="spark s1">
+            <circle cx="50" cy="180" r="2"></circle>
+            <circle cx="120" cy="170" r="3"></circle>
+            <circle cx="200" cy="190" r="2"></circle>
+        </g>
+        <g class="spark s2">
+            <circle cx="300" cy="175" r="2"></circle>
+            <circle cx="360" cy="185" r="3"></circle>
+            <circle cx="420" cy="170" r="2"></circle>
+        </g>
+        <g class="spark s3">
+            <circle cx="500" cy="180" r="2"></circle>
+            <circle cx="560" cy="190" r="3"></circle>
+        </g>
+    </svg>
+
+    <div class="review-content">
+        <div class="review-head">
+            <div class="review-icon" aria-hidden="true">
+                <!-- ستاره/نشان با انیمیشن پالس -->
+                <svg viewBox="0 0 24 24" class="badge-svg">
+                    <path class="badge" d="M12 2l6 3v4.8c0 4.7-3.2 8.6-6 9.4-2.8-.8-6-4.7-6-9.4V5l6-3z" fill="none" stroke-width="1.8" />
+                    <path class="star" d="M12 7.8l1.6 3.2 3.5.5-2.6 2.5.6 3.5-3.1-1.6-3.1 1.6.6-3.5-2.6-2.5 3.5-.5L12 7.8z" fill="none" stroke-width="1.6" />
+                </svg>
+            </div>
+            <div>
+                <h2 id="reviewTitle">نقد و بررسی اجمالی @Model.product.PersianName</h2>
+                <p class="subtitle">جمع‌بندی کوتاه و شفاف از مهم‌ترین مزایای <strong>@Model.product.PersianName</strong> برای انتخاب سریع.</p>
+            </div>
+        </div>
+
+        <p class="lead">
+            اگر به‌دنبال محصولی مطمئن و باکیفیت هستید، <strong>@Model.product.PersianName</strong> می‌تواند انتخابی عالی باشد.
+        </p>
+
+        <ul class="feature-list">
+            <li class="feature-item">
+                <span class="icon">
+                    <!-- آیکن تیک داخل دایره با Line-Drawing -->
+                    <svg viewBox="0 0 24 24" class="draw-svg" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9" fill="none" stroke-width="2" class="path"></circle>
+                        <path d="M8 12l3 3 5-6" fill="none" stroke-width="2" class="path"></path>
+                    </svg>
+                </span>
+                <div>
+                    <h3>کیفیت ساخت بالا</h3>
+                    <p>متریال استاندارد و کنترل کیفی منظم برای دوام طولانی‌مدت.</p>
+                </div>
+            </li>
+            <li class="feature-item">
+                <span class="icon">
+                    <!-- آیکن تگ قیمت ساده -->
+                    <svg viewBox="0 0 24 24" class="draw-svg" aria-hidden="true">
+                        <path d="M3 12l7-7a2 2 0 0 1 2.8 0l6.2 6.2a2 2 0 0 1 0 2.8l-7 7H5a2 2 0 0 1-2-2z" fill="none" stroke-width="2" class="path"></path>
+                        <circle cx="13" cy="7" r="1.5" fill="none" stroke-width="2" class="path"></circle>
+                    </svg>
+                </span>
+                <div>
+                    <h3>قیمت مناسب</h3>
+                    <p>بازه‌ی قیمتی رقابتی با حفظ کیفیت و ارزش خرید مطلوب.</p>
+                </div>
+            </li>
+            <li class="feature-item">
+                <span class="icon">
+                    <!-- آیکن خودرو مینیمال -->
+                    <svg viewBox="0 0 24 24" class="draw-svg" aria-hidden="true">
+                        <path d="M3 14l2-5.5A3 3 0 0 1 7.8 6H16a3 3 0 0 1 2.8 2l2.2 6" fill="none" stroke-width="2" class="path"></path>
+                        <rect x="5" y="13" width="14" height="4" rx="1.5" fill="none" stroke-width="2" class="path"></rect>
+                        <circle cx="8.5" cy="18" r="1.5" class="path" fill="none" stroke-width="2"></circle>
+                        <circle cx="15.5" cy="18" r="1.5" class="path" fill="none" stroke-width="2"></circle>
+                    </svg>
+                </span>
+                <div>
+                    <h3>سازگار با اکثر خودروها</h3>
+                    <p>پوشش گسترده‌ی مدل‌های رایج و نصب آسان بدون دردسر.</p>
+                </div>
+            </li>
+        </ul>
+    </div>
+</section>
+
+<div class="product-faq">
+    <h2>سؤالات متداول</h2>
+    <div class="faq-item">
+        <h4>آیا این محصول دارای ضمانت اصالت کالا است؟</h4>
+        <p>بله، تمام محصولات موتورتو با ضمانت اصالت کالا ارائه می‌شوند.</p>
+    </div>
+    <div class="faq-item">
+        <h4>ارسال چقدر طول می‌کشد؟</h4>
+        <p>برای تهران 24 ساعت و سایر شهرها 2 تا 4 روز کاری.</p>
+    </div>
+    <div class="faq-item">
+        <h4>آیا امکان مرجوع کردن وجود دارد؟</h4>
+        <p>بله، تا 7 روز پس از خرید در صورت ایراد یا مغایرت قابل مرجوع است.</p>
+    </div>
+</div>
+
+<!-- Schema Product + Review + FAQ -->
+<script type="application/ld+json">
+{
+  "@@context":"https://schema.org",
+  "@@type":"Product",
+  "name":"@productName",
+  "image":"@productImage",
+  "description":"@productDesc",
+  "brand":"Motoreto",
+  "offers": {
+    "@@type":"Offer",
+    "price":"@unitPrice",
+    "priceCurrency":"IRR",
+    "availability":"@(stock>0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock")"
+  },
+  "aggregateRating": {
+    "@@type": "AggregateRating",
+    "ratingValue": "5",
+    "reviewCount": "@(Model?.product?.Comments?.Count() ?? 1)"
+  }
+}
+</script>
+
+<script type="application/ld+json">
+    {
+      "@@context": "https://schema.org/",
+      "@@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@@type": "Question",
+          "name": "آیا این محصول ضمانت دارد؟",
+          "acceptedAnswer": { "@@type": "Answer", "text": "بله، همه محصولات موتورتو ضمانت اصالت دارند." }
+        },
+        {
+          "@@type": "Question",
+          "name": "ارسال چقدر طول می‌کشد؟",
+          "acceptedAnswer": { "@@type": "Answer", "text": "برای تهران 24 ساعت و سایر شهرها 2 تا 4 روز کاری." }
+        },
+        {
+          "@@type": "Question",
+          "name": "آیا امکان مرجوعی وجود دارد؟",
+          "acceptedAnswer": { "@@type": "Answer", "text": "بله، تا 7 روز پس از خرید در صورت مشکل می‌توانید مرجوع کنید." }
+        }
+      ]
+    }
+</script>
+
+@section Scripts{
+    <script>
+        $(".product-tabs .tab-nav li").click(function () {
+            var tab = $(this).data("tab");
+            $(".product-tabs .tab-nav li").removeClass("active");
+            $(this).addClass("active");
+            $(".tab-content").removeClass("active");
+            $("#" + tab).addClass("active");
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lightbox2/2.11.3/js/lightbox.min.js"></script>
+    <script>
+        lightbox.option({
+            'resizeDuration': 200,
+            'wrapAround': true,
+            'fadeDuration': 200,
+            'albumLabel': "تصویر %1 از %2"  // ← فارسی
+        })
+    </script>
+    <script>
+        $(document).on("click", ".btn-addcartdetail", function (e) {
+            e.preventDefault();
+            var $btn = $(this);
+            var productId = $btn.attr("productid");
+            var $cartTarget = $("#shoppingCount"); // هدف پرواز (شمارنده/آیکن سبد)
+
+            // reduced-motion
+            var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+            if (!reduceMotion && $cartTarget.length) {
+                var $start = $btn.find(".btn-icon");
+                if (!$start.length) $start = $btn;
+
+                var startOff = $start.offset();
+                var endOff = $cartTarget.offset();
+
+                var flySvg = '' +
+                    '<svg viewBox="0 0 24 24" width="22" height="22">' +
+                    ' <path d="M7 7h14l-1.5 8.5a2 2 0 0 1-2 1.6H9.2a2 2 0 0 1-2-1.6L5.3 4.8H3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>' +
+                    ' <circle cx="10" cy="19.5" r="1.5" fill="currentColor"/>' +
+                    ' <circle cx="18" cy="19.5" r="1.5" fill="currentColor"/>' +
+                    '</svg>';
+
+                var $fly = $('<div class="cart-fly" aria-hidden="true">' + flySvg + '</div>').appendTo("body");
+
+                $fly.css({
+                    left: startOff.left + ($start.outerWidth() / 2) - 11,
+                    top: startOff.top + ($start.outerHeight() / 2) - 11
+                });
+
+                $fly.animate({
+                    left: endOff.left + ($cartTarget.outerWidth() / 2) - 11,
+                    top: endOff.top + ($cartTarget.outerHeight() / 2) - 11,
+                    opacity: 0
+                }, 800, function () { $fly.remove(); });
+            }
+
+            // Ajax اضافه‌کردن به سبد
+            $.ajax({
+                url: "/Home/AddToShoppingCart",
+                data: { Id: productId },
+                type: "POST",
+                dataType: "json",
+                success: function (result) {
+                    if (result && result.Success) {
+                        if (typeof updateCartBadge === "function") {
+                            updateCartBadge(result.CountHtml);
+                        }
+                        if ($("#success-modal").length) $("#success-modal").modal("show");
+                    }
+                },
+                error: function () { console.warn("AddToShoppingCart failed"); }
+            });
+        });
+
+    </script>
+}

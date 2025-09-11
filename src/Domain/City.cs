@@ -1,16 +1,15 @@
-﻿using GladcherryShopping.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class City
     {
         public City()
         {
-            Users = new List<ApplicationUser>();
+            Users = new List<User>();
         }
 
         [ScaffoldColumn(false)]
@@ -29,7 +28,9 @@ namespace DataLayer.Models
         [DisplayName("نام استان")]
         [Required(ErrorMessage = "لطفا استان مربوطه را انتخاب کنید")]
         public int StateId { get; set; }
+
         public virtual State State { get; set; }
-        public virtual ICollection<ApplicationUser> Users { get; set; }
+
+        public virtual ICollection<User> Users { get; set; }
     }
 }

@@ -1,13 +1,11 @@
-﻿using DataLayer.Models;
-using GladcherryShopping.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Web.Mvc;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class Blog
     {
@@ -80,17 +78,21 @@ namespace DataLayer.Models
         [Required(ErrorMessage = "لطفا توضیحات متا را وارد نمایید .")]
         [DataType(DataType.MultilineText)]
         public string MetaDesc { get; set; }
+
         public virtual ICollection<Comment> Comments { get; set; }
+
         public virtual ICollection<File> Images { get; set; }
 
         [DisplayName("نام کاربری")]
         public string UserId { get; set; }
-        public virtual ApplicationUser User { get; set; }
+
+        public virtual User User { get; set; }
 
         [DisplayName("دسته بندی")]
         public int? CategoryId { get; set; }
-        public virtual Category Category { get; set; }
-        public virtual ICollection<BlogComment> BlogComments { get; set; }
 
+        public virtual Category Category { get; set; }
+
+        public virtual ICollection<BlogComment> BlogComments { get; set; }
     }
 }

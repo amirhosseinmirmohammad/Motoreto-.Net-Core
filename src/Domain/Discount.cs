@@ -1,16 +1,16 @@
-﻿using GladcherryShopping.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace DataLayer.Models{
-public class Discount
+namespace Domain
+{
+    public class Discount
     {
         public Discount()
         {
-            Users = new List<ApplicationUser>();
+            Users = new List<User>();
         }
 
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -55,7 +55,7 @@ public class Discount
         [DisplayName("فعال یا غیر فعال ؟")]
         [Display(Name = "فعال یا غیر فعال ؟")]
         public bool IsActived { get; set; }
-        public virtual ICollection<ApplicationUser> Users { get; set; }
+        public virtual ICollection<User> Users { get; set; }
 
         [DisplayName("تخفیف ویترین میباشد ؟")]
         [Display(Name = "تخفیف ویترین میباشد ؟")]

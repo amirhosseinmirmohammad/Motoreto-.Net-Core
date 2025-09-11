@@ -1,19 +1,18 @@
-﻿using GladcherryShopping.Models;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Web.Mvc;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class Notification
     {
         public Notification()
         {
-            this.Users = new List<ApplicationUser>();
-            this.Images = new List<Image>();
+            Users = new List<User>();
+            Images = new List<Image>();
             NewsLetters = new List<NewsLetter>();
         }
 
@@ -32,8 +31,11 @@ namespace DataLayer.Models
         [Required(ErrorMessage ="لطفا متن پیام خود را تعیین نمایید .")]
         [DataType(DataType.MultilineText)]
         public string Text { get; set; }     
+
         public virtual ICollection<Image> Images { get; set; }
-        public virtual ICollection<ApplicationUser> Users { get; set; }
+
+        public virtual ICollection<User> Users { get; set; }
+
         public virtual ICollection<NewsLetter> NewsLetters { get; set; }
     }
 }

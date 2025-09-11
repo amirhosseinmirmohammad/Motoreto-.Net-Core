@@ -1,22 +1,23 @@
-﻿using DataLayer.Models;
-using GladcherryShopping.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Web;
+﻿using Infrastructure;
 using System.Web.Mvc;
 
-namespace GladcherryShopping.Controllers
+namespace Presentation.Controllers
 {
     public class AboutUsController : Controller
     {
-        private ApplicationDbContext db = new ApplicationDbContext();
+        public AboutUsController(ApplicationDbContext db)
+        {
+            _db = db;
+        }
 
         // GET: AboutUs
         public ActionResult Index()
         {
-            Application app = db.Applications.FirstOrDefault();
+            Domain.Application app = _db.Applications.FirstOrDefault();
             return View(app);
         }
+
+
+        private readonly ApplicationDbContext _db;
     }
 }

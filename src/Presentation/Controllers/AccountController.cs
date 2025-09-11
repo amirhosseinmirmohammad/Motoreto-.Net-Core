@@ -1,51 +1,38 @@
-﻿using System;
-using System.Globalization;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using System.Web;
-using System.Web.Mvc;
+﻿using Domain;
+using Infrastructure;
 using Microsoft.AspNet.Identity;
-using Microsoft.AspNet.Identity.Owin;
-using Microsoft.Owin.Security;
-using GladcherryShopping.Models;
-using DataLayer.ViewModels;
-using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using DataLayer.Models;
-using GladCherryShopping.Helpers;
+using Microsoft.AspNet.Identity.EntityFramework;
+using Microsoft.AspNetCore.Identity;
 using System.Data.Entity;
 using System.Net;
-using Microsoft.AspNet.Identity.EntityFramework;
-using System.Web.Security;
-using SmsIrRestful;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Formatting; // برای PostAsJsonAsync (نیاز به پکیج جدا داره)
+using System.Text.RegularExpressions;
+using System.Web;
+using System.Web.Mvc;
 
-namespace GladcherryShopping.Controllers
+namespace Presentation.Controllers
 {
     [Authorize]
     public class AccountController : Controller
     {
-        private ApplicationDbContext db = new ApplicationDbContext();
-        private ApplicationSignInManager _signInManager;
-        private ApplicationUserManager _userManager;
-
-        public AccountController()
+        public AccountController(
+                   ApplicationDbContext db,
+                   Microsoft.AspNetCore.Identity.UserManager<User> userManager,
+                   SignInManager<User> signInManager)
         {
+            _db = db;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
 
         public bool DeleteImages(int id)
         {
-            ApplicationDbContext db = new ApplicationDbContext();
-            var list = db.Images.Find(id);
+            var list = _db.Images.Find(id);
             if (list != null)
             {
                 try
                 {
-                    db.Images.Remove(list);
-                    db.SaveChanges();
+                    _db.Images.Remove(list);
+                    _db.SaveChanges();
                     return true;
                 }
                 catch (Exception)
@@ -58,14 +45,13 @@ namespace GladcherryShopping.Controllers
 
         public bool DeleteFiles(int id)
         {
-            ApplicationDbContext db = new ApplicationDbContext();
-            var list = db.Files.Find(id);
+            var list = _db.Files.Find(id);
             if (list != null)
             {
                 try
                 {
-                    db.Files.Remove(list);
-                    db.SaveChanges();
+                    _db.Files.Remove(list);
+                    _db.SaveChanges();
                     return true;
                 }
                 catch (Exception)
@@ -126,7 +112,7 @@ namespace GladcherryShopping.Controllers
         [Authorize(Roles = "Operator")]
         public ActionResult OperatorPanel()
         {
-            ApplicationDbContext context = new ApplicationDbContext();
+            Application_dbContext context = new Application_dbContext();
             DateTime startDateTime = DateTime.Today; //Today at 00:00:00
             DateTime endDateTime = DateTime.Today.AddDays(1).AddTicks(-1);  //Today at 23:59:59
             var chats = context.Chats
@@ -165,15 +151,15 @@ namespace GladcherryShopping.Controllers
                 TempData["Error"] = "لطفا شماره موبایل معتبری را وارد نمایید .";
                 return RedirectToAction("RegisterAccount");
             }
-            var role = db.Roles.Where(p => p.Name == "User").FirstOrDefault();
-            List<ApplicationUser> users = db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
+            var role = _db.Roles.Where(p => p.Name == "User").FirstOrDefault();
+            List<ApplicationUser> users = _db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
             if (users.Count() > 0)
             {
                 TempData["Error"] = "این شماره قبلا ثبت نام کرده است .";
                 return RedirectToAction("RegisterAccount");
             }
-            City defaultCity = db.Cities.FirstOrDefault();
-            State defaultState = db.States.FirstOrDefault();
+            City defaultCity = _db.Cities.FirstOrDefault();
+            State defaultState = _db.States.FirstOrDefault();
             if (defaultCity == null || defaultState == null)
             {
                 TempData["Error"] = "تنظیمات اپلیکیشن با خطا رو به رو است .";
@@ -182,7 +168,7 @@ namespace GladcherryShopping.Controllers
             var FriendUser = new ApplicationUser();
             if (!string.IsNullOrEmpty(IntroCode))
             {
-                FriendUser = db.Users.Where(current => current.AccessCode == IntroCode).FirstOrDefault();
+                FriendUser = _db.Users.Where(current => current.AccessCode == IntroCode).FirstOrDefault();
                 if (FriendUser == null)
                 {
                     TempData["Error"] = "کاربری با این کد معرف شما پیدا نشد .";
@@ -236,11 +222,11 @@ namespace GladcherryShopping.Controllers
 
             #region Create
             IdentityResult result;
-            var application = db.Applications.FirstOrDefault();
+            var application = _db.Applications.FirstOrDefault();
 
             try
             {
-                UserManager<ApplicationUser> UserManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(db));
+                UserManager<ApplicationUser> UserManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(_db));
                 result = UserManager.Create(user);
                 UserManager.AddToRole(user.Id, "User");
                 #region IntroCode
@@ -256,12 +242,12 @@ namespace GladcherryShopping.Controllers
                     {
                         FriendUser.UserScore += application.IntroScore;
                     }
-                    db.Entry(FriendUser).State = EntityState.Modified;
-                    db.SaveChanges();
+                    _db.Entry(FriendUser).State = EntityState.Modified;
+                    _db.SaveChanges();
                     //کد معرفی کاربر جدید
                     user.IntroCode = FriendUser.AccessCode;
-                    db.Entry(user).State = EntityState.Modified;
-                    db.SaveChanges();
+                    _db.Entry(user).State = EntityState.Modified;
+                    _db.SaveChanges();
                 }
                 #endregion IntroCode
             }
@@ -285,7 +271,7 @@ namespace GladcherryShopping.Controllers
             else
                 TempData["Success"] = "ثبت نام شما با موفقیت انجام شد .";
             //SignIn
-            return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/CreateAccount" });
+            return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/CreateAccount" });
             #endregion Create
         }
 
@@ -315,8 +301,8 @@ namespace GladcherryShopping.Controllers
                 return RedirectToAction("LoginAccount");
             }
 
-            var role = db.Roles.Where(p => p.Name == "User").FirstOrDefault();
-            List<ApplicationUser> users = db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
+            var role = _db.Roles.Where(p => p.Name == "User").FirstOrDefault();
+            List<ApplicationUser> users = _db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
             if (users.Count() <= 0)
             {
                 TempData["Error"] = "شماره شما در سیستم ثبت نشده است ، لطفا ابتدا ثبت نام کنید .";
@@ -331,7 +317,7 @@ namespace GladcherryShopping.Controllers
             #endregion Validation
 
             #region SMS
-            Application application = db.Applications.FirstOrDefault();
+            Application application = _db.Applications.FirstOrDefault();
             Random random = new Random();
             var randomNumber = random.Next(10000, 99999);
             if (application != null && application.FromNumber != null)
@@ -346,8 +332,8 @@ namespace GladcherryShopping.Controllers
 
                 #region EditUserCode
                 users.FirstOrDefault().VerificationCode = FunctionsHelper.Encrypt(smsCode, "Motoreto");
-                db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
-                db.SaveChanges();
+                _db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
+                _db.SaveChanges();
                 #endregion EditUserCodde
 
             }
@@ -359,7 +345,7 @@ namespace GladcherryShopping.Controllers
             #endregion SMS
 
             TempData["Success"] = "به حساب کاربری خود خوش آمدید .";
-            return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+            return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
         }
 
         public static bool UltraFastSms(string PhoneNumber, string Code)
@@ -422,24 +408,24 @@ namespace GladcherryShopping.Controllers
             if (string.IsNullOrWhiteSpace(PhoneNumber))
             {
                 TempData["Error"] = "لطفا شماره موبایل خود را وارد نمایید .";
-                return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
             }
             if (string.IsNullOrWhiteSpace(Code))
             {
                 TempData["Error"] = "لطفا کد را وارد نمایید .";
-                return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
             }
             if (!Regex.Match(PhoneNumber, @"\b\d{4}[\s-.]?\d{3}[\s-.]?\d{4}\b").Success)
             {
                 TempData["Error"] = "لطفا شماره موبایل معتبری را وارد نمایید .";
-                return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
             }
-            var role = db.Roles.Where(p => p.Name == "User").FirstOrDefault();
-            List<ApplicationUser> users = db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
+            var role = _db.Roles.Where(p => p.Name == "User").FirstOrDefault();
+            List<ApplicationUser> users = _db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
             if (users.Count() <= 0)
             {
                 TempData["Error"] = "شماره شما در سیستم ثبت نشده است .";
-                return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
             }
             #endregion Validation
 
@@ -450,14 +436,14 @@ namespace GladcherryShopping.Controllers
                 if (UserVerificationCode != Code)
                 {
                     TempData["Error"] = "کد وارد شده صحیح نمیباشد .";
-                    return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                    return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
                 }
                 if (UserVerificationCode == Code)
                 {
                     users.FirstOrDefault().PhoneNumberConfirmed = true;
-                    db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
-                    db.SaveChanges();
-                    Application application = db.Applications.FirstOrDefault();
+                    _db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
+                    _db.SaveChanges();
+                    Application application = _db.Applications.FirstOrDefault();
                     if (application != null && application.VerifyPhoneNumberText != null)
                     {
                         IHtmlString htmlString = new HtmlString(application.VerifyPhoneNumberText);
@@ -478,14 +464,14 @@ namespace GladcherryShopping.Controllers
                                     }
                                 case SignInStatus.LockedOut:
                                     TempData["Error"] = "خطایی رخ داده است لطفا مجدد تلاش فرمایید .";
-                                    return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                                    return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
                                 case SignInStatus.RequiresVerification:
                                     TempData["Error"] = "خطایی رخ داده است لطفا مجدد تلاش فرمایید .";
-                                    return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                                    return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
                                 case SignInStatus.Failure:
                                 default:
                                     TempData["Error"] = "خطایی رخ داده است لطفا مجدد تلاش فرمایید .";
-                                    return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                                    return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
                             }
                         }
                     }
@@ -499,12 +485,12 @@ namespace GladcherryShopping.Controllers
             else
             {
                 TempData["Error"] = "کد کاربر خالی است .";
-                return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
             }
             #endregion Login
 
             TempData["Error"] = "لطفا مجدد تلاش فرمایید .";
-            return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+            return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
         }
 
         [HttpGet]
@@ -525,8 +511,8 @@ namespace GladcherryShopping.Controllers
                 return RedirectToAction("LoginAccount");
             }
 
-            var role = db.Roles.Where(p => p.Name == "User").FirstOrDefault();
-            List<ApplicationUser> users = db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
+            var role = _db.Roles.Where(p => p.Name == "User").FirstOrDefault();
+            List<ApplicationUser> users = _db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
             if (users.Count() <= 0)
             {
                 TempData["Error"] = "شماره شما در سیستم ثبت نشده است ، لطفا ابتدا ثبت نام کنید .";
@@ -541,7 +527,7 @@ namespace GladcherryShopping.Controllers
             #endregion Validation
 
             #region SMS
-            Application application = db.Applications.FirstOrDefault();
+            Application application = _db.Applications.FirstOrDefault();
             Random random = new Random();
             var randomNumber = random.Next(10000, 99999);
             if (application != null && application.FromNumber != null)
@@ -558,8 +544,8 @@ namespace GladcherryShopping.Controllers
 
                 #region EditUserCode
                 users.FirstOrDefault().VerificationCode = FunctionsHelper.Encrypt(randomNumber.ToString(), "Motoreto");
-                db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
-                db.SaveChanges();
+                _db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
+                _db.SaveChanges();
                 #endregion EditUserCodde
 
             }
@@ -570,7 +556,7 @@ namespace GladcherryShopping.Controllers
             }
             #endregion SMS
             TempData["Success"] = "به حساب کاربری خود خوش آمدید .";
-            return RedirectToAction("Approve", new { PhoneNumber = PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+            return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
         }
 
         [AllowAnonymous]
@@ -634,7 +620,7 @@ namespace GladcherryShopping.Controllers
             switch (result)
             {
                 case SignInStatus.Success:
-                    ApplicationDbContext context = new ApplicationDbContext();
+                    Application_dbContext context = new Application_dbContext();
                     var adminRole = context.Roles.Where(cuurent => cuurent.Name == "Administrator").FirstOrDefault().Id;
                     var operatorRole = context.Roles.Where(cuurent => cuurent.Name == "Operator").FirstOrDefault().Id;
                     ApplicationUser user = context.Users.Where(current => current.UserName == model.Email).Include(current => current.Roles).FirstOrDefault();
@@ -646,7 +632,7 @@ namespace GladcherryShopping.Controllers
                 case SignInStatus.LockedOut:
                     return View("Lockout");
                 case SignInStatus.RequiresVerification:
-                    return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = model.RememberMe });
+                    return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, model.RememberMe });
                 case SignInStatus.Failure:
                     return View(model);
                 default:
@@ -658,36 +644,36 @@ namespace GladcherryShopping.Controllers
 
         public JsonResult GetChatMessages(int chatId)
         {
-            ApplicationDbContext db = new ApplicationDbContext();
-            var chat = db.Chats.Where(current => current.Id == chatId).FirstOrDefault();
+            Application_dbContext _db = new Application_dbContext();
+            var chat = _db.Chats.Where(current => current.Id == chatId).FirstOrDefault();
             chat.NewMessagesCount = 0;
             try
             {
-                db.Entry(chat).State = EntityState.Modified;
-                db.SaveChanges();
+                _db.Entry(chat).State = EntityState.Modified;
+                _db.SaveChanges();
             }
             catch (Exception ex) { }
-            var chatOperator = db.Users.Where(current => current.Id == chat.OperatorId).FirstOrDefault();
+            var chatOperator = _db.Users.Where(current => current.Id == chat.OperatorId).FirstOrDefault();
             var messages = new List<DataLayer.Models.ChatMessage>();
             if (chat != null)
             {
-                messages = db.ChatMessages.Where(current => current.ChatId == chatId).ToList();
+                messages = _db.ChatMessages.Where(current => current.ChatId == chatId).ToList();
             }
-            var jsonResult = messages.Select(result => new { id = result.Id, body = result.Body, date = result.DateTimeSent.Hour + ":" + result.DateTimeSent.Minute, operatorId = result.OperatorId, userId = result.OnlineUserId, operatorImage = (chatOperator == null) ? "" : chatOperator.ProfileImage });
+            var jsonResult = messages.Select(result => new { id = result.Id, body = result.Body, date = result.DateTimeSent.Hour + ":" + result.DateTimeSent.Minute, operatorId = result.OperatorId, userId = result.OnlineUserId, operatorImage = chatOperator == null ? "" : chatOperator.ProfileImage });
             return Json(jsonResult, JsonRequestBehavior.AllowGet);
         }
 
         //public bool DeleteImages(int id)
         //{
-        //    ApplicationDbContext db = new ApplicationDbContext();
-        //    var list = db.Files.ToList();
+        //    Application_dbContext _db = new Application_dbContext();
+        //    var list = _db.Files.ToList();
         //    foreach (var image in list)
         //    {
         //        if (image.Id == id)
         //        {
-        //            db.Files.Remove(image);
+        //            _db.Files.Remove(image);
         //        }
-        //        db.SaveChanges();
+        //        _db.SaveChanges();
         //    }
         //    return true;
         //}
@@ -803,8 +789,8 @@ namespace GladcherryShopping.Controllers
         {
             if (ModelState.IsValid)
             {
-                var user = await UserManager.FindByNameAsync(model.Email);
-                if (user == null || !(await UserManager.IsEmailConfirmedAsync(user.Id)))
+                var user = await UserManager.Fin_dbyNameAsync(model.Email);
+                if (user == null || !await UserManager.IsEmailConfirmedAsync(user.Id))
                 {
                     // Don't reveal that the user does not exist or is not confirmed
                     return View("ForgotPasswordConfirmation");
@@ -849,7 +835,7 @@ namespace GladcherryShopping.Controllers
             {
                 return View(model);
             }
-            var user = await UserManager.FindByNameAsync(model.Email);
+            var user = await UserManager.Fin_dbyNameAsync(model.Email);
             if (user == null)
             {
                 // Don't reveal that the user does not exist
@@ -915,7 +901,7 @@ namespace GladcherryShopping.Controllers
             {
                 return View("Error");
             }
-            return RedirectToAction("VerifyCode", new { Provider = model.SelectedProvider, ReturnUrl = model.ReturnUrl, RememberMe = model.RememberMe });
+            return RedirectToAction("VerifyCode", new { Provider = model.SelectedProvider, model.ReturnUrl, model.RememberMe });
         }
 
         //
@@ -1086,7 +1072,7 @@ namespace GladcherryShopping.Controllers
             if (!Regex.IsMatch(phoneNumber, @"^09\d{9}$"))
                 return Json(new { success = false, message = "شماره موبایل معتبر نیست" });
 
-            var user = db.Users.FirstOrDefault(u => u.Mobile == phoneNumber);
+            var user = _db.Users.FirstOrDefault(u => u.Mobile == phoneNumber);
 
             // کد یکبارمصرف
             string otpCode = SendOtpMelipayamak(phoneNumber);
@@ -1100,8 +1086,8 @@ namespace GladcherryShopping.Controllers
                 var security = Guid.NewGuid().ToString("N");
                 var hashedPassword = new PasswordHasher().HashPassword("Temp@" + otpCode);
 
-                var defaultCity = db.Cities.FirstOrDefault();
-                var defaultState = db.States.FirstOrDefault();
+                var defaultCity = _db.Cities.FirstOrDefault();
+                var defaultState = _db.States.FirstOrDefault();
 
                 user = new ApplicationUser
                 {
@@ -1123,7 +1109,7 @@ namespace GladcherryShopping.Controllers
                     LastName = ""
                 };
 
-                var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(db));
+                var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(_db));
                 var result = userManager.Create(user);
                 if (result.Succeeded)
                     userManager.AddToRole(user.Id, "User");
@@ -1132,10 +1118,10 @@ namespace GladcherryShopping.Controllers
             {
                 // اگر بود، فقط کد جدید بده
                 user.VerificationCode = FunctionsHelper.Encrypt(otpCode, "Motoreto");
-                db.Entry(user).State = EntityState.Modified;
+                _db.Entry(user).State = EntityState.Modified;
             }
 
-            db.SaveChanges();
+            _db.SaveChanges();
 
             return Json(new { success = true });
         }
@@ -1149,7 +1135,7 @@ namespace GladcherryShopping.Controllers
                 return Json(new { success = false, message = "شماره یا کد نامعتبر است" });
 
             phoneNumber = Regex.Replace(phoneNumber, @"[^\d]", "");
-            var user = db.Users.FirstOrDefault(u => u.Mobile == phoneNumber);
+            var user = _db.Users.FirstOrDefault(u => u.Mobile == phoneNumber);
 
             if (user == null)
                 return Json(new { success = false, message = "کاربر یافت نشد" });
@@ -1160,8 +1146,8 @@ namespace GladcherryShopping.Controllers
 
             // تایید شماره
             user.PhoneNumberConfirmed = true;
-            db.Entry(user).State = EntityState.Modified;
-            db.SaveChanges();
+            _db.Entry(user).State = EntityState.Modified;
+            _db.SaveChanges();
 
             // ورود کاربر
             SignInManager.SignIn(user, isPersistent: false, rememberBrowser: false);
@@ -1186,7 +1172,7 @@ namespace GladcherryShopping.Controllers
                 {
                     // توجه: باید Microsoft.AspNet.WebApi.Client نصب باشه
                     var result = client.PostAsJsonAsync(
-                        "api/send/otp/896d2b4ac27f48c9a42183ce5f482db6",
+                        "api/send/otp/896d2b4ac27f48c9a42183ce5f482_db6",
                         new { to = phoneNumber }).Result;
 
                     var response = result.Content.ReadAsStringAsync().Result;
@@ -1241,5 +1227,10 @@ namespace GladcherryShopping.Controllers
             }
         }
         #endregion
+
+
+        private readonly ApplicationDbContext _db;
+        private readonly Microsoft.AspNetCore.Identity.UserManager<User> _userManager;
+        private readonly SignInManager<User> _signInManager;
     }
 }

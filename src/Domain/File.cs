@@ -1,15 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace DataLayer.Models
+namespace Domain
 {
-    public class File : System.Object
+    public class File
     {
         public File () { }
 
@@ -45,7 +41,9 @@ namespace DataLayer.Models
         [DisplayName("محل ذخیره فایل")]
         [Display(Name = "محل ذخیره فایل")]
         public string Directory { get; set; }
+
         public int? BlogId { get; set; }
-        public virtual Blog blog { get; set; }
+
+        public virtual Blog Blog { get; set; }
     }
 }

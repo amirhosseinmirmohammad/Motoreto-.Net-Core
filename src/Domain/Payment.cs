@@ -1,14 +1,9 @@
-﻿using GladcherryShopping.Models;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class Payment
     {
@@ -98,16 +93,19 @@ namespace DataLayer.Models
         [DisplayName("کاربر")]
         [Display(Name = "کاربر")]
         public string UserId { get; set; }
-        public virtual ApplicationUser User { get; set; }
+
+        public virtual User User { get; set; }
 
         [DisplayName("سفارش مربوطه")]
         [Display(Name = "سفارش مربوطه")]
         public int? OrderId { get; set; }
+
         public virtual Order Order { get; set; }
 
         [DisplayName("تراکنش مربوطه")]
         [Display(Name = "تراکنش مربوطه")]
         public int? TransactionId { get; set; }
+
         public virtual Transaction Transaction { get; set; }
 
         [DisplayName("کد پیگیری واریز")]

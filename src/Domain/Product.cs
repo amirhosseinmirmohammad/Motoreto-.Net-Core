@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Web.Mvc;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class Product
     {
@@ -61,7 +61,7 @@ namespace DataLayer.Models
         [DisplayName("دسته بندی محصول")]
         [Display(Name = "دسته بندی محصول")]
         public int CategoryId { get; set; }
-        public virtual Category category { get; set; }
+        public virtual Category Category { get; set; }
 
         [DisplayName("تصویر اسلایدری محصول")]
         [Display(Name = "تصویر اسلایدری محصول")]
@@ -136,15 +136,20 @@ namespace DataLayer.Models
         {
             get
             {
-                _Discount += UnitPrice - (UnitPrice) * (DiscountPercent) / 100;
+                _Discount += UnitPrice - UnitPrice * DiscountPercent / 100;
                 return _Discount;
             }
         }
         public virtual ICollection<Image> Images { get; set; }
+
         public virtual ICollection<ProductInOrder> Orders { get; set; }
+
         public virtual ICollection<Comment> Comments { get; set; }
+
         public virtual ICollection<ProductInBasket> ProductInBaskets { get; set; }
+
         public virtual ICollection<Favorite> Favorites { get; set; }
+
         public virtual ICollection<Product> RelatedProducts { get; set; }
 
         [NotMapped]
@@ -155,6 +160,5 @@ namespace DataLayer.Models
                 return PersianName + " ، کد : " + Id;
             }
         }
-
     }
 }

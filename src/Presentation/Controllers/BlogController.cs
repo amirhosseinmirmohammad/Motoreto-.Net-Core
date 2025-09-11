@@ -1,75 +1,95 @@
-﻿using DataLayer.Models;
-using DataLayer.ViewModels.PagerViewModel;
-using GladcherryShopping.Models;
-using System;
-using System.Collections.Generic;
-using System.Data.Entity;
-using System.Linq;
-using System.Net;
-using System.Web;
-using System.Web.Mvc;
+﻿using Application.DTOs.ViewModels;
+using Domain;
+using Infrastructure;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
-namespace GladcherryShopping.Controllers
+namespace Presentation.Controllers
 {
     public class BlogController : Controller
     {
-        private ApplicationDbContext db = new ApplicationDbContext();
+        public BlogController(ApplicationDbContext db) => _db = db;
 
         [HttpGet]
-        public ActionResult Index(int? id, string sefUrl)
+        public async Task<IActionResult> Index(int? id, string sefUrl)
         {
-            if (id == null)
-            {
-                return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-            }
-            Blog blog = db.Blogs.Where(current => current.Id == id && current.Images.Count > 0).Include(current => current.Category).Include(current => current.Images).Include(current => current.User).Include(current => current.User.Roles).FirstOrDefault();
+            if (id == null) return BadRequest();
+
+            var blog = await _db.Blogs
+                .Include(b => b.Category)
+                .Include(b => b.Images)
+                .Include(b => b.User)                  
+                .FirstOrDefaultAsync(b => b.Id == id && b.Images.Any());
+
+            if (blog == null) return NotFound();
+
             blog.Survey++;
-            db.Entry(blog).State = EntityState.Modified;
-            db.SaveChanges();
-            ViewBag.comments = db.BlogComments.Where(current => current.BlogId == id && current.IsApprove == true).ToList();
+            await _db.SaveChangesAsync();                
+
+            ViewBag.comments = await _db.BlogComments
+                .Where(c => c.BlogId == id && c.IsApprove)
+                .ToListAsync();
+
             return View(blog);
         }
 
         [HttpGet]
-        public ActionResult All(string q, int page = 1)
+        public async Task<IActionResult> All(string q, int page = 1)
         {
-            var blog = new List<Blog>();
-            if (q != null)
+            const int pageSize = 4;
+
+            IQueryable<Blog> query = _db.Blogs
+                .Where(b => b.Images.Any() && b.IsVisible)
+                .Include(b => b.Images);
+
+            if (!string.IsNullOrWhiteSpace(q))
             {
-                blog = db.Blogs.Where(current => current.Images.Count > 0 && current.IsVisible == true && current.Title.Contains(q) || current.ShortDesc.Contains(q) || current.MetaDesc.Contains(q) || current.MetaKey.Contains(q) || current.SefUrl.Contains(q)).OrderByDescending(current => current.CreateDate).Include(current => current.Images).ToList();
+                query = query.Where(b =>
+                    b.Title.Contains(q) ||
+                    b.ShortDesc.Contains(q) ||
+                    b.MetaDesc.Contains(q) ||
+                    b.MetaKey.Contains(q) ||
+                    b.SefUrl.Contains(q));
             }
-            if (!string.IsNullOrEmpty(q) && blog.Count() == 0)
-            {
+
+            var list = await query
+                .OrderByDescending(b => b.CreateDate)
+                .ToListAsync();
+
+            if (!string.IsNullOrWhiteSpace(q) && list.Count == 0)
                 TempData["NotFound"] = "متاسفانه موردی پیدا نشد .";
-            }
-            else
-            {
-                blog = db.Blogs.Where(current => current.Images.Count > 0 && current.IsVisible == true).OrderByDescending(current => current.CreateDate).Include(current => current.Images).ToList();
-            }
-            if(string.IsNullOrEmpty(q) && blog.Count() == 0)
-            {
+            else if (string.IsNullOrWhiteSpace(q) && list.Count == 0)
                 TempData["NotFound"] = "هنوز مطلبی در سایت وجود ندارد .";
-            }
-            PagerViewModels<Blog> BlogViewModels = new PagerViewModels<Blog>();
-            BlogViewModels.data = blog.OrderByDescending(current => current.CreateDate).Skip((page - 1) * 4).Take(4).ToList();
-            BlogViewModels.CurrentPage = page;
-            BlogViewModels.TotalItemCount = blog.Count();
-            return View(BlogViewModels);
+
+            var vm = new PagerViewModels<Blog>
+            {
+                data = list.Skip((page - 1) * pageSize).Take(pageSize).ToList(),
+                CurrentPage = page,
+                TotalItemCount = list.Count
+            };
+
+            return View(vm);
         }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult SubmitComment([Bind(Include = "Id,FullName,Text,DateTime,IsApprove,BlogId")] BlogComment model)
+        public async Task<IActionResult> SubmitComment([Bind("Id,FullName,Text,DateTime,IsApprove,BlogId")] BlogComment model)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                model.DateTime = DateTime.Now;
-                db.BlogComments.Add(model);
-                db.SaveChanges();
-                TempData["Success"] = "نظر شما با موفقیت در سیستم ثبت گردید که پس از تایید مدیریت به نمایش در می آید .";
-                return RedirectToAction("Index", "Blog", new { id = model.BlogId });
+                TempData["Error"] = "متاسفانه خطایی رخ داده است لطفا اطلاعات خود را بررسی و مجدد تلاش نمایید";
+                return View("Index", model);
             }
-            TempData["Error"] = "متاسفانه خطایی رخ داده است لطفا اطلاعات خود را بررسی و مجدد تلاش نمایید";
-            return View("Index", model);
+
+            model.DateTime = DateTime.UtcNow; 
+            _db.BlogComments.Add(model);
+            await _db.SaveChangesAsync();
+
+            TempData["Success"] = "نظر شما با موفقیت در سیستم ثبت گردید که پس از تایید مدیریت به نمایش در می آید .";
+            return RedirectToAction("Index", "Blog", new { id = model.BlogId });
         }
+
+
+        private readonly ApplicationDbContext _db;
     }
 }

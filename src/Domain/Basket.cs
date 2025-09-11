@@ -3,11 +3,8 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace DataLayer.Models
+namespace Domain
 {
    public class Basket
     {
@@ -33,7 +30,7 @@ namespace DataLayer.Models
         [DisplayName("تاریخ ایجاد سبد")]
         [Display(Name = "تاریخ ایجاد سبد")]
         public DateTime CreateDate { get; set; }
-        public virtual ICollection<ProductInBasket> ProductInBaskets { get; set; }
 
+        public virtual ICollection<ProductInBasket> ProductInBaskets { get; set; }
     }
 }

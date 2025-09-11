@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace DataLayer.Models
+namespace Domain
 {
     public class Image
     {
@@ -37,11 +32,17 @@ namespace DataLayer.Models
         [Display(Name = "لینک عکس")]
         [Required(ErrorMessage = "لطفا لینک عکس را تعیین نمایید .")]
         public string Link { get; set; }
+
         public long? ProductId { get; set; }
+
         public virtual Product Product { get; set; }
+
         public int? SliderId { get; set; }
+
         public virtual Slider Slider { get; set; }
+
         public int? GalleryId { get; set; }
+
         public virtual Gallery Gallery { get; set; }
     }
 }
