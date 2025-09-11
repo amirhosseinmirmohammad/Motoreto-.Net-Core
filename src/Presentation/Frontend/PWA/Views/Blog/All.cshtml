@@ -1,6 +1,8 @@
-﻿@using DataLayer.ViewModels.PagerViewModel
-@model PagerViewModels<DataLayer.Models.Blog>
-@{ GladcherryShopping.Models.ApplicationDbContext content = new GladcherryShopping.Models.ApplicationDbContext(); }
+﻿@using Application.DTOs.ViewModels
+@model PagerViewModels<Domain.Blog>
+@{
+    Infrastructure.ApplicationDbContext content = new Infrastructure.ApplicationDbContext();
+}
 @using MvcPager
 @{
     ViewBag.Title = "بلاگ موتورتو";
@@ -182,7 +184,7 @@
                                     نوشته شده توسط تیم موتورتو
                                     <span style="margin:0 6px;">|</span>
                                     <i class="fa fa-calendar"></i>
-                                    @GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime((DateTime)item.CreateDate, false, false)
+                                    @Shared.Helpers.FunctionsHelper.GetPersianDateTime((DateTime)item.CreateDate, false, false)
                                     <span style="margin:0 6px;">|</span>
                                     <i class="fa fa-eye"></i>
                                     @item.Survey

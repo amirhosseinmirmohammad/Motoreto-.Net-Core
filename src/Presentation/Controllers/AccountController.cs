@@ -1,13 +1,14 @@
 ﻿using Domain;
 using Infrastructure;
-using Microsoft.AspNet.Identity;
 using Microsoft.AspNet.Identity.EntityFramework;
 using Microsoft.AspNetCore.Identity;
 using System.Data.Entity;
 using System.Net;
 using System.Text.RegularExpressions;
 using System.Web;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using Application.DTOs.ViewModels;
 
 namespace Presentation.Controllers
 {
@@ -16,7 +17,8 @@ namespace Presentation.Controllers
     {
         public AccountController(
                    ApplicationDbContext db,
-                   Microsoft.AspNetCore.Identity.UserManager<User> userManager,
+                   RoleManager<Microsoft.AspNetCore.Identity.IdentityRole> roleManager,
+                   UserManager<User> userManager,
                    SignInManager<User> signInManager)
         {
             _db = db;
@@ -62,62 +64,12 @@ namespace Presentation.Controllers
             return false;
         }
 
-        public AccountController(ApplicationUserManager userManager, ApplicationSignInManager signInManager)
-        {
-            UserManager = userManager;
-            SignInManager = signInManager;
-        }
-
-        public ApplicationSignInManager SignInManager
-        {
-            get
-            {
-                return _signInManager ?? HttpContext.GetOwinContext().Get<ApplicationSignInManager>();
-            }
-            private set
-            {
-                _signInManager = value;
-            }
-        }
-
-        public ApplicationUserManager UserManager
-        {
-            get
-            {
-                return _userManager ?? HttpContext.GetOwinContext().GetUserManager<ApplicationUserManager>();
-            }
-            private set
-            {
-                _userManager = value;
-            }
-        }
 
         [HttpGet]
         [Authorize(Roles = "Administrator")]
         public ActionResult AdminPanel()
         {
             return View();
-        }
-
-        //[HttpGet]
-        //[AllowAnonymous]
-        //public ActionResult UserAccount(string UserId)
-        //{
-        //    if (string.IsNullOrWhiteSpace(UserId))
-        //        return new HttpStatusCodeResult(HttpStatusCode.BadRequest);
-        //    return View();
-        //}
-
-        [HttpGet]
-        [Authorize(Roles = "Operator")]
-        public ActionResult OperatorPanel()
-        {
-            Application_dbContext context = new Application_dbContext();
-            DateTime startDateTime = DateTime.Today; //Today at 00:00:00
-            DateTime endDateTime = DateTime.Today.AddDays(1).AddTicks(-1);  //Today at 23:59:59
-            var chats = context.Chats
-                .Where(current => current.DateTimeLastModified >= startDateTime && current.DateTimeLastModified <= endDateTime).OrderByDescending(current => current.DateTimeLastModified).ToList();
-            return View(chats);
         }
 
         [HttpGet]
@@ -132,147 +84,6 @@ namespace Presentation.Controllers
         public ActionResult RegisterAccount()
         {
             return View();
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [AllowAnonymous]
-        public ActionResult GenerateVerificationCode(string PhoneNumber, string Name, string Family, string IntroCode)
-        {
-
-            #region Validation
-            if (string.IsNullOrWhiteSpace(PhoneNumber))
-            {
-                TempData["Error"] = "لطفا شماره موبایل خود را وارد نمایید .";
-                return RedirectToAction("RegisterAccount");
-            }
-            if (!Regex.Match(PhoneNumber, @"\b\d{4}[\s-.]?\d{3}[\s-.]?\d{4}\b").Success)
-            {
-                TempData["Error"] = "لطفا شماره موبایل معتبری را وارد نمایید .";
-                return RedirectToAction("RegisterAccount");
-            }
-            var role = _db.Roles.Where(p => p.Name == "User").FirstOrDefault();
-            List<ApplicationUser> users = _db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
-            if (users.Count() > 0)
-            {
-                TempData["Error"] = "این شماره قبلا ثبت نام کرده است .";
-                return RedirectToAction("RegisterAccount");
-            }
-            City defaultCity = _db.Cities.FirstOrDefault();
-            State defaultState = _db.States.FirstOrDefault();
-            if (defaultCity == null || defaultState == null)
-            {
-                TempData["Error"] = "تنظیمات اپلیکیشن با خطا رو به رو است .";
-                return RedirectToAction("RegisterAccount");
-            }
-            var FriendUser = new ApplicationUser();
-            if (!string.IsNullOrEmpty(IntroCode))
-            {
-                FriendUser = _db.Users.Where(current => current.AccessCode == IntroCode).FirstOrDefault();
-                if (FriendUser == null)
-                {
-                    TempData["Error"] = "کاربری با این کد معرف شما پیدا نشد .";
-                    return RedirectToAction("RegisterAccount");
-                }
-            }
-            #endregion Validation
-
-            #region SMS
-            string smsCode = SendOtpMelipayamak(PhoneNumber);
-
-            if (string.IsNullOrEmpty(smsCode))
-            {
-                TempData["Error"] = "ارسال پیامک با خطا مواجه شد، لطفاً دوباره تلاش کنید.";
-                return RedirectToAction("RegisterAccount");
-            }
-
-            #endregion SMS
-
-            #region HashPassword
-            PasswordHasher hashPassword = new PasswordHasher();
-            var hashedPassword = hashPassword.HashPassword(PhoneNumber);
-            var security = Guid.NewGuid().ToString();
-            #endregion Hash Password
-
-            #region NewUser
-            ApplicationUser user = new ApplicationUser
-            {
-                Mobile = PhoneNumber,
-                UserName = PhoneNumber,
-                UserScore = 0,
-                AccessCode = "Motoreto_" + PhoneNumber,
-                //AccessCode = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 8),
-                Credit = 0,
-                IsActive = true,
-                BirthDate = DateTime.Now,
-                CityId = defaultCity.Id,
-                StateId = defaultState.Id,
-                SecurityStamp = security,
-                PasswordHash = hashedPassword,
-                //Mobile = موبایل کاربر
-                //PhoneNumber = تلفن ثابت کاربر
-                //تایید شماره کاربر
-                VerificationCode = FunctionsHelper.Encrypt(smsCode, "Motoreto"), // 🔹 اینجا code برگردونده‌شده ذخیره میشه
-                PhoneNumberConfirmed = false,
-                RegistrationDate = DateTime.Now,
-                FirstName = Name,
-                LastName = Family
-            };
-            #endregion NewUser
-
-            #region Create
-            IdentityResult result;
-            var application = _db.Applications.FirstOrDefault();
-
-            try
-            {
-                UserManager<ApplicationUser> UserManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(_db));
-                result = UserManager.Create(user);
-                UserManager.AddToRole(user.Id, "User");
-                #region IntroCode
-
-                if (!string.IsNullOrEmpty(IntroCode) && FriendUser != null)
-                {
-                    //افزایش امتیاز و اعتبار معرف
-                    if (application != null && application.IntroPercent > 0)
-                    {
-                        FriendUser.Credit += application.IntroPercent;
-                    }
-                    if (application != null && application.IntroScore > 0)
-                    {
-                        FriendUser.UserScore += application.IntroScore;
-                    }
-                    _db.Entry(FriendUser).State = EntityState.Modified;
-                    _db.SaveChanges();
-                    //کد معرفی کاربر جدید
-                    user.IntroCode = FriendUser.AccessCode;
-                    _db.Entry(user).State = EntityState.Modified;
-                    _db.SaveChanges();
-                }
-                #endregion IntroCode
-            }
-            catch (Exception)
-            {
-                TempData["Error"] = "خطایی رخ داده است لطفا مجدد تلاش فرمایید .";
-                return RedirectToAction("RegisterAccount");
-            }
-            if (!result.Succeeded)
-            {
-                TempData["Error"] = "متاسفانه ثبت نام شما انجام نشد لطفا مجدد تلاش فرمایید .";
-                return RedirectToAction("RegisterAccount");
-            }
-
-            if (application != null && application.SuccessfullRegisterationText != null)
-            {
-                IHtmlString htmlString = new HtmlString(application.SuccessfullRegisterationText);
-                string htmlResult = Regex.Replace(htmlString.ToString(), @"<[^>]*>", string.Empty).Replace("\r", "").Replace("\n", "").Replace("&nbsp", "");
-                TempData["Success"] = htmlResult;
-            }
-            else
-                TempData["Success"] = "ثبت نام شما با موفقیت انجام شد .";
-            //SignIn
-            return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/CreateAccount" });
-            #endregion Create
         }
 
         [HttpGet]
@@ -301,8 +112,12 @@ namespace Presentation.Controllers
                 return RedirectToAction("LoginAccount");
             }
 
-            var role = _db.Roles.Where(p => p.Name == "User").FirstOrDefault();
-            List<ApplicationUser> users = _db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
+            var users = _db.Users.Where(u => u.Mobile == PhoneNumber);
+            if (users != null)
+            {
+                var inRole = _userManager.IsInRoleAsync(users.FirstOrDefault(), "User");
+            }
+
             if (users.Count() <= 0)
             {
                 TempData["Error"] = "شماره شما در سیستم ثبت نشده است ، لطفا ابتدا ثبت نام کنید .";
@@ -317,7 +132,7 @@ namespace Presentation.Controllers
             #endregion Validation
 
             #region SMS
-            Application application = _db.Applications.FirstOrDefault();
+            Domain.Application application = _db.Applications.FirstOrDefault();
             Random random = new Random();
             var randomNumber = random.Next(10000, 99999);
             if (application != null && application.FromNumber != null)
@@ -331,8 +146,7 @@ namespace Presentation.Controllers
                 }
 
                 #region EditUserCode
-                users.FirstOrDefault().VerificationCode = FunctionsHelper.Encrypt(smsCode, "Motoreto");
-                _db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
+                users.FirstOrDefault().VerificationCode = Shared.Helpers.FunctionsHelper.Encrypt(smsCode, "Motoreto");
                 _db.SaveChanges();
                 #endregion EditUserCodde
 
@@ -348,55 +162,24 @@ namespace Presentation.Controllers
             return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
         }
 
-        public static bool UltraFastSms(string PhoneNumber, string Code)
-        {
-            var token = new Token().GetToken("e53a9b26a9aca9d5c6ae96e7", "it66)%18#teBC!@*&");
-
-            var ultraFastSend = new UltraFastSend()
-            {
-                Mobile = long.Parse(PhoneNumber),
-                TemplateId = 30587,
-                ParameterArray = new List<UltraFastParameters>()
-        {
-        new UltraFastParameters()
-        {
-            Parameter = "VerificationCode",
-            ParameterValue = Code
-        }
-        }.ToArray()
-
-            };
-
-            UltraFastSendRespone ultraFastSendRespone = new UltraFast().Send(token, ultraFastSend);
-
-            if (ultraFastSendRespone.IsSuccessful)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
         [HttpGet]
         [AllowAnonymous]
         public ActionResult Approve(string PhoneNumber, string ReturnUrl)
         {
             if (string.IsNullOrWhiteSpace(PhoneNumber))
-                return new HttpStatusCodeResult(HttpStatusCode.Forbidden);
+                return Forbid();
             return View();
         }
+
         public int CartCount()
         {
-            List<HttpCookie> lst = new List<HttpCookie>();
-            for (int i = Request.Cookies.Count - 1; i >= 0; i--)
-            {
-                if (lst.Where(p => p.Name == Request.Cookies[i].Name).Any() == false)
-                    lst.Add(Request.Cookies[i]);
-            }
-            int CartCount = lst.Where(p => p.Name.StartsWith("Cart_")).Count();
-            return CartCount;
+            // همه کوکی‌های ورودی
+            var cookies = Request.Cookies;
+
+            // فقط کوکی‌هایی که با Cart_ شروع میشن
+            var cartCookies = cookies.Where(c => c.Key.StartsWith("Cart_")).ToList();
+
+            return cartCookies.Count;
         }
 
         [HttpPost]
@@ -420,8 +203,13 @@ namespace Presentation.Controllers
                 TempData["Error"] = "لطفا شماره موبایل معتبری را وارد نمایید .";
                 return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
             }
-            var role = _db.Roles.Where(p => p.Name == "User").FirstOrDefault();
-            List<ApplicationUser> users = _db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
+
+            var users = _db.Users.Where(u => u.Mobile == PhoneNumber);
+            if (users != null)
+            {
+                var inRole = _userManager.IsInRoleAsync(users.FirstOrDefault(), "User");
+            }
+
             if (users.Count() <= 0)
             {
                 TempData["Error"] = "شماره شما در سیستم ثبت نشده است .";
@@ -430,7 +218,7 @@ namespace Presentation.Controllers
             #endregion Validation
 
             #region Login
-            string UserVerificationCode = FunctionsHelper.Decrypt(users.FirstOrDefault().VerificationCode, "Motoreto");
+            string UserVerificationCode = Shared.Helpers.FunctionsHelper.Decrypt(users.FirstOrDefault().VerificationCode, "Motoreto");
             if (UserVerificationCode != null)
             {
                 if (UserVerificationCode != Code)
@@ -441,37 +229,36 @@ namespace Presentation.Controllers
                 if (UserVerificationCode == Code)
                 {
                     users.FirstOrDefault().PhoneNumberConfirmed = true;
-                    _db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
                     _db.SaveChanges();
-                    Application application = _db.Applications.FirstOrDefault();
+                    Domain.Application application = _db.Applications.FirstOrDefault();
                     if (application != null && application.VerifyPhoneNumberText != null)
                     {
-                        IHtmlString htmlString = new HtmlString(application.VerifyPhoneNumberText);
+                        Microsoft.AspNetCore.Html.HtmlString htmlString = new Microsoft.AspNetCore.Html.HtmlString(application.VerifyPhoneNumberText);
                         string htmlResult = Regex.Replace(htmlString.ToString(), @"<[^>]*>", string.Empty).Replace("\r", "").Replace("\n", "").Replace("&nbsp", "");
                         {
                             TempData["Success"] = htmlResult;
-                            var result = SignInManager.PasswordSignIn(users.FirstOrDefault().UserName, PhoneNumber, false, shouldLockout: false);
-                            switch (result)
+                            var result = _signInManager.PasswordSignInAsync(
+                                          users.FirstOrDefault().UserName,   // username
+                                          PhoneNumber,                       // password (اینجا باید رمز واقعی باشه نه شماره موبایل!)
+                                          false,                             // isPersistent
+                                          lockoutOnFailure: false
+  );
+
+                            if (result.IsCompletedSuccessfully)
                             {
-                                case SignInStatus.Success:
-                                    if (CartCount() > 0)
-                                    {
-                                        return RedirectToAction("Cart", "Home");
-                                    }
-                                    else
-                                    {
-                                        return RedirectToAction("Index", "Home");
-                                    }
-                                case SignInStatus.LockedOut:
-                                    TempData["Error"] = "خطایی رخ داده است لطفا مجدد تلاش فرمایید .";
-                                    return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
-                                case SignInStatus.RequiresVerification:
-                                    TempData["Error"] = "خطایی رخ داده است لطفا مجدد تلاش فرمایید .";
-                                    return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
-                                case SignInStatus.Failure:
-                                default:
-                                    TempData["Error"] = "خطایی رخ داده است لطفا مجدد تلاش فرمایید .";
-                                    return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
+                                if (CartCount() > 0)
+                                {
+                                    return RedirectToAction("Cart", "Home");
+                                }
+                                else
+                                {
+                                    return RedirectToAction("Index", "Home");
+                                }
+                            }
+                            else if (result.IsFaulted)
+                            {
+                                TempData["Error"] = "نام کاربری یا رمز عبور اشتباه است.";
+                                return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
                             }
                         }
                     }
@@ -511,8 +298,12 @@ namespace Presentation.Controllers
                 return RedirectToAction("LoginAccount");
             }
 
-            var role = _db.Roles.Where(p => p.Name == "User").FirstOrDefault();
-            List<ApplicationUser> users = _db.Users.Where(current => current.Mobile == PhoneNumber).Include(current => current.Roles).Where(p => p.Roles.Any(a => a.RoleId == role.Id)).ToList();
+            var users = _db.Users.Where(u => u.Mobile == PhoneNumber);
+            if (users != null)
+            {
+                var inRole = _userManager.IsInRoleAsync(users.FirstOrDefault(), "User");
+            }
+
             if (users.Count() <= 0)
             {
                 TempData["Error"] = "شماره شما در سیستم ثبت نشده است ، لطفا ابتدا ثبت نام کنید .";
@@ -527,24 +318,21 @@ namespace Presentation.Controllers
             #endregion Validation
 
             #region SMS
-            Application application = _db.Applications.FirstOrDefault();
+            Domain.Application application = _db.Applications.FirstOrDefault();
             Random random = new Random();
             var randomNumber = random.Next(10000, 99999);
             if (application != null && application.FromNumber != null)
             {
 
-                //sms.ir
-                string SMSDescription = "کد تایید شما در موتورتو : " + randomNumber;
-                bool smsResult = UltraFastSms(PhoneNumber, randomNumber.ToString());
-                if (smsResult == false)
+                string smsCode = SendOtpMelipayamak(PhoneNumber);
+                if (string.IsNullOrEmpty(smsCode))
                 {
-                    TempData["Error"] = "سامانه پیامکی با خطا رو به رو است لطفا مجدد تلاش فرمایید .";
+                    TempData["Error"] = "ارسال پیامک تایید با خطا مواجه شد.";
                     return RedirectToAction("LoginAccount");
                 }
 
                 #region EditUserCode
-                users.FirstOrDefault().VerificationCode = FunctionsHelper.Encrypt(randomNumber.ToString(), "Motoreto");
-                _db.Entry(users.FirstOrDefault()).State = EntityState.Modified;
+                users.FirstOrDefault().VerificationCode = Shared.Helpers.FunctionsHelper.Encrypt(smsCode, "Motoreto");
                 _db.SaveChanges();
                 #endregion EditUserCodde
 
@@ -559,31 +347,6 @@ namespace Presentation.Controllers
             return RedirectToAction("Approve", new { PhoneNumber, ReturnUrl = "Account/LoginAccount" });
         }
 
-        [AllowAnonymous]
-        public ActionResult LogOutUser(string UserId)
-        {
-            if (string.IsNullOrWhiteSpace(UserId))
-                return new HttpStatusCodeResult(HttpStatusCode.NotFound);
-            List<HttpCookie> lst = new List<HttpCookie>();
-            for (int i = Request.Cookies.Count - 1; i >= 0; i--)
-            {
-                if (lst.Where(p => p.Name == Request.Cookies[i].Name).Any() == false)
-                {
-                    lst.Add(Request.Cookies[i]);
-                }
-            }
-            foreach (var item in lst.Where(p => p.Name.StartsWith("Ajor_")))
-            {
-                var id = item.Name.Substring(5).ToString();
-                if (id.Contains(UserId))
-                {
-                    Response.Cookies["Ajor_" + UserId].Expires = DateTime.Now.AddDays(-1);
-                    Request.Cookies.Remove("Ajor_" + UserId);
-                }
-            }
-            return RedirectToAction("Index", "Home");
-        }
-
         //
         // GET: /Account/Login
         [AllowAnonymous]
@@ -591,15 +354,6 @@ namespace Presentation.Controllers
         {
             ViewBag.ReturnUrl = returnUrl;
             return View();
-        }
-
-        public void UserLoginCookie(string UserId)
-        {
-            //string userId = FunctionsHelper.Encrypt(UserId, "Gladcherry");
-            var cookie = new HttpCookie("Ajor_" + UserId, 1.ToString());
-            cookie.Expires = DateTime.Now.AddHours(2);
-            cookie.HttpOnly = true;
-            Response.Cookies.Add(cookie);
         }
 
         //
@@ -616,108 +370,46 @@ namespace Presentation.Controllers
 
             // This doesn't count login failures towards account lockout
             // To enable password failures to trigger account lockout, change to shouldLockout: true
-            var result = await SignInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, shouldLockout: false);
-            switch (result)
-            {
-                case SignInStatus.Success:
-                    Application_dbContext context = new Application_dbContext();
-                    var adminRole = context.Roles.Where(cuurent => cuurent.Name == "Administrator").FirstOrDefault().Id;
-                    var operatorRole = context.Roles.Where(cuurent => cuurent.Name == "Operator").FirstOrDefault().Id;
-                    ApplicationUser user = context.Users.Where(current => current.UserName == model.Email).Include(current => current.Roles).FirstOrDefault();
-                    if (user.Roles.FirstOrDefault().RoleId == adminRole)
-                        return RedirectToAction("AdminPanel", "Account");
-                    if (user.Roles.FirstOrDefault().RoleId == operatorRole)
-                        return RedirectToAction("OperatorPanel", "Account");
-                    break;
-                case SignInStatus.LockedOut:
-                    return View("Lockout");
-                case SignInStatus.RequiresVerification:
-                    return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, model.RememberMe });
-                case SignInStatus.Failure:
-                    return View(model);
-                default:
-                    ModelState.AddModelError("", "Invalid login attempt.");
-                    return View(model);
-            }
-            return View(model);
-        }
+            var result = _signInManager.PasswordSignInAsync(
+                model.Email,
+                model.Password,
+                model.RememberMe,
+                lockoutOnFailure: false
+            ).Result;   // 👈 چون async نمیخوای
 
-        public JsonResult GetChatMessages(int chatId)
-        {
-            Application_dbContext _db = new Application_dbContext();
-            var chat = _db.Chats.Where(current => current.Id == chatId).FirstOrDefault();
-            chat.NewMessagesCount = 0;
-            try
+            if (result.Succeeded)
             {
-                _db.Entry(chat).State = EntityState.Modified;
-                _db.SaveChanges();
-            }
-            catch (Exception ex) { }
-            var chatOperator = _db.Users.Where(current => current.Id == chat.OperatorId).FirstOrDefault();
-            var messages = new List<DataLayer.Models.ChatMessage>();
-            if (chat != null)
-            {
-                messages = _db.ChatMessages.Where(current => current.ChatId == chatId).ToList();
-            }
-            var jsonResult = messages.Select(result => new { id = result.Id, body = result.Body, date = result.DateTimeSent.Hour + ":" + result.DateTimeSent.Minute, operatorId = result.OperatorId, userId = result.OnlineUserId, operatorImage = chatOperator == null ? "" : chatOperator.ProfileImage });
-            return Json(jsonResult, JsonRequestBehavior.AllowGet);
-        }
+                // نقش‌ها
+                var adminRole = _roleManager.FindByNameAsync("Administrator").Result;
+                var operatorRole = _roleManager.FindByNameAsync("Operator").Result;
 
-        //public bool DeleteImages(int id)
-        //{
-        //    Application_dbContext _db = new Application_dbContext();
-        //    var list = _db.Files.ToList();
-        //    foreach (var image in list)
-        //    {
-        //        if (image.Id == id)
-        //        {
-        //            _db.Files.Remove(image);
-        //        }
-        //        _db.SaveChanges();
-        //    }
-        //    return true;
-        //}
+                    var user = _db.Users
+                                      .Include(u => u.Roles) // 👈 در Core به این شکله
+                                      .FirstOrDefault(u => u.UserName == model.Email);
 
-        //
-        // GET: /Account/VerifyCode
-        [AllowAnonymous]
-        public async Task<ActionResult> VerifyCode(string provider, string returnUrl, bool rememberMe)
-        {
-            // Require that the user has already logged in via username/password or external login
-            if (!await SignInManager.HasBeenVerifiedAsync())
-            {
-                return View("Error");
+                    if (user != null)
+                    {
+                        if (adminRole != null && user.Roles.Any(r => r.RoleId == adminRole.Id))
+                            return RedirectToAction("AdminPanel", "Account");
+
+                        if (operatorRole != null && user.Roles.Any(r => r.RoleId == operatorRole.Id))
+                            return RedirectToAction("OperatorPanel", "Account");
+                    }
+
+                return RedirectToAction("Index", "Home");
             }
-            return View(new VerifyCodeViewModel { Provider = provider, ReturnUrl = returnUrl, RememberMe = rememberMe });
-        }
-
-        //
-        // POST: /Account/VerifyCode
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> VerifyCode(VerifyCodeViewModel model)
-        {
-            if (!ModelState.IsValid)
+            else if (result.IsLockedOut)
             {
+                return View("Lockout");
+            }
+            else if (result.RequiresTwoFactor)
+            {
+                return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, model.RememberMe });
+            }
+            else
+            {
+                ModelState.AddModelError("", "Invalid login attempt.");
                 return View(model);
-            }
-
-            // The following code protects for brute force attacks against the two factor codes. 
-            // If a user enters incorrect codes for a specified amount of time then the user account 
-            // will be locked out for a specified amount of time. 
-            // You can configure the account lockout settings in IdentityConfig
-            var result = await SignInManager.TwoFactorSignInAsync(model.Provider, model.Code, isPersistent: model.RememberMe, rememberBrowser: model.RememberBrowser);
-            switch (result)
-            {
-                case SignInStatus.Success:
-                    return RedirectToLocal(model.ReturnUrl);
-                case SignInStatus.LockedOut:
-                    return View("Lockout");
-                case SignInStatus.Failure:
-                default:
-                    ModelState.AddModelError("", "Invalid code.");
-                    return View(model);
             }
         }
 
@@ -729,327 +421,42 @@ namespace Presentation.Controllers
             return View();
         }
 
-        //
         // POST: /Account/Register
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public async Task<ActionResult> Register(RegisterViewModel model)
+        public IActionResult Register(RegisterViewModel model)
         {
             if (ModelState.IsValid)
             {
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email, FirstName = "Glad", LastName = "Cherry", RegistrationDate = DateTime.Now };
-                var result = await UserManager.CreateAsync(user, model.Password);
+                var user = new User
+                {
+                    UserName = model.Email,
+                    Email = model.Email,
+                    FirstName = "Admin",
+                    LastName = "Admin",
+                    RegistrationDate = DateTime.Now
+                };
+
+                // ایجاد کاربر
+                var result = _userManager.CreateAsync(user, model.Password).Result;
+
                 if (result.Succeeded)
                 {
-                    await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
-
-                    // For more information on how to enable account confirmation and password reset please visit http://go.microsoft.com/fwlink/?LinkID=320771
-                    // Send an email with this link
-                    // string code = await UserManager.GenerateEmailConfirmationTokenAsync(user.Id);
-                    // var callbackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
-                    // await UserManager.SendEmailAsync(user.Id, "Confirm your account", "Please confirm your account by clicking <a href=\"" + callbackUrl + "\">here</a>");
+                    // ورود کاربر بدون نیاز به rememberBrowser
+                    _signInManager.SignInAsync(user, isPersistent: false).Wait();
 
                     return RedirectToAction("Index", "Home");
                 }
-                AddErrors(result);
+
+                foreach (var error in result.Errors)
+                {
+                    ModelState.AddModelError("", error.Description);
+                }
             }
 
-            // If we got this far, something failed, redisplay form
+            // اگر خطا بود دوباره فرم رو نشون بده
             return View(model);
-        }
-
-        //
-        // GET: /Account/ConfirmEmail
-        [AllowAnonymous]
-        public async Task<ActionResult> ConfirmEmail(string userId, string code)
-        {
-            if (userId == null || code == null)
-            {
-                return View("Error");
-            }
-            var result = await UserManager.ConfirmEmailAsync(userId, code);
-            return View(result.Succeeded ? "ConfirmEmail" : "Error");
-        }
-
-        //
-        // GET: /Account/ForgotPassword
-        [AllowAnonymous]
-        public ActionResult ForgotPassword()
-        {
-            return View();
-        }
-
-        //
-        // POST: /Account/ForgotPassword
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ForgotPassword(ForgotPasswordViewModel model)
-        {
-            if (ModelState.IsValid)
-            {
-                var user = await UserManager.Fin_dbyNameAsync(model.Email);
-                if (user == null || !await UserManager.IsEmailConfirmedAsync(user.Id))
-                {
-                    // Don't reveal that the user does not exist or is not confirmed
-                    return View("ForgotPasswordConfirmation");
-                }
-
-                // For more information on how to enable account confirmation and password reset please visit http://go.microsoft.com/fwlink/?LinkID=320771
-                // Send an email with this link
-                // string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
-                // var callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);		
-                // await UserManager.SendEmailAsync(user.Id, "Reset Password", "Please reset your password by clicking <a href=\"" + callbackUrl + "\">here</a>");
-                // return RedirectToAction("ForgotPasswordConfirmation", "Account");
-            }
-
-            // If we got this far, something failed, redisplay form
-            return View(model);
-        }
-
-        //
-        // GET: /Account/ForgotPasswordConfirmation
-        [AllowAnonymous]
-        public ActionResult ForgotPasswordConfirmation()
-        {
-            return View();
-        }
-
-        //
-        // GET: /Account/ResetPassword
-        [AllowAnonymous]
-        public ActionResult ResetPassword(string code)
-        {
-            return code == null ? View("Error") : View();
-        }
-
-        //
-        // POST: /Account/ResetPassword
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ResetPassword(ResetPasswordViewModel model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return View(model);
-            }
-            var user = await UserManager.Fin_dbyNameAsync(model.Email);
-            if (user == null)
-            {
-                // Don't reveal that the user does not exist
-                return RedirectToAction("ResetPasswordConfirmation", "Account");
-            }
-            var result = await UserManager.ResetPasswordAsync(user.Id, model.Code, model.Password);
-            if (result.Succeeded)
-            {
-                return RedirectToAction("ResetPasswordConfirmation", "Account");
-            }
-            AddErrors(result);
-            return View();
-        }
-
-        //
-        // GET: /Account/ResetPasswordConfirmation
-        [AllowAnonymous]
-        public ActionResult ResetPasswordConfirmation()
-        {
-            return View();
-        }
-
-        //
-        // POST: /Account/ExternalLogin
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public ActionResult ExternalLogin(string provider, string returnUrl)
-        {
-            // Request a redirect to the external login provider
-            return new ChallengeResult(provider, Url.Action("ExternalLoginCallback", "Account", new { ReturnUrl = returnUrl }));
-        }
-
-        //
-        // GET: /Account/SendCode
-        [AllowAnonymous]
-        public async Task<ActionResult> SendCode(string returnUrl, bool rememberMe)
-        {
-            var userId = await SignInManager.GetVerifiedUserIdAsync();
-            if (userId == null)
-            {
-                return View("Error");
-            }
-            var userFactors = await UserManager.GetValidTwoFactorProvidersAsync(userId);
-            var factorOptions = userFactors.Select(purpose => new SelectListItem { Text = purpose, Value = purpose }).ToList();
-            return View(new SendCodeViewModel { Providers = factorOptions, ReturnUrl = returnUrl, RememberMe = rememberMe });
-        }
-
-        //
-        // POST: /Account/SendCode
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> SendCode(SendCodeViewModel model)
-        {
-            if (!ModelState.IsValid)
-            {
-                return View();
-            }
-
-            // Generate the token and send it
-            if (!await SignInManager.SendTwoFactorCodeAsync(model.SelectedProvider))
-            {
-                return View("Error");
-            }
-            return RedirectToAction("VerifyCode", new { Provider = model.SelectedProvider, model.ReturnUrl, model.RememberMe });
-        }
-
-        //
-        // GET: /Account/ExternalLoginCallback
-        [AllowAnonymous]
-        public async Task<ActionResult> ExternalLoginCallback(string returnUrl)
-        {
-            var loginInfo = await AuthenticationManager.GetExternalLoginInfoAsync();
-            if (loginInfo == null)
-            {
-                return RedirectToAction("Login");
-            }
-
-            // Sign in the user with this external login provider if the user already has a login
-            var result = await SignInManager.ExternalSignInAsync(loginInfo, isPersistent: false);
-            switch (result)
-            {
-                case SignInStatus.Success:
-                    return RedirectToLocal(returnUrl);
-                case SignInStatus.LockedOut:
-                    return View("Lockout");
-                case SignInStatus.RequiresVerification:
-                    return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = false });
-                case SignInStatus.Failure:
-                default:
-                    // If the user does not have an account, then prompt the user to create an account
-                    ViewBag.ReturnUrl = returnUrl;
-                    ViewBag.LoginProvider = loginInfo.Login.LoginProvider;
-                    return View("ExternalLoginConfirmation", new ExternalLoginConfirmationViewModel { Email = loginInfo.Email });
-            }
-        }
-
-        //
-        // POST: /Account/ExternalLoginConfirmation
-        [HttpPost]
-        [AllowAnonymous]
-        [ValidateAntiForgeryToken]
-        public async Task<ActionResult> ExternalLoginConfirmation(ExternalLoginConfirmationViewModel model, string returnUrl)
-        {
-            if (User.Identity.IsAuthenticated)
-            {
-                return RedirectToAction("Index", "Manage");
-            }
-
-            if (ModelState.IsValid)
-            {
-                // Get the information about the user from the external login provider
-                var info = await AuthenticationManager.GetExternalLoginInfoAsync();
-                if (info == null)
-                {
-                    return View("ExternalLoginFailure");
-                }
-                var user = new ApplicationUser { UserName = model.Email, Email = model.Email };
-                var result = await UserManager.CreateAsync(user);
-                if (result.Succeeded)
-                {
-                    result = await UserManager.AddLoginAsync(user.Id, info.Login);
-                    if (result.Succeeded)
-                    {
-                        await SignInManager.SignInAsync(user, isPersistent: false, rememberBrowser: false);
-                        return RedirectToLocal(returnUrl);
-                    }
-                }
-                AddErrors(result);
-            }
-
-            ViewBag.ReturnUrl = returnUrl;
-            return View(model);
-        }
-
-        //
-        // POST: /Account/LogOff
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public ActionResult LogOff()
-        {
-            AuthenticationManager.SignOut(DefaultAuthenticationTypes.ApplicationCookie);
-            return RedirectToAction("Index", "Home");
-        }
-
-        //
-        // GET: /Account/ExternalLoginFailure
-        [AllowAnonymous]
-        public ActionResult ExternalLoginFailure()
-        {
-            return View();
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if (_userManager != null)
-                {
-                    _userManager.Dispose();
-                    _userManager = null;
-                }
-
-                if (_signInManager != null)
-                {
-                    _signInManager.Dispose();
-                    _signInManager = null;
-                }
-            }
-
-            base.Dispose(disposing);
-        }
-
-        public static bool SendSms(string SmsServiceNumber, string PhoneNumber, string Description)
-        {
-            if (string.IsNullOrEmpty(PhoneNumber) || string.IsNullOrEmpty(Description) || string.IsNullOrEmpty(SmsServiceNumber))
-                return false;
-            SmsIrRestful.Token tokenInstance = new SmsIrRestful.Token();
-            var token = tokenInstance.GetToken("9b2a827d86a88a4dac1670f2", "it66)%#teBC!@*&");
-            SmsIrRestful.MessageSend messageInstace = new SmsIrRestful.MessageSend();
-            var res = messageInstace.Send(token, new SmsIrRestful.MessageSendObject()
-            {
-                MobileNumbers = new List<string>() { PhoneNumber }.ToArray(),
-                Messages = new List<string>() { Description }.ToArray(),
-                LineNumber = SmsServiceNumber,
-                SendDateTime = DateTime.Now,
-                CanContinueInCaseOfError = false
-            });
-            if (res.IsSuccessful == true)
-                return true;
-            else
-                return false;
-        }
-
-
-        #region Helpers
-        // Used for XSRF protection when adding external logins
-        private const string XsrfKey = "XsrfId";
-
-        private IAuthenticationManager AuthenticationManager
-        {
-            get
-            {
-                return HttpContext.GetOwinContext().Authentication;
-            }
-        }
-
-        private void AddErrors(IdentityResult result)
-        {
-            foreach (var error in result.Errors)
-            {
-                ModelState.AddModelError("", error);
-            }
         }
 
         private ActionResult RedirectToLocal(string returnUrl)
@@ -1063,7 +470,7 @@ namespace Presentation.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        public ActionResult GenerateOrLogin(string phoneNumber)
+        public IActionResult GenerateOrLogin(string phoneNumber)
         {
             if (string.IsNullOrWhiteSpace(phoneNumber))
                 return Json(new { success = false, message = "شماره وارد نشده است" });
@@ -1084,12 +491,12 @@ namespace Presentation.Controllers
             {
                 // اگر کاربر وجود نداشت بساز
                 var security = Guid.NewGuid().ToString("N");
-                var hashedPassword = new PasswordHasher().HashPassword("Temp@" + otpCode);
+                var hashedPassword = new PasswordHasher<User>().HashPassword(null, "Temp@" + otpCode);
 
                 var defaultCity = _db.Cities.FirstOrDefault();
                 var defaultState = _db.States.FirstOrDefault();
 
-                user = new ApplicationUser
+                user = new User
                 {
                     Mobile = phoneNumber,
                     UserName = phoneNumber,
@@ -1102,23 +509,22 @@ namespace Presentation.Controllers
                     StateId = defaultState?.Id ?? 1,
                     SecurityStamp = security,
                     PasswordHash = hashedPassword,
-                    VerificationCode = FunctionsHelper.Encrypt(otpCode, "Motoreto"),
+                    VerificationCode = Shared.Helpers.FunctionsHelper.Encrypt(otpCode, "Motoreto"),
                     PhoneNumberConfirmed = false,
                     RegistrationDate = DateTime.Now,
                     FirstName = "",
                     LastName = ""
                 };
 
-                var userManager = new UserManager<ApplicationUser>(new UserStore<ApplicationUser>(_db));
-                var result = userManager.Create(user);
+                var result = _userManager.CreateAsync(user).Result;
                 if (result.Succeeded)
-                    userManager.AddToRole(user.Id, "User");
+                    _userManager.AddToRoleAsync(user, "User").Wait();
             }
             else
             {
                 // اگر بود، فقط کد جدید بده
-                user.VerificationCode = FunctionsHelper.Encrypt(otpCode, "Motoreto");
-                _db.Entry(user).State = EntityState.Modified;
+                user.VerificationCode = Shared.Helpers.FunctionsHelper.Encrypt(otpCode, "Motoreto");
+                _db.Users.Update(user);
             }
 
             _db.SaveChanges();
@@ -1126,10 +532,9 @@ namespace Presentation.Controllers
             return Json(new { success = true });
         }
 
-
         [HttpPost]
         [AllowAnonymous]
-        public ActionResult ApproveQuick(string phoneNumber, string code)
+        public IActionResult ApproveQuick(string phoneNumber, string code)
         {
             if (string.IsNullOrWhiteSpace(phoneNumber) || string.IsNullOrWhiteSpace(code))
                 return Json(new { success = false, message = "شماره یا کد نامعتبر است" });
@@ -1140,26 +545,26 @@ namespace Presentation.Controllers
             if (user == null)
                 return Json(new { success = false, message = "کاربر یافت نشد" });
 
-            var decryptedCode = FunctionsHelper.Decrypt(user.VerificationCode, "Motoreto");
+            var decryptedCode = Shared.Helpers.FunctionsHelper.Decrypt(user.VerificationCode, "Motoreto");
             if (decryptedCode != code)
                 return Json(new { success = false, message = "کد اشتباه است" });
 
-            // تایید شماره
+            // ✅ تایید شماره
             user.PhoneNumberConfirmed = true;
-            _db.Entry(user).State = EntityState.Modified;
+            _db.Users.Update(user);
             _db.SaveChanges();
 
-            // ورود کاربر
-            SignInManager.SignIn(user, isPersistent: false, rememberBrowser: false);
+            // ✅ ورود کاربر
+            _signInManager.SignInAsync(user, isPersistent: false).Wait();
 
             return Json(new { success = true });
         }
 
         [HttpGet]
         [AllowAnonymous]
-        public JsonResult IsAuthenticated()
+        public IActionResult IsAuthenticated()
         {
-            return Json(new { isAuth = User.Identity.IsAuthenticated }, JsonRequestBehavior.AllowGet);
+            return Json(new { isAuth = User.Identity.IsAuthenticated });
         }
 
         public static string SendOtpMelipayamak(string phoneNumber)
@@ -1198,39 +603,10 @@ namespace Presentation.Controllers
             }
         }
 
-        internal class ChallengeResult : HttpUnauthorizedResult
-        {
-            public ChallengeResult(string provider, string redirectUri)
-                : this(provider, redirectUri, null)
-            {
-            }
-
-            public ChallengeResult(string provider, string redirectUri, string userId)
-            {
-                LoginProvider = provider;
-                RedirectUri = redirectUri;
-                UserId = userId;
-            }
-
-            public string LoginProvider { get; set; }
-            public string RedirectUri { get; set; }
-            public string UserId { get; set; }
-
-            public override void ExecuteResult(ControllerContext context)
-            {
-                var properties = new AuthenticationProperties { RedirectUri = RedirectUri };
-                if (UserId != null)
-                {
-                    properties.Dictionary[XsrfKey] = UserId;
-                }
-                context.HttpContext.GetOwinContext().Authentication.Challenge(properties, LoginProvider);
-            }
-        }
-        #endregion
-
 
         private readonly ApplicationDbContext _db;
-        private readonly Microsoft.AspNetCore.Identity.UserManager<User> _userManager;
+        private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _signInManager;
+        private readonly RoleManager<Microsoft.AspNetCore.Identity.IdentityRole> _roleManager;
     }
 }

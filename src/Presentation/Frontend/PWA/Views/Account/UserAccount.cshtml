@@ -1,5 +1,5 @@
 ﻿@{
-    GladcherryShopping.Models.ApplicationDbContext db = new GladcherryShopping.Models.ApplicationDbContext();
+    Infrastructure.ApplicationDbContext db = new Infrastructure.ApplicationDbContext();
 }
 @using Microsoft.AspNet.Identity;
 @using System.Web.Mvc;
@@ -105,7 +105,7 @@
                     </div>
                     <div class="col-xs-8 text-right">
                         <span> تاریخ امروز </span>
-                        <h2 class="font-bold">@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now, false, false)</h2>
+                        <h2 class="font-bold">@Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now, false, false)</h2>
                     </div>
                 </div>
             </div>

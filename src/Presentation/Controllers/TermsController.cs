@@ -8,7 +8,7 @@ namespace Presentation.Controllers
         // GET: Terms
         public ActionResult Index()
         {
-            Domain.Application app = db.Applications.FirstOrDefault();
+            Domain.Application app = _db.Applications.FirstOrDefault();
             return View(app);
         }
 

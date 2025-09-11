@@ -79,7 +79,7 @@ namespace Presentation.Controllers
                 .Where(p => p.SefUrl == sefUrl)
                 .Include(p => p.RelatedProducts)
                 .Include(p => p.Category)
-                .Include(p => p.category.Parent)
+                .Include(p => p.Category.Parent)
                 .Include(p => p.Images)
                 .FirstOrDefault();
 

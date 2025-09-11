@@ -159,7 +159,7 @@ namespace GladcherryShopping.API_Services
             User User = _db.Users.Where(current => current.Id == UserId).Include(current => current.City).Include(current => current.State).FirstOrDefault();
             if (User == null)
                 return Ok(" کاربری با این شماره یافت نشد . ");
-            Application app = _db.Applications.FirstOrDefault();
+           Domain.Application app = _db.Applications.FirstOrDefault();
             if (User.State != null && User.City != null)
             {
                 return Ok(new
@@ -223,7 +223,7 @@ namespace GladcherryShopping.API_Services
             #region Validation
             if (ProductId == null)
                 return Ok(new { Status = 0, Text = "لطفا شناسه محصول را وارد نمایید ." });
-            Product product = _db.Products.Where(current => current.Id == ProductId).Include(current => current.category).Include(current => current.RelatedProducts).Include(current => current.Images).FirstOrDefault();
+            Product product = _db.Products.Where(current => current.Id == ProductId).Include(current => current.Category).Include(current => current.RelatedProducts).Include(current => current.Images).FirstOrDefault();
             if (product == null)
                 return Ok(" محصولی با این شماره یافت نشد . ");
             #endregion Validation
@@ -359,7 +359,7 @@ namespace GladcherryShopping.API_Services
             #region Validation
             if (OrderId == null)
                 return Ok(new { Status = 0, Text = "لطفا شناسه سفارش را وارد نمایید ." });
-            var Orders = _db.Orders.Where(current => current.Id == OrderId).Include(current => current.User).Include(current => current.Address).Include(current => current.Transactions).FirstOrDefault();
+            var Orders = _db.Orders.Where(current => current.Id == OrderId).Include(current => current.User).Include(current => current.Transactions).FirstOrDefault();
             if (Orders == null)
                 return Ok(new { Status = 0, Text = "سفارش مورد نظر پیدا نشد .", OrdersCount = 0 });
             #endregion Validation
@@ -461,7 +461,7 @@ namespace GladcherryShopping.API_Services
                 UserImages = ImagesList,
                 EditImages = EditImage != "" ? EditImage.Remove(EditImage.Length - 1) : "",
                 UserId = Orders.UserId.ToString() ?? "",
-                IsPayed = IsPayed
+                IsPayed = IsPayed,
                 Situation = situation,
                 Pay = pay,
                 Send = Orders.getSender.ToString()

@@ -1,10 +1,13 @@
-﻿@model DataLayer.ViewModels.SubmitOrderViewModel
-@{ GladcherryShopping.Models.ApplicationDbContext content = new GladcherryShopping.Models.ApplicationDbContext();}
+﻿@using Application.DTOs.ViewModels
+@model SubmitUserOrderViewModel
+@{
+    Infrastructure.ApplicationDbContext content = new Infrastructure.ApplicationDbContext();
+}
 @{
     ViewBag.Title = "تکمیل سفارش";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
-@using DataLayer.Models;
+@using Domain;
 @using Microsoft.AspNet.Identity;
 @using System.Web.Mvc;
 @using System.Data.Entity;

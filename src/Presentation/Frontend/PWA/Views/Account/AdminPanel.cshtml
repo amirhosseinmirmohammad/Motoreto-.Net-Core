@@ -1,5 +1,5 @@
 ﻿@{
-    GladcherryShopping.Models.ApplicationDbContext db = new GladcherryShopping.Models.ApplicationDbContext();
+    Infrastructure.ApplicationDbContext db = new Infrastructure.ApplicationDbContext();
 }
 @using System.Data.Entity;
 @{
@@ -24,7 +24,7 @@
                     </div>
                     <div class="col-xs-8 text-right">
                         <span> امروز </span>
-                        <h2 class="font-bold">@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now, false, false)</h2>
+                        <h2 class="font-bold">@Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now, false, false)</h2>
                     </div>
                 </div>
             </div>
@@ -96,7 +96,7 @@
         var back = [];
         var ordersCount = [];
 
-        dates = ["@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(-3),false,false)", "@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(-2).Date, false, false)", "@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(-1).Date, false, false)", "@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.Date, false, false)", "@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(1).Date, false, false)", "@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(2).Date, false, false)", "@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(3).Date, false, false)"]
+        dates = ["@Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(-3), false, false)", "@Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(-2).Date, false, false)", "@Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(-1).Date, false, false)", "@Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.Date, false, false)", "@Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(1).Date, false, false)", "@Shared.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(2).Date, false, false)", "@GladCherryShopping.Helpers.FunctionsHelper.GetPersianDateTime(DateTime.Now.AddDays(3).Date, false, false)"]
         @{
             var TwoDaysLaterStartDate = DateTime.Today.AddDays(2);
             var TwoDaysLaterEndTime = DateTime.Today.AddDays(3).AddTicks(-1);

@@ -28,9 +28,13 @@ namespace Application.DTOs.ViewModels
         [DisplayName("کد تخفیف")]
         [Display(Name = "کد تخفیف")]
         public string Discount { get; set; }
+
         public int StateId { get; set; }
+
         public int CityId { get; set; }
+
         public byte PaymentType { get; set; }
+
         public byte Type { get; set; }
     }
 }

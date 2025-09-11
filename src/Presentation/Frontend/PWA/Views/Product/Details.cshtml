@@ -1,19 +1,19 @@
-﻿@model DataLayer.ViewModels.ProductDetailViewModel
+﻿@model Application.DTOs.ViewModels.ProductDetailViewModel
 @{
     var productName = Model?.product?.PersianName ?? "محصول";
     var productEnglishName = Model?.product?.EnglishName ?? "";
     var productDesc = string.IsNullOrEmpty(Model?.product?.Description)
         ? "توضیحات محصول در دسترس نیست."
-        : GladCherryShopping.Helpers.FunctionsHelper.Truncate(Model.product.Description, 160);
+        : Shared.Helpers.FunctionsHelper.Truncate(Model.product.Description, 160);
 
     var productImage = string.IsNullOrEmpty(Model?.product?.SiteFirstImage)
         ? Url.Content("~/images/sadr_logo.png")
         : Model.product.SiteFirstImage;
 
-    var productCategory = Model?.product?.category?.PersianName ?? "بدون دسته‌بندی";
-    var parentCategory = Model?.product?.category?.Parent?.PersianName ?? "دسته اصلی";
-    var parentCategoryId = Model?.product?.category?.Parent?.Id ?? 0;
-    var categoryId = Model?.product?.category?.Id ?? 0;
+    var productCategory = Model?.product?.Category?.PersianName ?? "بدون دسته‌بندی";
+    var parentCategory = Model?.product?.Category?.Parent?.PersianName ?? "دسته اصلی";
+    var parentCategoryId = Model?.product?.Category?.Parent?.Id ?? 0;
+    var categoryId = Model?.product?.Category?.Id ?? 0;
     var stock = Model?.product?.Stock ?? 0;
     var minBuy = Model?.product?.Min ?? 0;
     var unitPrice = Model?.product?.UnitPrice ?? 0;

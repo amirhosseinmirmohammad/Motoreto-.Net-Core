@@ -1,9 +1,8 @@
-﻿@{ GladcherryShopping.Models.ApplicationDbContext content = new GladcherryShopping.Models.ApplicationDbContext();}
+﻿@{ Infrastructure.ApplicationDbContext content = new Infrastructure.ApplicationDbContext();}
 @using Microsoft.AspNet.Identity;
 @using System.Web.Mvc;
 @using System.Data.Entity;
-@using GladcherryShopping.Models;
-@using DataLayer.Models;
+@using Domain;
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="fa-ir" xml:lang="fa-ir" prefix="og: http://ogp.me/ns#">
 <head>
@@ -119,8 +118,8 @@
     <link rel="stylesheet" href="~/Content/css/font-awesome.min.css">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="~/Content/css/owl.carousel.css">
-    <link href="~/Content/style.css?v=6.3" rel="stylesheet" />
-    <link href="~/Content/css/nav.css" rel="stylesheet" />
+    <link href="~/style.css?v=6.3" rel="stylesheet" />
+    <link href="~/css/nav.css" rel="stylesheet" />
     @*<link rel="stylesheet" href="https://unpkg.com/leaflet@1.3.4/dist/leaflet.css" />*@
     @RenderSection("Styles", required: false)
 </head>

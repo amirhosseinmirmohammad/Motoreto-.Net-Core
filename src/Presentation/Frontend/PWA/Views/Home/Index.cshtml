@@ -1,4 +1,4 @@
-﻿@{ GladcherryShopping.Models.ApplicationDbContext content = new GladcherryShopping.Models.ApplicationDbContext();}
+﻿@{ Infrastructure.ApplicationDbContext content = new Infrastructure.ApplicationDbContext();}
 @using System.Data.Entity;
 @{
     ViewBag.Title = "موتورتو | فروش آنلاین قطعات خودرو";
@@ -7,7 +7,7 @@
 @{
     var slider = content.Sliders.Where(current => current.IsApp == true).OrderByDescending(current => current.LastDate);
     var application = content.Applications.FirstOrDefault();
-    DataLayer.Models.Product wonder = content.Products.Include(current => current.category).Where(current => current.Stock > 0 && current.AppLargeImage != null && current.IsWonderful == true && current.Day != null && current.Minute != null && current.Hour != null).FirstOrDefault();
+    Domain.Product wonder = content.Products.Include(current => current.category).Where(current => current.Stock > 0 && current.AppLargeImage != null && current.IsWonderful == true && current.Day != null && current.Minute != null && current.Hour != null).FirstOrDefault();
 }
 @section Metas{
     <meta name="description" content="فروشگاه اینترنتی موتورتو فعال در زمینه فروش انواع قطعات مصرفی خودرو شامل فیلتر روغن ، فیلتر هوا ، فیلتر بنزین ، فیلتر کابین ، روغن موتور و روانکار و غیره است .">
@@ -357,7 +357,7 @@
                                         </div>
                                     </div>
                                     <div class="product-title">
-                                        <h2><a href="/Product/@item.SefUrl">@GladCherryShopping.Helpers.FunctionsHelper.Truncate(item.PersianName, 25)</a></h2>
+                                        <h2><a href="/Product/@item.SefUrl">@Shared.Helpers.FunctionsHelper.Truncate(item.PersianName, 25)</a></h2>
 
                                         <div class="product-carousel-price">
                                             @if (item.DiscountPercent > 0)
