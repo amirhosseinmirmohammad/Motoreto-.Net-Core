@@ -8,12 +8,15 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    @RenderSection("Metas", required: false)
+
     <title>@ViewBag.Title - موتورتو</title>
 
-    <link href="~/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="~/Content/css/font-awesome.min.css" rel="stylesheet" />
-    <link href="~/css/nav.css" rel="stylesheet" />
-    <link href="~/style.css" rel="stylesheet" />
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <link rel="stylesheet" href="~/Content/css/font-awesome.min.css">
+    <link href="~/Content/css/nav.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/Content/css/owl.carousel.css">
+    <link href="~/css/style.css" rel="stylesheet" />
 
     @RenderSection("Styles", required: false)
 </head>

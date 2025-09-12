@@ -15,6 +15,7 @@ namespace Presentation.Controllers
             _userManager = userManager;
         }
 
+        [HttpGet]
         public IActionResult List(string sort = "newest", string q = "", int page = 1, int pageSize = 24)
         {
             var query = BuildQuery(sort, q);
@@ -70,6 +71,7 @@ namespace Presentation.Controllers
         }
 
         // GET: Product/Details/sefUrl
+        [HttpGet]
         public IActionResult Details(string sefUrl)
         {
             if (string.IsNullOrEmpty(sefUrl))
@@ -181,6 +183,7 @@ namespace Presentation.Controllers
             return RedirectToAction("Details", new { sefUrl = _db.Products.Find(productId)?.SefUrl });
         }
 
+        [HttpGet]
         [Route("product/bycar/{name}")]
         public IActionResult ByCar(string name, int page = 1, int pageSize = 8)
         {
@@ -254,6 +257,7 @@ namespace Presentation.Controllers
             return PartialView("_ProductListPartial", products);
         }
 
+        [HttpGet]
         public IActionResult All(string search, int? id, int page = 1)
         {
             var query = _db.Products.AsQueryable();
@@ -282,6 +286,7 @@ namespace Presentation.Controllers
             return View(vm);
         }
 
+        [HttpGet]
         public IActionResult Special(string search, int page = 1)
         {
             var products = string.IsNullOrEmpty(search)

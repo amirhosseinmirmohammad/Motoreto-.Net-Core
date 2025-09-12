@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Domain
 {
@@ -12,20 +11,6 @@ namespace Domain
             Notifications = new List<Notification>();
         }
 
-        internal class configuration : EntityTypeConfiguration<NewsLetter>
-        {
-            public configuration()
-            {
-                Property(current => current.Email)
-                    .IsRequired();
-            }
-        }
-
-        [Key]
-        [Required]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [ScaffoldColumn(false)]
-        [Bindable(false)]
         public int Id { get; set; }
 
         [DisplayName("ایمیل")]

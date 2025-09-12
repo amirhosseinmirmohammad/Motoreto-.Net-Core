@@ -1,8 +1,6 @@
 ﻿using System;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using System.Data.Entity.ModelConfiguration;
 
 namespace Domain
 {
@@ -10,22 +8,6 @@ namespace Domain
     {
         public Favorite()
         {
-        }
-
-        internal class configuration : EntityTypeConfiguration<Favorite>
-        {
-            public configuration()
-            {
-                HasRequired(ne => ne.Users)
-                .WithMany(applicationUser => applicationUser.Favorites)
-                .HasForeignKey(id => id.UserId)
-                .WillCascadeOnDelete(false);
-
-                HasRequired(ne => ne.Product)
-                .WithMany(Product => Product.Favorites)
-                .HasForeignKey(id => id.ProductId)
-                .WillCascadeOnDelete(false);
-            }
         }
 
         public int Id { get; set; }

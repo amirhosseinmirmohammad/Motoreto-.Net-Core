@@ -1,5 +1,5 @@
 ﻿using Infrastructure;
-using System.Web.Mvc;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Presentation.Controllers
 {
@@ -10,10 +10,10 @@ namespace Presentation.Controllers
             _db = db;
         }
 
-        // GET: AboutUs
-        public ActionResult Index()
+        // GET: /AboutUs
+        public IActionResult Index()
         {
-            Domain.Application app = _db.Applications.FirstOrDefault();
+            var app = _db.Applications.FirstOrDefault();
             return View(app);
         }
 

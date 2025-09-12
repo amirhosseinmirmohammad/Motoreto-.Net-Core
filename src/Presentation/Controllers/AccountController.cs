@@ -4,8 +4,8 @@ using Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Shared.Helpers;
-using System.Data.Entity;
 using System.Text.RegularExpressions;
 
 namespace Presentation.Controllers

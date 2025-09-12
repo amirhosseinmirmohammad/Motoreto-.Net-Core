@@ -46,8 +46,9 @@ namespace Presentation.Controllers
                 CarCategories = _db.Categories
                                    .Where(c => c.ParentId != null)
                                    .AsNoTracking()
+                                   .ToList() // 👈 کل دیتارو بیار تو حافظه
                                    .GroupBy(c => c.PersianName)
-                                   .Select(g => g.FirstOrDefault())
+                                   .Select(g => g.First()) // حالا EF درگیر ترجمه نمیشه
                                    .OrderBy(c => c.PersianName == "بدون مدل" ? 1 : 0)
                                    .ThenBy(c => c.PersianName)
                                    .ToList(),

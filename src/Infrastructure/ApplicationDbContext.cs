@@ -82,6 +82,8 @@ namespace Infrastructure
             new SliderConfiguration().Configure(modelBuilder.Entity<Slider>());
             new StateConfiguration().Configure(modelBuilder.Entity<State>());
             new TransactionConfiguration().Configure(modelBuilder.Entity<Transaction>());
+            new FavoriteConfiguration().Configure(modelBuilder.Entity<Favorite>());
+            new NewsLetterConfiguration().Configure(modelBuilder.Entity<NewsLetter>());
         }
     }
 }

@@ -1,5 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
-using System.Web.Mvc;
+﻿using Microsoft.AspNetCore.Mvc.Rendering;
+using System.ComponentModel.DataAnnotations;
 using CompareAttribute = System.ComponentModel.DataAnnotations.CompareAttribute;
 
 namespace Application.DTOs.ViewModels
@@ -21,6 +21,7 @@ namespace Application.DTOs.ViewModels
         public string SelectedProvider { get; set; }
 
         public ICollection<SelectListItem> Providers { get; set; }
+
         public string ReturnUrl { get; set; }
 
         public bool RememberMe { get; set; }
