@@ -29,6 +29,11 @@
                 margin-bottom: 60px !important;
             }
         }
+
+        .btnRemove:hover {
+            background: initial !important;
+            background-color: initial !important;
+        }
     </style>
 }
 
@@ -65,7 +70,7 @@
                         <table class="shop_table cart table-hover">
                             <thead>
                                 <tr>
-                                    <th></th>
+                                    <th>حذف</th>
                                     <th>تصویر</th>
                                     <th>عنوان</th>
                                     <th>تعداد</th>
@@ -83,7 +88,7 @@
                                     <tr class="RMNT_item" id="cart-item-@item.Product.Id">
                                         <td>
                                             <a title="حذف محصول" class="remove btnRemove" productid="@item.Product.Id">
-                                                <i class="fa fa-close"></i>
+                                                <i class="fa fa-trash" style="color: red; font-size: 20px !important;"></i>
                                             </a>
                                         </td>
                                         <td>
@@ -107,7 +112,7 @@
                                                        class="minus btn btn-orange" value="-" onclick="minus(this)" />
                                             </div>
                                         </td>
-                                        <td><span class="amount">@string.Format("{0:n0}", resultcount)</span></td>
+                                        <td><span class="amount">@string.Format("{0:n0}", resultcount) ریال</span></td>
                                     </tr>
                                 }
                             </tbody>
@@ -121,7 +126,7 @@
                         <p class="empty-subtitle">برای شروع، از دسته‌بندی‌ها یکی رو انتخاب کن.</p>
                         <div class="empty-cta">
                             <a href="/#categories" class="btn btn-warning">مشاهده دسته‌بندی‌ها</a>
-                            <a href="/#specialproducts" class="btn btn-primary" style="background-color:#00016e;border-color:#00016e">محصولات جدید</a>
+                            <a href="/#specialproducts" class="btn btn-primary" style="background-color: #ff740a !important; border-color: #ff740a !important;">محصولات جدید</a>
                         </div>
                     </div>
                 }

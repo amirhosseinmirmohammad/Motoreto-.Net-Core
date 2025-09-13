@@ -1,6 +1,36 @@
+﻿name: motoreto
+
 services:
+  postgres:
+    image: postgres:16
+    # container_name: motoreto-db   # (اختیاری) بهتره نذاری تا تداخل نشه
+    environment:
+      POSTGRES_USER: motoreto_user
+      POSTGRES_PASSWORD: "M@nred17"
+      POSTGRES_DB: motoreto
+    # اگر 5432 روی ویندوزت اشغال است، سمت هاست را عوض کن
+    ports:
+      - "56432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
   presentation:
-    image: ${DOCKER_REGISTRY-}presentation
+    # اگر .env نداشتی هم کار کند:
+    image: motoreto:${APP_VERSION:-dev}
+    container_name: motoreto-${APP_VERSION:-dev}
     build:
-      context: .
+      context: .                         # ریشه‌ی ریپو
       dockerfile: src/Presentation/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      # اپ از داخل شبکه‌ی compose به Postgres وصل می‌شود → host=postgres
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=motoreto;Username=motoreto_user;Password=M@nred17;Include Error Detail=true"
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

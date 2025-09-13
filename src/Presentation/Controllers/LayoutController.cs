@@ -1,4 +1,5 @@
-﻿using Infrastructure;
+﻿using Application.DTOs.ViewModels;
+using Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,8 +7,6 @@ namespace Presentation.Controllers
 {
     public class LayoutController : Controller
     {
-        private readonly ApplicationDbContext _db;
-
         public LayoutController(ApplicationDbContext db)
         {
             _db = db;
@@ -58,5 +57,8 @@ namespace Presentation.Controllers
             var count = Request.Cookies.Keys.Count(k => k.StartsWith("MotoretoCt_"));
             return Json(new { count });
         }
+
+
+        private readonly ApplicationDbContext _db;
     }
 }

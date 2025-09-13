@@ -1,34 +1,13 @@
-﻿@font-face {
-    font-family: 'yekan';
-    src: url('../../fonts/Yekan.eot') format('eot'), url('../../fonts/Yekan.woff') format('woff'), url('../../fonts/Yekan.ttf') format('truetype');
-    font-style: normal;
-    font-weight: normal;
-}
-
-/*@font-face {
-    font-family: "lalezar";
-    src: url("../fonts/Lalezar/Lalezar-Regular.ttf");
-}*/
-
+﻿
 @font-face {
     font-family: "iransans-medium";
     src: url("../fonts/IranSans/ttf/IRANSansWeb_Medium.ttf");
 }
 
-/*@font-face {
-    font-family: "iransans-bold";
-    src: url("../fonts/IranSans/ttf/IRANSansWeb_Bold.ttf");
-}*/
-
 @font-face {
     font-family: "iransans-light";
     src: url("../fonts/IranSans/ttf/IRANSansWeb_Light.ttf");
 }
-
-/*@font-face {
-    font-family: "iransans-ultra-light";
-    src: url("../fonts/IranSans/ttf/IRANSansWeb_UltraLight.ttf");
-}*/
 
 @font-face {
     font-family: "iransans-bold";
@@ -208,6 +187,10 @@ body {
 @media (max-width: 768px) {
     body {
         padding-bottom: 70px;
+    }
+
+    #openMenuBtn {
+        right: 15px !important;
     }
 }
 
@@ -3960,6 +3943,10 @@ p.text-sty-banner {
         display: none;
     }
 
+    .text-center.main_h1 h1 {
+        margin: 20px 5px 8px !important;
+    }
+
     .shop_table, .shop_table tbody, .shop_table tr, .shop_table td {
         display: block;
         width: 100%;
@@ -6587,6 +6574,7 @@ html.pwa-noscroll, body.pwa-noscroll {
 }
 
     .side-menu-header img {
+        border-radius: 10px;
         height: 40px;
     }
 
@@ -6678,13 +6666,18 @@ html.pwa-noscroll, body.pwa-noscroll {
 #openMenuBtn {
     position: fixed;
     top: 15px;
-    right: 15px; /* از سمت راست */
+    right: 25px; /* از سمت راست */
     background: none; /* بک‌گراند حذف */
     border: none;
     font-size: 22px;
     cursor: pointer;
     z-index: 1001;
     color: #00016e;
+    background-color: #e9e9e9a6;
+    border-radius: 25px;
+    width: 45px;
+    height: 45px;
+    padding: 0;
 }
 
 /* سایدبار */

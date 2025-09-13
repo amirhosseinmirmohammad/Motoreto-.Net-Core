@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -15,25 +16,25 @@ namespace Infrastructure.Migrations
                 name: "Applications",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Title = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    BussinessEmailAddress = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RunDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    PersianRunDate = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    Password = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    FromNumber = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    SmtpServer = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    PortNumber = table.Column<int>(type: "int", nullable: false),
-                    EmailAddress = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    EmailUserName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    EmailPassword = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SuccessfullRegisterationText = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    VerifyPhoneNumberText = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AfterUserOrderText = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AboutUs = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ContactUs = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Title = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    BussinessEmailAddress = table.Column<string>(type: "text", nullable: false),
+                    RunDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    PersianRunDate = table.Column<string>(type: "text", nullable: true),
+                    UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    Password = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    FromNumber = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    SmtpServer = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    PortNumber = table.Column<int>(type: "integer", nullable: false),
+                    EmailAddress = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    EmailUserName = table.Column<string>(type: "text", nullable: false),
+                    EmailPassword = table.Column<string>(type: "text", nullable: false),
+                    SuccessfullRegisterationText = table.Column<string>(type: "text", nullable: false),
+                    VerifyPhoneNumberText = table.Column<string>(type: "text", nullable: false),
+                    AfterUserOrderText = table.Column<string>(type: "text", nullable: false),
+                    AboutUs = table.Column<string>(type: "text", nullable: false),
+                    ContactUs = table.Column<string>(type: "text", nullable: false),
                     IntroPercent = table.Column<long>(type: "bigint", nullable: false),
                     IntroScore = table.Column<long>(type: "bigint", nullable: false),
                     Transferring = table.Column<long>(type: "bigint", nullable: false),
@@ -48,10 +49,10 @@ namespace Infrastructure.Migrations
                 name: "AspNetRoles",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Name = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -63,10 +64,10 @@ namespace Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    GuId = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreateDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    GuId = table.Column<string>(type: "text", nullable: true),
+                    CreateDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -77,15 +78,15 @@ namespace Infrastructure.Migrations
                 name: "Categories",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    PersianName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    EnglishName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Icon = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    SmallImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    LargeImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    BackgroundProImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ParentId = table.Column<int>(type: "int", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    PersianName = table.Column<string>(type: "text", nullable: false),
+                    EnglishName = table.Column<string>(type: "text", nullable: false),
+                    Icon = table.Column<string>(type: "text", nullable: true),
+                    SmallImage = table.Column<string>(type: "text", nullable: true),
+                    LargeImage = table.Column<string>(type: "text", nullable: true),
+                    BackgroundProImage = table.Column<string>(type: "text", nullable: true),
+                    ParentId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -101,27 +102,27 @@ namespace Infrastructure.Migrations
                 name: "Discounts",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Code = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Code = table.Column<string>(type: "text", nullable: false),
+                    Title = table.Column<string>(type: "text", nullable: false),
                     Percent = table.Column<float>(type: "real", nullable: true),
-                    IsPercentage = table.Column<bool>(type: "bit", nullable: false),
-                    Amount = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    MaxOrder = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Count = table.Column<int>(type: "int", nullable: false),
-                    MaxCount = table.Column<int>(type: "int", nullable: true),
-                    IsActived = table.Column<bool>(type: "bit", nullable: false),
-                    IsPublic = table.Column<bool>(type: "bit", nullable: false),
-                    ExpireDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ExDate = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsPercentage = table.Column<bool>(type: "boolean", nullable: false),
+                    Amount = table.Column<string>(type: "text", nullable: true),
+                    MaxOrder = table.Column<string>(type: "text", nullable: true),
+                    Count = table.Column<int>(type: "integer", nullable: false),
+                    MaxCount = table.Column<int>(type: "integer", nullable: true),
+                    IsActived = table.Column<bool>(type: "boolean", nullable: false),
+                    IsPublic = table.Column<bool>(type: "boolean", nullable: false),
+                    ExpireDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ExDate = table.Column<string>(type: "text", nullable: true),
                     DiscountPercent = table.Column<float>(type: "real", nullable: true),
-                    DiscountCount = table.Column<int>(type: "int", nullable: true),
-                    IsRepeated = table.Column<bool>(type: "bit", nullable: false),
-                    Image = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ShowcaseDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ShDate = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IntroductionCount = table.Column<int>(type: "int", nullable: true)
+                    DiscountCount = table.Column<int>(type: "integer", nullable: true),
+                    IsRepeated = table.Column<bool>(type: "boolean", nullable: false),
+                    Image = table.Column<string>(type: "text", nullable: true),
+                    ShowcaseDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    ShDate = table.Column<string>(type: "text", nullable: true),
+                    IntroductionCount = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -132,8 +133,8 @@ namespace Infrastructure.Migrations
                 name: "Galleries",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1")
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn)
                 },
                 constraints: table =>
                 {
@@ -144,9 +145,9 @@ namespace Infrastructure.Migrations
                 name: "NewsLetters",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Email = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -157,10 +158,10 @@ namespace Infrastructure.Migrations
                 name: "Notifications",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ForwardDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Text = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    ForwardDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    Text = table.Column<string>(type: "text", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -171,11 +172,11 @@ namespace Infrastructure.Migrations
                 name: "SiteMessages",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Body = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RegisterDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    FullName = table.Column<string>(type: "text", nullable: false),
+                    Body = table.Column<string>(type: "text", nullable: false),
+                    RegisterDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -186,13 +187,13 @@ namespace Infrastructure.Migrations
                 name: "Sliders",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Image = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Link = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreateDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    LastDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsApp = table.Column<bool>(type: "bit", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Image = table.Column<string>(type: "text", nullable: true),
+                    Link = table.Column<string>(type: "text", nullable: true),
+                    CreateDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    LastDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    IsApp = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -203,9 +204,9 @@ namespace Infrastructure.Migrations
                 name: "States",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -217,9 +218,9 @@ namespace Infrastructure.Migrations
                 columns: table => new
                 {
                     id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    userId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    visitDateTime = table.Column<DateTime>(type: "datetime2", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    userId = table.Column<Guid>(type: "uuid", nullable: false),
+                    visitDateTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -230,11 +231,11 @@ namespace Infrastructure.Migrations
                 name: "AspNetRoleClaims",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    RoleId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClaimType = table.Column<string>(type: "text", nullable: true),
+                    ClaimValue = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -252,32 +253,32 @@ namespace Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    PersianName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    EnglishName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    UnitPrice = table.Column<int>(type: "int", nullable: false),
-                    Stock = table.Column<int>(type: "int", nullable: false),
-                    Min = table.Column<int>(type: "int", nullable: true),
-                    DiscountPercent = table.Column<byte>(type: "tinyint", nullable: false),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CategoryId = table.Column<int>(type: "int", nullable: false),
-                    SliderImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    AppSmallImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    AppLargeImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    SiteFirstImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    SiteSecondImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    SiteThirdImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreateDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    IsSpecial = table.Column<bool>(type: "bit", nullable: false),
-                    IsWonderful = table.Column<bool>(type: "bit", nullable: false),
-                    Day = table.Column<int>(type: "int", nullable: true),
-                    Hour = table.Column<int>(type: "int", nullable: true),
-                    Minute = table.Column<int>(type: "int", nullable: true),
-                    WonderDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    WoDate = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    _Discount = table.Column<int>(type: "int", nullable: false),
-                    Code = table.Column<int>(type: "int", nullable: false),
-                    SefUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    PersianName = table.Column<string>(type: "text", nullable: false),
+                    EnglishName = table.Column<string>(type: "text", nullable: false),
+                    UnitPrice = table.Column<int>(type: "integer", nullable: false),
+                    Stock = table.Column<int>(type: "integer", nullable: false),
+                    Min = table.Column<int>(type: "integer", nullable: true),
+                    DiscountPercent = table.Column<byte>(type: "smallint", nullable: false),
+                    Description = table.Column<string>(type: "text", nullable: false),
+                    CategoryId = table.Column<int>(type: "integer", nullable: false),
+                    SliderImage = table.Column<string>(type: "text", nullable: true),
+                    AppSmallImage = table.Column<string>(type: "text", nullable: true),
+                    AppLargeImage = table.Column<string>(type: "text", nullable: true),
+                    SiteFirstImage = table.Column<string>(type: "text", nullable: true),
+                    SiteSecondImage = table.Column<string>(type: "text", nullable: true),
+                    SiteThirdImage = table.Column<string>(type: "text", nullable: true),
+                    CreateDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    IsSpecial = table.Column<bool>(type: "boolean", nullable: false),
+                    IsWonderful = table.Column<bool>(type: "boolean", nullable: false),
+                    Day = table.Column<int>(type: "integer", nullable: true),
+                    Hour = table.Column<int>(type: "integer", nullable: true),
+                    Minute = table.Column<int>(type: "integer", nullable: true),
+                    WonderDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    WoDate = table.Column<string>(type: "text", nullable: true),
+                    _Discount = table.Column<int>(type: "integer", nullable: false),
+                    Code = table.Column<int>(type: "integer", nullable: false),
+                    SefUrl = table.Column<string>(type: "text", nullable: true),
                     ProductId = table.Column<long>(type: "bigint", nullable: true)
                 },
                 constraints: table =>
@@ -299,8 +300,8 @@ namespace Infrastructure.Migrations
                 name: "NewsLetterNotification",
                 columns: table => new
                 {
-                    NewsLettersId = table.Column<int>(type: "int", nullable: false),
-                    NotificationsId = table.Column<int>(type: "int", nullable: false)
+                    NewsLettersId = table.Column<int>(type: "integer", nullable: false),
+                    NotificationsId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -323,10 +324,10 @@ namespace Infrastructure.Migrations
                 name: "Cities",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    StateId = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    StateId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -343,15 +344,15 @@ namespace Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Source = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
-                    Title = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    Alt = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
-                    Link = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Source = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: false),
+                    Title = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    Alt = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    Link = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: false),
                     ProductId = table.Column<long>(type: "bigint", nullable: true),
-                    SliderId = table.Column<int>(type: "int", nullable: true),
-                    GalleryId = table.Column<int>(type: "int", nullable: true),
-                    NotificationId = table.Column<int>(type: "int", nullable: true)
+                    SliderId = table.Column<int>(type: "integer", nullable: true),
+                    GalleryId = table.Column<int>(type: "integer", nullable: true),
+                    NotificationId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -382,11 +383,11 @@ namespace Infrastructure.Migrations
                 name: "ProductInBaskets",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     ProductId = table.Column<long>(type: "bigint", nullable: false),
                     BasketId = table.Column<long>(type: "bigint", nullable: false),
-                    Count = table.Column<int>(type: "int", nullable: false)
+                    Count = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -408,39 +409,39 @@ namespace Infrastructure.Migrations
                 name: "AspNetUsers",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    FirstName = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    LastName = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Gender = table.Column<byte>(type: "tinyint", nullable: true),
-                    BirthDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    RegistrationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FirstName = table.Column<string>(type: "text", nullable: true),
+                    LastName = table.Column<string>(type: "text", nullable: true),
+                    Gender = table.Column<byte>(type: "smallint", nullable: true),
+                    BirthDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    RegistrationDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
                     UserScore = table.Column<long>(type: "bigint", nullable: false),
-                    ProfileImage = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    AddressLine = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    AccessCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IntroCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IntroCodeOptional = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ProfileImage = table.Column<string>(type: "text", nullable: true),
+                    AddressLine = table.Column<string>(type: "text", nullable: true),
+                    AccessCode = table.Column<string>(type: "text", nullable: true),
+                    IntroCode = table.Column<string>(type: "text", nullable: true),
+                    IntroCodeOptional = table.Column<string>(type: "text", nullable: true),
                     Credit = table.Column<long>(type: "bigint", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    Mobile = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    StateId = table.Column<int>(type: "int", nullable: true),
-                    CityId = table.Column<int>(type: "int", nullable: true),
-                    VerificationCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PlayerId = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    NormalizedEmail = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
-                    EmailConfirmed = table.Column<bool>(type: "bit", nullable: false),
-                    PasswordHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    SecurityStamp = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    PhoneNumberConfirmed = table.Column<bool>(type: "bit", nullable: false),
-                    TwoFactorEnabled = table.Column<bool>(type: "bit", nullable: false),
-                    LockoutEnd = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
-                    LockoutEnabled = table.Column<bool>(type: "bit", nullable: false),
-                    AccessFailedCount = table.Column<int>(type: "int", nullable: false)
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Mobile = table.Column<string>(type: "text", nullable: true),
+                    StateId = table.Column<int>(type: "integer", nullable: true),
+                    CityId = table.Column<int>(type: "integer", nullable: true),
+                    VerificationCode = table.Column<string>(type: "text", nullable: true),
+                    PlayerId = table.Column<string>(type: "text", nullable: true),
+                    UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    NormalizedEmail = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
+                    EmailConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    PasswordHash = table.Column<string>(type: "text", nullable: true),
+                    SecurityStamp = table.Column<string>(type: "text", nullable: true),
+                    ConcurrencyStamp = table.Column<string>(type: "text", nullable: true),
+                    PhoneNumber = table.Column<string>(type: "text", nullable: true),
+                    PhoneNumberConfirmed = table.Column<bool>(type: "boolean", nullable: false),
+                    TwoFactorEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    LockoutEnd = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    LockoutEnabled = table.Column<bool>(type: "boolean", nullable: false),
+                    AccessFailedCount = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -461,11 +462,11 @@ namespace Infrastructure.Migrations
                 name: "AspNetUserClaims",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ClaimType = table.Column<string>(type: "text", nullable: true),
+                    ClaimValue = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -482,10 +483,10 @@ namespace Infrastructure.Migrations
                 name: "AspNetUserLogins",
                 columns: table => new
                 {
-                    LoginProvider = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ProviderKey = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    ProviderDisplayName = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    LoginProvider = table.Column<string>(type: "text", nullable: false),
+                    ProviderKey = table.Column<string>(type: "text", nullable: false),
+                    ProviderDisplayName = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -502,8 +503,8 @@ namespace Infrastructure.Migrations
                 name: "AspNetUserRoles",
                 columns: table => new
                 {
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    RoleId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -526,10 +527,10 @@ namespace Infrastructure.Migrations
                 name: "AspNetUserTokens",
                 columns: table => new
                 {
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    LoginProvider = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
-                    Value = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    LoginProvider = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
+                    Value = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -546,21 +547,21 @@ namespace Infrastructure.Migrations
                 name: "Blogs",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Survey = table.Column<int>(type: "int", nullable: true),
-                    Like = table.Column<int>(type: "int", nullable: true),
-                    DissLike = table.Column<int>(type: "int", nullable: true),
-                    IsVisible = table.Column<bool>(type: "bit", nullable: false),
-                    CreateDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Title = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    ShortDesc = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
-                    Body = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    SefUrl = table.Column<string>(type: "nvarchar(160)", maxLength: 160, nullable: false),
-                    MetaKey = table.Column<string>(type: "nvarchar(160)", maxLength: 160, nullable: false),
-                    MetaDesc = table.Column<string>(type: "nvarchar(160)", maxLength: 160, nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    CategoryId = table.Column<int>(type: "int", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Survey = table.Column<int>(type: "integer", nullable: true),
+                    Like = table.Column<int>(type: "integer", nullable: true),
+                    DissLike = table.Column<int>(type: "integer", nullable: true),
+                    IsVisible = table.Column<bool>(type: "boolean", nullable: false),
+                    CreateDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    Title = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    ShortDesc = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    Body = table.Column<string>(type: "text", nullable: false),
+                    SefUrl = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    MetaKey = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    MetaDesc = table.Column<string>(type: "character varying(160)", maxLength: 160, nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    CategoryId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -581,11 +582,11 @@ namespace Infrastructure.Migrations
                 name: "Favorites",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     ProductId = table.Column<long>(type: "bigint", nullable: false),
-                    Date = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    Date = table.Column<DateTime>(type: "timestamp without time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -608,28 +609,28 @@ namespace Infrastructure.Migrations
                 name: "Orders",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Receiver = table.Column<int>(type: "int", nullable: false),
-                    Type = table.Column<byte>(type: "tinyint", nullable: false),
-                    PaymentType = table.Column<byte>(type: "tinyint", nullable: false),
-                    OrderDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Done = table.Column<bool>(type: "bit", nullable: false),
-                    InvoiceNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    TotalPrice = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Latitude = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Longitude = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    IsCanceled = table.Column<bool>(type: "bit", nullable: false),
-                    CancelDescription = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UserOrderDescription = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Phone = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UserAddress = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    FactorNumber = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Send = table.Column<int>(type: "int", nullable: false),
-                    StateId = table.Column<int>(type: "int", nullable: true),
-                    CityId = table.Column<int>(type: "int", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Receiver = table.Column<int>(type: "integer", nullable: false),
+                    Type = table.Column<byte>(type: "smallint", nullable: false),
+                    PaymentType = table.Column<byte>(type: "smallint", nullable: false),
+                    OrderDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    Done = table.Column<bool>(type: "boolean", nullable: false),
+                    InvoiceNumber = table.Column<string>(type: "text", nullable: true),
+                    TotalPrice = table.Column<string>(type: "text", nullable: true),
+                    Latitude = table.Column<string>(type: "text", nullable: true),
+                    Longitude = table.Column<string>(type: "text", nullable: true),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    IsCanceled = table.Column<bool>(type: "boolean", nullable: false),
+                    CancelDescription = table.Column<string>(type: "text", nullable: true),
+                    UserOrderDescription = table.Column<string>(type: "text", nullable: true),
+                    FullName = table.Column<string>(type: "text", nullable: true),
+                    Phone = table.Column<string>(type: "text", nullable: true),
+                    UserAddress = table.Column<string>(type: "text", nullable: true),
+                    FactorNumber = table.Column<string>(type: "text", nullable: true),
+                    Send = table.Column<int>(type: "integer", nullable: false),
+                    StateId = table.Column<int>(type: "integer", nullable: true),
+                    CityId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -645,8 +646,8 @@ namespace Infrastructure.Migrations
                 name: "UserDiscounts",
                 columns: table => new
                 {
-                    DiscountId = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    DiscountId = table.Column<int>(type: "integer", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -669,8 +670,8 @@ namespace Infrastructure.Migrations
                 name: "UserInNotifications",
                 columns: table => new
                 {
-                    NotificationId = table.Column<int>(type: "int", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    NotificationId = table.Column<int>(type: "integer", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -693,13 +694,13 @@ namespace Infrastructure.Migrations
                 name: "BlogComments",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Text = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    DateTime = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    IsApprove = table.Column<bool>(type: "bit", nullable: false),
-                    BlogId = table.Column<int>(type: "int", nullable: false)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    FullName = table.Column<string>(type: "text", nullable: false),
+                    Text = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    DateTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    IsApprove = table.Column<bool>(type: "boolean", nullable: false),
+                    BlogId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -715,16 +716,16 @@ namespace Infrastructure.Migrations
                 name: "Comments",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Text = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    DateTime = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    IsApprove = table.Column<bool>(type: "bit", nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Fullname = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Text = table.Column<string>(type: "text", nullable: false),
+                    DateTime = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    IsApprove = table.Column<bool>(type: "boolean", nullable: false),
+                    Email = table.Column<string>(type: "text", nullable: false),
+                    Fullname = table.Column<string>(type: "text", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     ProductId = table.Column<long>(type: "bigint", nullable: false),
-                    BlogId = table.Column<int>(type: "int", nullable: true)
+                    BlogId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -752,16 +753,16 @@ namespace Infrastructure.Migrations
                 name: "Files",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    FileSize = table.Column<int>(type: "int", nullable: false),
-                    UploadDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    Extension = table.Column<string>(type: "nvarchar(30)", maxLength: 30, nullable: false),
-                    FullPath = table.Column<string>(type: "nvarchar(max)", maxLength: 2147483647, nullable: false),
-                    FileName = table.Column<string>(type: "nvarchar(250)", maxLength: 250, nullable: false),
-                    FileNameWithoutExtension = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    Directory = table.Column<string>(type: "nvarchar(max)", maxLength: 2147483647, nullable: false),
-                    BlogId = table.Column<int>(type: "int", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    FileSize = table.Column<int>(type: "integer", nullable: false),
+                    UploadDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    Extension = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
+                    FullPath = table.Column<string>(type: "text", maxLength: 2147483647, nullable: false),
+                    FileName = table.Column<string>(type: "character varying(250)", maxLength: 250, nullable: false),
+                    FileNameWithoutExtension = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Directory = table.Column<string>(type: "text", maxLength: 2147483647, nullable: false),
+                    BlogId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -778,11 +779,11 @@ namespace Infrastructure.Migrations
                 name: "ProductInOrders",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     ProductId = table.Column<long>(type: "bigint", nullable: false),
-                    OrderId = table.Column<int>(type: "int", nullable: false),
-                    Count = table.Column<int>(type: "int", nullable: false)
+                    OrderId = table.Column<int>(type: "integer", nullable: false),
+                    Count = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -804,21 +805,21 @@ namespace Infrastructure.Migrations
                 name: "Transactions",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Number = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    InvoiceNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    BankName = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    RecievedDocumentNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    RecievedDocumentDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CardNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    TerminalNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Acceptor = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    OperationResult = table.Column<byte>(type: "tinyint", nullable: false),
-                    AcceptorPostalCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    AcceptorPhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    OrderId = table.Column<int>(type: "int", nullable: true)
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Number = table.Column<string>(type: "text", nullable: false),
+                    Date = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    InvoiceNumber = table.Column<string>(type: "text", nullable: false),
+                    BankName = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    RecievedDocumentNumber = table.Column<string>(type: "text", nullable: false),
+                    RecievedDocumentDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    CardNumber = table.Column<string>(type: "text", nullable: false),
+                    TerminalNumber = table.Column<string>(type: "text", nullable: false),
+                    Acceptor = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    OperationResult = table.Column<byte>(type: "smallint", nullable: false),
+                    AcceptorPostalCode = table.Column<string>(type: "text", nullable: false),
+                    AcceptorPhoneNumber = table.Column<string>(type: "text", nullable: false),
+                    OrderId = table.Column<int>(type: "integer", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -834,21 +835,21 @@ namespace Infrastructure.Migrations
                 name: "Payments",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Amount = table.Column<long>(type: "bigint", nullable: false),
-                    Status = table.Column<byte>(type: "tinyint", nullable: false),
-                    ActionType = table.Column<byte>(type: "tinyint", nullable: false),
-                    MainDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Mdate = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Subject = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    CreateDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    OrderId = table.Column<int>(type: "int", nullable: true),
-                    TransactionId = table.Column<int>(type: "int", nullable: true),
-                    TrackingCode = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    IsBlocked = table.Column<bool>(type: "bit", nullable: false)
+                    Status = table.Column<byte>(type: "smallint", nullable: false),
+                    ActionType = table.Column<byte>(type: "smallint", nullable: false),
+                    MainDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: true),
+                    Mdate = table.Column<string>(type: "text", nullable: true),
+                    Subject = table.Column<string>(type: "text", nullable: true),
+                    Description = table.Column<string>(type: "text", nullable: true),
+                    CreateDate = table.Column<DateTime>(type: "timestamp without time zone", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrderId = table.Column<int>(type: "integer", nullable: true),
+                    TransactionId = table.Column<int>(type: "integer", nullable: true),
+                    TrackingCode = table.Column<string>(type: "text", nullable: true),
+                    IsBlocked = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -879,8 +880,7 @@ namespace Infrastructure.Migrations
                 name: "RoleNameIndex",
                 table: "AspNetRoles",
                 column: "NormalizedName",
-                unique: true,
-                filter: "[NormalizedName] IS NOT NULL");
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetUserClaims_UserId",
@@ -916,8 +916,7 @@ namespace Infrastructure.Migrations
                 name: "UserNameIndex",
                 table: "AspNetUsers",
                 column: "NormalizedUserName",
-                unique: true,
-                filter: "[NormalizedUserName] IS NOT NULL");
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_BlogComments_BlogId",

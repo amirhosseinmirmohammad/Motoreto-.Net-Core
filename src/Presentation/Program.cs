@@ -6,12 +6,11 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // --- DbContext ---
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddEnvironmentVariables();
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
+
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true).AddEnvironmentVariables();
 
 // --- Identity ---
 builder.Services
@@ -35,7 +34,6 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-    // اجرای خودکار مایگریشن‌ها
     if ((await db.Database.GetPendingMigrationsAsync()).Any())
     {
         await db.Database.MigrateAsync();
@@ -70,9 +68,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
-        c.RoutePrefix = "swagger"; // دیگه مستقیم نیاد بالا، فقط /swagger بیاری
+        c.RoutePrefix = "swagger"; 
     });
-}   
+}
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
@@ -81,7 +79,7 @@ app.UseRouting();
 
 app.UseHttpsRedirection();
 
-app.UseAuthentication();   
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
