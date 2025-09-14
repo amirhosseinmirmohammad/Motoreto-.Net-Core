@@ -1,5 +1,4 @@
-﻿
-@font-face {
+﻿@font-face {
     font-family: "iransans-medium";
     src: url("../fonts/IranSans/ttf/IRANSansWeb_Medium.ttf");
 }
@@ -3428,6 +3427,8 @@ p.text-sty-banner {
 }
 
 #mobile-tabs {
+    height: calc(70px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
     direction: rtl;
     position: fixed;
     bottom: 0;
@@ -3443,6 +3444,7 @@ p.text-sty-banner {
     box-shadow: 0 -4px 12px rgba(0,0,0,0.15); /* به جای border */
     animation: slideUp 0.5s ease-out; /* انیمیشن ورود */
     border-radius: 16px 16px 0 0; /* گردی گوشه‌ها */
+    clip-path: path("M0,0 H50% A35,35 0 0 1 50%,70 H100 V70 H0 Z");
 }
 
 /* انیمیشن ملایم برای ظاهر شدن */
@@ -3476,8 +3478,11 @@ p.text-sty-banner {
         font-size: 1rem;
         color: #8d8d8d;
         font-weight: 700;
-        margin-top: 7.5px;
     }
+
+.nav-home small {
+    margin-top: 3px !important;
+}
 
 .categories-section {
     direction: rtl !important;
@@ -4145,8 +4150,8 @@ h1, h3 {
 .input-text, textarea, select {
     width: 100%;
     padding: 10px 14px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
+    /*    border: 1px solid #ddd;
+*/ border-radius: 8px;
     margin-top: 6px;
     transition: all .3s ease;
 }
@@ -5612,7 +5617,7 @@ html, body {
 
 /* 📱 در bottom navigation کوچیک‌تر */
 #mobile-tabs .cart-badge {
-    top: -5px;
+    top: 5px;
     right: 0px;
     width: 16px;
     font-size: 10px;
@@ -6685,12 +6690,12 @@ html.pwa-noscroll, body.pwa-noscroll {
     position: fixed;
     top: 0;
     right: -300px; /* از سمت راست بیاد */
-    width: 280px;
+    width: 250px;
     height: 100%;
     background: #fff;
     box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
     transition: right 0.3s ease;
-    z-index: 1002;
+    z-index: 99999999;
     direction: rtl; /* راست‌چین */
 }
 
@@ -6728,7 +6733,7 @@ html.pwa-noscroll, body.pwa-noscroll {
     position: absolute;
     top: 6px;
     left: 6px; /* چون منو راست‌چینه، Badge بیاد سمت چپ آیکن */
-    background: red;
+    background: #ff740a;
     color: #fff;
     border-radius: 50%;
     padding: 2px 6px;
@@ -6799,3 +6804,59 @@ html.pwa-noscroll, body.pwa-noscroll {
     float: left;
     transition: transform 0.3s ease;
 }
+
+.fa-angle-down {
+    margin-right: 5px !important;
+    color: rgb(255, 115, 9) !important;
+}
+
+/* خانه دایره‌ای وسط */
+.nav-home {
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.home-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff780e, #00016ed2);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #fff;
+    font-size: 24px;
+    text-decoration: none;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+/* بریدگی نیم‌دایره */
+#mobile-tabs:before {
+    content: "";
+    position: absolute;
+    top: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 70px;
+    background: #fff;
+    border-radius: 50%;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 0;
+}
+
+/* آیتم‌ها */
+.nav-item {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    color: #333;
+    text-decoration: none;
+}
+
+    .nav-item i {
+        font-size: 18px;
+        display: block;
+    }

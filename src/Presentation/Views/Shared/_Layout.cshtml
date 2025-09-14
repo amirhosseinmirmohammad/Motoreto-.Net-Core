@@ -3,6 +3,8 @@
 @inject SignInManager<User> SignInManager
 @inject UserManager<User> UserManager
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor Http
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+
 @{
     var path = Http?.HttpContext?.Request?.Path.Value?.ToLowerInvariant() ?? "/";
     bool isRoot = path == "/";
@@ -119,11 +121,10 @@
     <link rel="apple-touch-startup-image" media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/images/pwa/splash_screens/9.7__iPad_Pro__7.9__iPad_mini__9.7__iPad_Air__9.7__iPad_portrait.png">
     <link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/images/pwa/splash_screens/8.3__iPad_Mini_portrait.png">
     <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
-    <link rel="stylesheet" href="~/Content/css/font-awesome.min.css">
-    <link href="~/Content/css/nav.css" rel="stylesheet" />
-    <link rel="stylesheet" href="~/Content/css/owl.carousel.css">
-    <link href="~/css/style.css?v=1.0" rel="stylesheet" />
-
+    <link href="~/content/css/font-awesome.min.css" rel="stylesheet" />
+    <link href="~/content/css/nav.css" rel="stylesheet" />
+    <link href="~/content/css/owl.carousel.css" rel="stylesheet" />
+    <link href="~/content/style.css?v=1.5" rel="stylesheet" />
     @RenderSection("Styles", required: false)
 </head>
 <body id="totop">
@@ -438,13 +439,11 @@
             <small>سبد خرید</small>
         </a>
 
-        <!-- خانه (وسط و دایره‌ای) -->
         <div class="nav-home">
             <a href="/" class="home-btn @(has("/") ? "active" : "")">
                 <i class="fa fa-home"></i>
             </a>
         </div>
-
 
         @if (SignInManager.IsSignedIn(User))
         {
@@ -484,7 +483,6 @@
             <path fill="currentColor"
                   d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 01.98-.26c1.08.29 2.25.45 3.46.45a1 1 0 011 1v3.59a1 1 0 01-1 1C10.86 22 2 13.14 2 2.15a1 1 0 011-1H6.6a1 1 0 011 1c0 1.21.16 2.38.45 3.46a1 1 0 01-.26.98l-2.17 2.2z" />
         </svg>
-        @*<span class="fab-call__label">۰۹۱۲۸۰۴۹۹۴۶</span>*@
     </a>
     <div id="pwa-install-modal" class="modal fade" tabindex="-1" role="dialog" aria-hidden="true" dir="rtl">
         <div class="modal-dialog modal-sm">
@@ -500,16 +498,12 @@
                 <div class="pwa-body">
                     <p class="m-b-none">می‌خوای نسخه وب‌اپلیکیشن موتورتو رو نصب کنی؟</p>
 
-                    <!-- راهنمای iOS (فقط وقتی لازم شد نمایش می‌دیم) -->
                     <div id="pwa-ios-steps" style="display:none; margin-top:10px;">
                         <ol class="pwa-steps">
                             <li>
                                 <span class="ios-share-icon" aria-hidden="true">
-                                    <!-- iOS Share SVG -->
                                     <svg viewBox="0 0 24 24" width="18" height="18" focusable="false">
-                                        <!-- پیکان رو به بالا -->
                                         <path d="M12 3l3.5 3.5-.7.7L12.5 4.6V14h-1V4.6L9.2 7.2l-.7-.7L12 3z" />
-                                        <!-- جعبه پایین -->
                                         <path d="M6 10h1v9h10v-9h1v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V10z" />
                                     </svg>
                                 </span>
@@ -541,56 +535,52 @@
     </div>
 
     <!-- Latest jQuery form server -->
-    <script src="~/Scripts/jquery-1.10.2.min.js"></script>
-    <script>
-        $(function () {
-          $.get('/Layout/CartCount', function (res) {
-            const c = (res && res.count) || 0;
-            updateCartBadge(c);
-          });
-        });
-    </script>
+    <script src="~/scripts/jquery-1.10.2.js"></script>
+
     <!-- Bootstrap JS form CDN -->
     <script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
+
     <!-- jQuery sticky menu -->
-    <script src="~/Content/js/owl.carousel.min.js"></script>
+    <script src="~/content/js/owl.carousel.min.js"></script>
+
     <script>
         (function ($) {
             if (!$.fn.owlCarousel) return;
-            // پیش‌فرض‌های Owl2 را تغییر بده
             $.fn.owlCarousel.Constructor.Defaults.rtl = true;
         })(jQuery);
     </script>
-    <script src="~/Content/js/jquery.sticky.js"></script>
+
+    <script src="~/content/js/jquery.sticky.js"></script>
+
     <!-- jQuery easing -->
-    <script src="~/Content/js/jquery.easing.1.3.min.js"></script>
+    <script src="~/content/js/jquery.easing.1.3.min.js"></script>
+
     <!-- Main Script -->
-    <script src="~/Content/js/main.js"></script>
+    <script src="~/content/js/main.js"></script>
+
     <!-- Slider -->
-    <script type="text/javascript" src="~/Content/js/bxslider.min.js"></script>
-    <script type="text/javascript" src="~/Content/js/script.slider.js"></script>
-    @RenderSection("Scripts", required: false)
+    <script type="text/javascript" src="~/content/js/bxslider.min.js"></script>
+
+    <script type="text/javascript" src="~/content/js/script.slider.js"></script>
+
     <script>
         function updateCartBadge(count) {
-            // هدر
             const badgeHeader = $("#shoppingCount");
             badgeHeader.text(count).addClass("update");
             setTimeout(() => badgeHeader.removeClass("update"), 400);
 
-            // موبایل
             const badgeMobile = $("#shoppingCountMobile");
             badgeMobile.text(count).addClass("update");
             setTimeout(() => badgeMobile.removeClass("update"), 400);
 
-            // سایدمنو (جدید)
             const badgeSide = $("#shoppingCountSide");
             if (badgeSide.length) {
                 badgeSide.text(count);
-                // اگر 0 بود مخفی شود
                 badgeSide.toggleClass("hidden", parseInt(count, 10) <= 0);
             }
         }
     </script>
+
     <script>
         $(document).ready(function () {
             $(".btncard").click(function (e) {
@@ -615,12 +605,11 @@
             });
         });
     </script>
+
     <script>
         $(document).ready(function () {
-            // فلش سمت راست = قبلی
             $(".owl-prev").html('<i class="fa fa-chevron-right"></i>');
 
-            // فلش سمت چپ = بعدی
             $(".owl-next").html('<i class="fa fa-chevron-left"></i>');
         });
     </script>
@@ -678,7 +667,9 @@
             });
         });
     </script>
-    <script type="text/javascript" src="~/Content/css/jquery-func.js"></script>
+
+    <script type="text/javascript" src="~/content/css/jquery-func.js"></script>
+
     <script>
         $(window).load(function () {
             $(".btn-nav").on("click tap", function () {
@@ -687,8 +678,11 @@
             });
         });
     </script>
-    <script src="~/Content/css/move-top.js"></script>
-    <script src="~/Content/css/easing.js"></script>
+
+    <script src="~/content/css/move-top.js"></script>
+
+    <script src="~/content/css/easing.js"></script>
+
     <script type="text/javascript">
         jQuery(document).ready(function ($) {
             $(".scroll").click(function (event) {
@@ -697,20 +691,32 @@
             });
         });
     </script>
+
     <script>
-        $(document).ready(function () {
-            $('[data-toggle="tooltip"]').tooltip();
-        });
-    </script>
-    <script>
-        $(window).scroll(function () {
-            if ($(this).scrollTop() <= $('#totop').offset().top) {
-                $('.scroll-up').fadeOut("slow");
-            } else {
-                $('.scroll-up').fadeIn("slow");
+        (function ($) {
+          $(function () {
+            var ttSel = '[data-toggle="tooltip"], [data-bs-toggle="tooltip"]';
+            if ($.fn.tooltip) $(ttSel).tooltip();
+
+            var $btn = $('.scroll-up');
+            var $anchor = $('#totop');
+            var anchorTop = ($anchor.length && $anchor.offset()) ? ($anchor.offset().top || 0) : 0;
+            var lastShown = null;
+
+            function update() {
+              var shouldShow = $(window).scrollTop() > anchorTop + 5;
+              if (shouldShow === lastShown) return;
+              lastShown = shouldShow;
+              if (shouldShow) $btn.stop(true, true).fadeIn(200);
+              else $btn.stop(true, true).fadeOut(200);
             }
-        });
+
+            $(window).on('scroll', update);
+            update();
+          });
+        })(jQuery);
     </script>
+
     <script>
         (function ($) {
             $(document).ready(function () {
@@ -723,12 +729,15 @@
             });
         })(jQuery);
     </script>
-    <script src="/Scripts/persianumber.min.js"></script>
+
+    <script src="/scripts/persianumber.min.js"></script>
+
     <script type="text/javascript">
         $(document).ready(function () {
             $('body').persiaNumber();
         });
     </script>
+
     <script>
         function openSearch() {
             document.getElementById("myOverlay").style.display = "block";
@@ -738,6 +747,7 @@
             document.getElementById("myOverlay").style.display = "none";
         }
     </script>
+
     <script>
         function myFunction() {
             var x = document.getElementById("menu-wrapper");
@@ -748,12 +758,14 @@
             }
         }
     </script>
+
     <script>
         function func2() {
             var x = document.getElementById("menu-wrapper");
             x.style.display = "block";
         }
     </script>
+
     <script>
         (function () {
             function placeFab() {
@@ -761,12 +773,11 @@
                 var tabs = document.getElementById('mobile-tabs');
                 if (!fab) return;
 
-                // موبایل: 20px بالاتر از ارتفاع bottom nav
                 if (window.innerWidth <= 768 && tabs) {
                     var gap = 20;
                     fab.style.bottom = (tabs.offsetHeight + gap) + 'px';
                 } else {
-                    fab.style.bottom = '20px'; // دسکتاپ
+                    fab.style.bottom = '20px';
                 }
             }
             window.addEventListener('load', placeFab);
@@ -774,12 +785,11 @@
             document.addEventListener('DOMContentLoaded', placeFab);
         })();
     </script>
+
     <script>
         $(document).ready(function () {
-            // اول همه تب‌ها رو خالی کن
             $("#mobile-tabs .mobile-tab-wrapper").removeClass("active");
 
-            // آدرس کامل مرورگر
             const url = window.location.href;
 
             if (url.includes("#categories")) {
@@ -792,11 +802,11 @@
                 $("#mobile-tabs .mobile-tab-wrapper[href*='contactus']").addClass("active");
             }
             else {
-                // پیش‌فرض خانه
                 $("#mobile-tabs .mobile-tab-wrapper[href='/']").addClass("active");
             }
         });
     </script>
+
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -805,6 +815,7 @@
             });
         }
     </script>
+
     <script>
         (function () {
             var MODAL = '#pwa-install-modal';
@@ -844,15 +855,12 @@
                 if (!shouldAsk()) return;
 
                 if (isIOSSafari()) {
-                    // دکمه نصب کن رو مخفی کن
                     var btnYes = document.querySelector(BTN_YES);
                     if (btnYes) btnYes.style.display = 'none';
 
-                    // متن دکمه نه → متوجه شدم
                     var btnNo = document.querySelector(BTN_NO);
                     if (btnNo) btnNo.textContent = 'متوجه شدم';
 
-                    // راهنما رو نشون بده
                     var iosSteps = document.querySelector(IOS_STEPS);
                     if (iosSteps) iosSteps.style.display = 'block';
                 }
@@ -873,7 +881,6 @@
             });
 
             window.addEventListener('load', function () {
-                // برای iOS که beforeinstallprompt ندارد
                 setTimeout(openModal, 800);
             });
 
@@ -909,7 +916,7 @@
             });
         })();
     </script>
-    <!-- Splash فقط دسکتاپ -->
+
     <script>
         (function () {
             var SPLASH_ID = 'pwa-splash';
@@ -923,7 +930,6 @@
             }
             function getCookie(n) { var m = ("; " + document.cookie).split("; " + n + "="); return m.length === 2 ? decodeURIComponent(m.pop().split(";").shift()) : null; }
 
-            // فقط دسکتاپ
             var isDesktop = window.matchMedia('(min-width: 769px)').matches && !/Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
             if (!isDesktop) return;
 
@@ -949,7 +955,7 @@
             requestAnimationFrame(showSplash);
         })();
     </script>
-    <!-- Mobile Loader همان قبلی با پس‌زمینه نیمه‌شفاف -->
+
     <script>
         (function () {
             var el = document.getElementById('mb-loader');
@@ -979,6 +985,7 @@
             setTimeout(hideLoader, 7000);
         })();
     </script>
+
     <script>
         const sideMenu = document.getElementById("sideMenu");
         const overlay = document.getElementById("menuOverlay");
@@ -995,7 +1002,9 @@
             sideMenu.classList.remove("open");
             overlay.classList.remove("show");
         }
+
     </script>
+
     <script>
         document.querySelectorAll(".submenu-toggle").forEach(function (toggle) {
             toggle.addEventListener("click", function (e) {
@@ -1004,12 +1013,10 @@
                 let submenu = parent.querySelector(".submenu");
                 let arrow = this.querySelector(".submenu-arrow");
 
-                // بستن ساب‌منوهای دیگر
                 document.querySelectorAll(".submenu").forEach(s => {
                     if (s !== submenu) s.style.display = "none";
                 });
 
-                // باز/بسته کردن این ساب‌منو
                 if (submenu.style.display === "block") {
                     submenu.style.display = "none";
                     arrow.style.transform = "rotate(0deg)";
@@ -1020,20 +1027,7 @@
             });
         });
     </script>
-    <script>
-        function renderLatestBlogs(items){
-          var ul = document.getElementById('latest-blogs');
-          if(!ul) return;
-          ul.innerHTML = items.map(b =>
-            `<li><a href="/blog/${b.id}/${b.sefUrl}">${b.title}</a></li>`
-          ).join('') || '<li>مقاله‌ای یافت نشد</li>';
-        }
 
-        function fetchLatestBlogs(){
-          $.get('/Layout/LatestBlogs')
-            .done(renderLatestBlogs)
-            .fail(() => { /* ساکت */ });
-        }
-    </script>
+    @RenderSection("Scripts", required: false)
 </body>
 </html>

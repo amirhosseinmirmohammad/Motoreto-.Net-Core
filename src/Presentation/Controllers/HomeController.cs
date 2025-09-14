@@ -17,6 +17,7 @@ namespace Presentation.Controllers
             _userManager = userManager;
         }
 
+        [HttpGet]
         public IActionResult Index()
         {
             var vm = new HomeIndexViewModel
@@ -67,6 +68,8 @@ namespace Presentation.Controllers
 
             return View(vm);
         }
+
+        public IActionResult Error() => View();
 
         [HttpGet]
         public IActionResult GetCity(int stateId)
