@@ -1,0 +1,11 @@
+﻿<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(PWA.Components.Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(PWA.Components.Layout.MainLayout)">
+            <p role="alert">متأسفیم، صفحه‌ای که دنبال آن هستید وجود ندارد.</p>
+        </LayoutView>
+    </NotFound>
+</Router>
