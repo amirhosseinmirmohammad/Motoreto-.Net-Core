@@ -1,61 +1,83 @@
-﻿/* Motoreto PWA SW */
-const CACHE = 'motoreto-v1';
+﻿/* Motoreto PWA Service Worker */
+const CACHE_NAME = "motoreto-cache-v3";
+
 const PRECACHE_URLS = [
-    '/',                // صفحه اصلی
-    '/offline.html',    // صفحه آفلاین
-    '/Content/style.css?v=4.6',
-    '/Content/css/nav.css',
-    '/Content/js/main.js',
-    '/images/sadr_logo.png'
+    "/",                 // صفحه اصلی
+    "/offline.html",     // اگر ندارید موقتاً این خط را حذف کنید
+    "/css/site.min.css", // CSS bundle
+    "/js/site.min.js",   // JS bundle
+    "/images/sadr_logo.png"
 ];
 
-self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE).then((c) => c.addAll(PRECACHE_URLS)).then(() => self.skipWaiting())
-    );
+// ----------------------
+// نصب (Precache) — مقاوم به خطا
+// ----------------------
+self.addEventListener("install", (event) => {
+    event.waitUntil((async () => {
+        const cache = await caches.open(CACHE_NAME);
+
+        for (const url of PRECACHE_URLS) {
+            try {
+                const req = new Request(url, { cache: "reload" });
+                const res = await fetch(req);
+                if (!res.ok) throw new Error(`${res.status} ${url}`);
+                await cache.put(req, res.clone());
+                // console.log("[SW] precached:", url);
+            } catch (err) {
+                console.warn("[SW] precache skip:", url, err.message);
+            }
+        }
+        self.skipWaiting();
+    })());
 });
 
-self.addEventListener('activate', (event) => {
-    event.waitUntil(
-        caches.keys().then(keys =>
-            Promise.all(keys.filter(k => k.startsWith('motoreto-') && k !== CACHE).map(k => caches.delete(k)))
-        ).then(() => self.clients.claim())
-    );
+// ----------------------
+// فعال‌سازی (پاکسازی کش‌های قدیمی)
+// ----------------------
+self.addEventListener("activate", (event) => {
+    event.waitUntil((async () => {
+        const keys = await caches.keys();
+        await Promise.all(
+            keys
+                .filter(k => k.startsWith("motoreto-") && k !== CACHE_NAME)
+                .map(k => caches.delete(k))
+        );
+        await self.clients.claim();
+    })());
 });
 
-// ناوبری‌ها: شبکه-اول با فالبک آفلاین
-self.addEventListener('fetch', (event) => {
+// ----------------------
+// Fetch Strategy
+// ----------------------
+self.addEventListener("fetch", (event) => {
     const req = event.request;
+    const url = new URL(req.url);
 
-    // صفحات (HTML)
-    if (req.mode === 'navigate') {
+    // فقط http/https — درخواست‌های chrome-extension و ... را نادیده بگیر
+    if (url.protocol !== "http:" && url.protocol !== "https:") return;
+
+    // صفحات (HTML): شبکه‌اول با فالبک آفلاین
+    if (req.mode === "navigate") {
         event.respondWith((async () => {
             try {
-                const res = await fetch(req);
-                const cache = await caches.open(CACHE);
-                cache.put(req, res.clone());
-                return res;
-            } catch (e) {
-                const cached = await caches.match(req);
-                return cached || caches.match('/offline.html');
+                const fresh = await fetch(req);
+                const cache = await caches.open(CACHE_NAME);
+                cache.put(req, fresh.clone());
+                return fresh;
+            } catch {
+                return (await caches.match(req)) || (await caches.match("/offline.html"));
             }
         })());
         return;
     }
 
     // استاتیک‌ها: stale-while-revalidate
-    const url = new URL(req.url);
-    const isSameOrigin = url.origin === self.location.origin;
-    const isAsset = /\.(css|js|png|jpg|jpeg|webp|svg|woff2?)$/i.test(url.pathname);
-
-    if (isSameOrigin && isAsset) {
+    if (/\.(css|js|png|jpg|jpeg|webp|svg|woff2?)$/i.test(url.pathname)) {
         event.respondWith((async () => {
-            const cached = await caches.match(req);
-            const fetchPromise = fetch(req).then((res) => {
-                const copy = res.clone();
-                event.waitUntil(
-                    caches.open(CACHE).then(c => c.put(req, copy))
-                );
+            const cache = await caches.open(CACHE_NAME);
+            const cached = await cache.match(req, { ignoreSearch: true });
+            const fetchPromise = fetch(req).then(res => {
+                cache.put(req, res.clone());
                 return res;
             }).catch(() => cached);
             return cached || fetchPromise;

@@ -1,0 +1,26 @@
+﻿services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: motoreto-api:latest
+    environment:
+      ASPNETCORE_URLS: http://+:80
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "8080:80"
+    volumes:
+      - motoreto-logs:/var/log/motoreto   # اپ لاگ‌ها را اینجا می‌نویسد
+
+  fluent-bit:
+    image: fluent/fluent-bit:latest
+    container_name: fluent-bit
+    depends_on:
+      - app
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - motoreto-logs:/var/log/motoreto:ro  # Fluent Bit همان لاگ‌ها را فقط-خواندنی می‌خواند
+
+volumes:
+  motoreto-logs:

@@ -1,18 +1,22 @@
 ﻿@font-face {
-    font-family: "iransans-medium";
-    src: url("../fonts/IranSans/ttf/IRANSansWeb_Medium.ttf");
-}
-
-@font-face {
-    font-family: "iransans-light";
-    src: url("../fonts/IranSans/ttf/IRANSansWeb_Light.ttf");
-}
-
-@font-face {
-    font-family: "iransans-bold";
-    src: url('../fonts/IranSans/eot/IRANSansWeb_Bold.eot') format('eot'), url('../fonts/IranSans/woff/IRANSansWeb_Bold.woff') format('woff'), url('../fonts/IranSans/ttf/IRANSansWeb_Bold.ttf') format('truetype');
+    font-family: 'iransans-medium';
+    src: url('../fonts/IranSans/IranSansWeb_Medium.ttf') format('truetype');
     font-style: normal;
     font-weight: normal;
+}
+
+@font-face {
+    font-family: 'iransans-light';
+    src: url('../fonts/IranSans/IranSansWeb_Light.ttf') format('truetype');
+    font-style: normal;
+    font-weight: 300;
+}
+
+@font-face {
+    font-family: 'iransans-bold';
+    src: url('../fonts/IranSans/IranSansWeb_Bold.woff2') format('woff2'), url('../fonts/IranSans/IranSansWeb_Bold.woff') format('woff'), url('../fonts/IranSans/IranSansWeb_Bold.ttf') format('truetype'), url('../fonts/IranSans/IranSansWeb_Bold.eot'); /* IE */
+    font-style: normal;
+    font-weight: bold;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -4587,44 +4591,25 @@ h1, h3 {
     z-index: 1999;
 }
 
-/* دکمه تماس */
-.fab-call {
-    position: fixed;
-    right: 20px;
-    bottom: 20px; /* دسکتاپ */
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: linear-gradient(135deg,#ff851b,#ff6a00);
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 10px 24px rgba(255,106,0,.35);
-    transition: background .25s ease, box-shadow .25s ease;
-    z-index: 1000000; /* بالاتر از mobile-tabs */
-    overflow: visible;
+.fab-call:hover {
+    background: linear-gradient(135deg,#00016e,#0044cc);
+    box-shadow: 0 12px 26px rgba(0,1,110,.45);
 }
 
-    .fab-call:hover {
-        background: linear-gradient(135deg,#00016e,#0044cc);
-        box-shadow: 0 12px 26px rgba(0,1,110,.45);
-    }
+/* امواج */
+.fab-call::before, .fab-call::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid rgba(255,106,0,.4);
+    animation: waves 2.5s infinite;
+    z-index: -1;
+}
 
-    /* امواج */
-    .fab-call::before, .fab-call::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        border-radius: 50%;
-        border: 2px solid rgba(255,106,0,.4);
-        animation: waves 2.5s infinite;
-        z-index: -1;
-    }
-
-    .fab-call::after {
-        animation-delay: 1.2s;
-    }
+.fab-call::after {
+    animation-delay: 1.2s;
+}
 
 @keyframes waves {
     0% {

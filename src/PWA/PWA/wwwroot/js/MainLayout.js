@@ -5,19 +5,16 @@
    Helpers (Global funcs)
 ------------------------*/
 window.updateCartBadge = function (count) {
-    // هدر
     var $header = $("#shoppingCount");
     $header.text(count).addClass("update");
     setTimeout(function () { $header.removeClass("update"); }, 400);
 
-    // موبایل
     var $mobile = $("#shoppingCountMobile");
     if ($mobile.length) {
         $mobile.text(count).addClass("update");
         setTimeout(function () { $mobile.removeClass("update"); }, 400);
     }
 
-    // سایدمنو
     var $side = $("#shoppingCountSide");
     if ($side.length) {
         $side.text(count);
@@ -223,6 +220,13 @@ $(function () {
         });
     })();
 
+    // رفع هشدار ARIA: بعد از بسته‌شدن مودال فوکوس را به یک کنترل بیرونی برگردان
+    $('#pwa-install-modal').on('hidden.bs.modal', function () {
+        $(this).find(':focus').trigger('blur');
+        var trigger = document.getElementById('openMenuBtn');
+        if (trigger) trigger.focus();
+    });
+
 }); // end of DOM ready
 
 /* -----------------------
@@ -230,7 +234,7 @@ $(function () {
 ------------------------*/
 if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
-        navigator.serviceWorker.register("/sw.js")
+        navigator.serviceWorker.register("/sw.js", { scope: "/" })
             .catch(function (err) { console.warn("SW register failed", err); });
     });
 }
@@ -273,7 +277,10 @@ if ("serviceWorker" in navigator) {
     }
 
     function openModal() {
+        // فقط اگر مجازیم و یکی از این دو شرط برقرار است:
+        // 1) iOS Safari (راهنما)  2) رویداد beforeinstallprompt دریافت شده
         if (!shouldAsk()) return;
+        if (!isIOSSafari() && !deferredPrompt) return;
 
         if (isIOSSafari()) {
             var btnYes = document.querySelector(BTN_YES);
@@ -284,12 +291,8 @@ if ("serviceWorker" in navigator) {
             if (iosSteps) iosSteps.style.display = 'block';
         }
 
-        if (!deferredPrompt && !isIOSSafari()) return;
-
         if (window.jQuery && jQuery.fn && jQuery.fn.modal) {
             jQuery(MODAL).modal('show');
-        } else {
-            window.addEventListener('load', function () { jQuery(MODAL).modal('show'); }, { once: true });
         }
     }
 
@@ -300,7 +303,8 @@ if ("serviceWorker" in navigator) {
     });
 
     window.addEventListener('load', function () {
-        setTimeout(openModal, 800); // برای iOS
+        // برای iOS که beforeinstallprompt ندارد
+        setTimeout(openModal, 800);
     });
 
     document.addEventListener('click', function (e) {
@@ -419,3 +423,30 @@ if ("serviceWorker" in navigator) {
     }
     setTimeout(hideLoader, 7000);
 })();
+
+window.attachSnackbarReload = () => {
+    const btn = document.getElementById('reloadButton');
+    if (!btn) {
+        console.warn("⚠️ reloadButton not found in DOM");
+        return;
+    }
+    btn.addEventListener('click', () => {
+        console.log("🔄 Reloading...");
+        location.reload();
+    });
+};
+
+window.showErrorModal = function (message) {
+    console.log(message);
+    var $modal = $("#error-modal");
+    var $msg = $("#error-modal-message");
+    var text = message || "خطا در دریافت اطلاعات، لطفاً دوباره تلاش کنید";
+    if ($msg.length) $msg.text(text);
+
+    if (!$modal.length) { alert(text); return; }
+    if (window.jQuery && $.fn.modal) {
+        $modal.modal("show");
+    } else {
+        alert(text + " (bootstrap modal not available)");
+    }
+};

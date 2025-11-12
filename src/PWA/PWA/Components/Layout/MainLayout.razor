@@ -4,6 +4,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @inject HttpClient Http
+@inject IJSRuntime JS
 
 @code {
     private int CartCount = 0;
@@ -146,11 +147,12 @@
     <link rel="apple-touch-startup-image" media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/images/pwa/splash_screens/10.2__iPad_portrait.png">
     <link rel="apple-touch-startup-image" media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/images/pwa/splash_screens/9.7__iPad_Pro__7.9__iPad_mini__9.7__iPad_Air__9.7__iPad_portrait.png">
     <link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/images/pwa/splash_screens/8.3__iPad_Mini_portrait.png">
-    <link rel="stylesheet" href="/css/bootstrap.min.css" />
-    <link rel="stylesheet" href="/css/font-awesome.min.css" />
-    <link rel="stylesheet" href="/css/owl.carousel.css" />
-    <link rel="stylesheet" href="/css/style.css?v=6.7" />
-    <link rel="stylesheet" href="/css/nav.css" />
+    <!-- ========== CSS ========== -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/css/owl.carousel.css">
+    <link rel="stylesheet" href="/css/nav.css">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 
 <body id="totop">
@@ -299,17 +301,17 @@
                     </li>
                 }
             }
-            
+
             else
             {
-            <li>
-                <a href="/account/loginaccount">
-                    <span class="menu-icon-wrap">
-                        <span class="menu-icon"><i class="fa fa-user"></i></span>
-                    </span>
-                    حساب کاربری
-                </a>
-            </li>
+                <li>
+                    <a href="/account/loginaccount">
+                        <span class="menu-icon-wrap">
+                            <span class="menu-icon"><i class="fa fa-user"></i></span>
+                        </span>
+                        حساب کاربری
+                    </a>
+                </li>
             }
 
             <li>
@@ -331,6 +333,7 @@
     </aside>
 
     @Body
+
     @*<div class="map">
             <div id="map" style="width:100%;height:300px"></div>
         </div>*@
@@ -401,7 +404,7 @@
                     <div class="footer-menu">
                         <h2 class="footer-wid-title">آخرین مقالات</h2>
                         <ul>
-@*                             @foreach (var blog in content.Blogs.OrderByDescending(current => current.CreateDate).Where(current => current.IsVisible == true).Take(4).ToList())
+                            @*                             @foreach (var blog in content.Blogs.OrderByDescending(current => current.CreateDate).Where(current => current.IsVisible == true).Take(4).ToList())
                             {
                                 <li><a href="/blog/@blog.Id/@blog.SefUrl">@blog.Title</a></li>
                             } *@
@@ -575,16 +578,22 @@
         </div>
     </div>
 
+    <!-- ========== JAVASCRIPT ========== -->
+    <!-- jQuery -->
     <script src="/js/jquery-1.10.2.js"></script>
+
+    <!-- Bootstrap JS -->
     <script src="/js/bootstrap.min.js"></script>
-    <script src="/js/owl.carousel.min.js"></script>
+
+    <!-- سایر پلاگین‌ها -->
+    <script src="/js/jquery.easing.1.3.min.js"></script>
     <script src="/js/jquery.sticky.js"></script>
-    <script src="/js/main.js"></script>
+    <script src="/js/owl.carousel.min.js"></script>
     <script src="/js/bxslider.min.js"></script>
     <script src="/js/script.slider.js"></script>
-    <script src="/js/jquery-func.js"></script>
-    <script src="/js/move-top.js"></script>
-    <script src="/js/easing.js"></script>
+
+    <!-- اسکریپت‌های سایت -->
+    <script src="/js/main.js"></script>
     <script src="/js/MainLayout.js"></script>
 
 </body>

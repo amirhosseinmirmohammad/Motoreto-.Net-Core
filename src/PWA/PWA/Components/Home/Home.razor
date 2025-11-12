@@ -1,7 +1,594 @@
 ﻿@page "/"
+@using System.Net.Http.Json
+@inject HttpClient Http
+@inject IJSRuntime JS
 
-<PageTitle>Home</PageTitle>
+<PageTitle>موتورتو | فروش آنلاین قطعات خودرو</PageTitle>
 
-<h1>Hello, world!</h1>
+<HeadContent>
+    <!-- متاها -->
+    <meta name="description" content="فروشگاه اینترنتی موتورتو فعال در زمینه فروش انواع قطعات مصرفی خودرو شامل فیلتر روغن ، فیلتر هوا ، فیلتر بنزین ، فیلتر کابین ، روغن موتور و روانکار و غیره است ." />
+    <meta name="keywords" content="قطعات مصرفی خودرو" />
+    <meta property="og:title" content="موتورتو ، فروش آنلاین قطعات خودرو | Motoreto" />
+    <meta property="og:url" content="http://www.motoreto.ir/" />
+    <meta property="og:image" content="http://www.motoreto.ir/images/sadr_logo.png" />
+    <meta name="twitter:image" content="http://www.motoreto.ir/images/sadr_logo.png" />
 
-Welcome to your new app.
+    <!-- JSON-LD سازمان (همون section Styles قبلی) -->
+    <script type="application/ld+json">
+        {
+            "@@context": "http://schema.org",
+            "@@type": "Organization",
+            "name": "موتورتو",
+            "description": "موتورتو ، فروش آنلاین قطعات خودرو | Motoreto",
+            "logo": "http://www.motoreto.ir/images/sadr_logo.png",
+            "url": "http://www.motoreto.ir",
+            "sameAs": [
+                "https://www.instagram.com/motoreto.ir",
+                "https://telegram.me/motoreto.ir"
+            ],
+            "address": "تجریش خیابان شهرداری ساختمان 110",
+            "contactPoint": [{
+                "@@type": "ContactPoint",
+                "telephone": ["+98-21-22735588"],
+                "contactType": "customer service"
+            }]
+        }
+    </script>
+
+    <!-- استایل‌های خاص این صفحه (مثل قبل) -->
+    <link rel="stylesheet" type="text/css" href="library/engine1/style.css" />
+    <link href="Content/Professor/assets/css/form-elements.css" rel="stylesheet" />
+    <link href="Content/Professor/assets/css/style.css" rel="stylesheet" />
+    <link href="Content/Professor/assets/css/media-queries.css" rel="stylesheet" />
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.0/animate.compat.min.css"
+          integrity="sha256-Qj+zEEvubER4lO5l200c3UfufBOsKTgpsgJU0/t3CoU=" crossorigin="anonymous" />
+    <style>
+        .d-md-flex {
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</HeadContent>
+
+@if (isLoading)
+{
+    <!-- لودر ساده بدون Mud -->
+    <div class="container text-center" style="margin-top:80px;margin-bottom:80px;">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">در حال بارگذاری...</span>
+        </div>
+        <p class="mt-3">در حال دریافت اطلاعات...</p>
+    </div>
+}
+else
+{
+    <!-- ✅ هدر طلایی بالا -->
+    <div class="promo-area gold-bg firstshow">
+        <div class="zigzag-bottom"></div>
+        <div class="container">
+            <div class="text-center main_h1">
+                <h1 title="موتورتو ، فروش آنلاین قطعات خودرو | Motoreto">موتورتو ، فروش آنلاین قطعات خودرو | Motoreto</h1>
+                <h2>هوای ماشینتو داریم</h2>
+                <div class="wow bounceIn">
+                    <img src="images/sadr_logo.png"
+                         width="100" height="100"
+                         class="spin-slow"
+                         alt="موتورتو"
+                         style="background-color:#ffffff;border-radius:25px;" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ اسلایدر (بر اساس model.Sliders) -->
+    @if (model?.Sliders != null && model.Sliders.Count > 0)
+    {
+        <br />
+        <br />
+        <div class="container">
+            <div id="wowslider-container1">
+                <div class="ws_images">
+                    <ul>
+                        @for (int i = 0; i < model.Sliders.Count; i++)
+                        {
+                            var item = model.Sliders[i];
+                            if (string.IsNullOrWhiteSpace(item.Link))
+                            {
+                                <li>
+                                    <a href="#">
+                                        <img src="@item.Image" alt="موتورتو" title="موتورتو" id="wows1_@i" />
+                                    </a>
+                                </li>
+                            }
+                            else
+                            {
+                                <li>
+                                    <a href="@item.Link">
+                                        <img src="@item.Image" alt="موتورتو" title="موتورتو" id="wows1_@i" />
+                                    </a>
+                                </li>
+                            }
+                        }
+                    </ul>
+                </div>
+                <div class="ws_bullets">
+                    <div>
+                        @foreach (var item in model.Sliders)
+                        {
+                            if (string.IsNullOrWhiteSpace(item.Link))
+                            {
+                                <a href="#">
+                                    <span>
+                                        <img src="@item.Image" alt="موتورتو" title="موتورتو" />
+                                    </span>
+                                </a>
+                            }
+                            else
+                            {
+                                <a href="@item.Link" title="موتورتو">
+                                    <span>
+                                        <img src="@item.Image" alt="موتورتو" title="موتورتو" />
+                                    </span>
+                                </a>
+                            }
+                        }
+                    </div>
+                </div>
+                <div class="ws_shadow"></div>
+            </div>
+        </div>
+        <br />
+    }
+
+    <!-- ✅ پیام خدمات تعمیر در محل -->
+    <div class="container">
+        <div class="alert-custom wow fadeInUp" data-wow-delay="0.5s">
+            <span>تمامی خدمات تعمیر و تعویض توسط <b>موتورتو</b> در محل شما انجام می‌شود .</span>
+            <i class="fa fa-wrench"></i>
+        </div>
+    </div>
+
+    <!-- ✅ بنر + سرچ با select2 (همون HTML قدیم) -->
+    <div class="banner_gldchpvt position-relative">
+        <div class="container rtl-direction">
+            <div class="row">
+                <div class="col-md-12 col-xs-12 pull-right">
+                    <div class="d-md-flex">
+                        <div class="gldch_banner_txt">
+                            <h3 class="gldch_pvt-title">هرگونه کالایی را در موتورتو پیدا کنید</h3>
+                            <p class="text-sty-banner">پس از ثبت سفارش با بالاترین سرعت محصولات به دست شما میرسد</p>
+                            <br />
+                            <div class="text-center">
+                                <form autocomplete="off" action="/home/search" method="get" id="main_search">
+                                    <div class="autocomplete" style="width:100%;">
+                                        <select class="js-example-data-ajax" name="id" required>
+                                            <option selected value="">به چه محصولاتی نیاز دارید ؟</option>
+                                        </select>
+                                        <button type="submit" class="btn button-style">
+                                            <i class="fa fa-search"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div><br />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ دسته‌بندی اصلی (ParentId == null) -->
+    @if (model?.Categories != null && model.Categories.Count > 0)
+    {
+        <div class="container categories-section" id="categories">
+            <div class="categories-grid">
+                @foreach (var cat in model.Categories
+                        .Where(c => c.ParentId == null)
+                        .OrderBy(c => c.PersianName == "سایر قطعات" ? 1 : 0))
+                {
+                    <div class="category-card" data-toggle="modal" data-target="#modal-@cat.Id">
+                        <img src="@(string.IsNullOrEmpty(cat.SmallImage) ? "images/sadr_logo.png" : cat.SmallImage)"
+                             alt="@cat.PersianName" title="@cat.PersianName" />
+                        <h4>@cat.PersianName</h4>
+                    </div>
+
+                    <!-- Modal برای زیر دسته‌های این دسته -->
+                    <div class="modal fade subcategory-modal" id="modal-@cat.Id" tabindex="-1" role="dialog" aria-hidden="true">
+                        <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">@cat.PersianName</h5>
+                                </div>
+                                <div class="modal-body" id="modal-content-category">
+                                    <input type="text" class="form-control mb-10 subcat-search"
+                                           placeholder="جستجو ..." data-target="#list-@cat.Id" />
+                                    <div id="list-@cat.Id" class="subcat-scroll">
+                                        <ul class="subcat-items"></ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <br />
+    <br />
+
+    <section class="marquee">
+        <div class="marquee__inner" aria-hidden="true">
+            <ul class="marquee__track">
+                <li>اصالت کالا</li>
+                <li>زیر قیمت بازار</li>
+                <li>نصب و تعویض در محل</li>
+                <li>ارسال سریع</li>
+                <li>پشتیبانی ۲۴/۷</li>
+            </ul>
+
+            <ul class="marquee__track">
+                <li>اصالت کالا</li>
+                <li>زیر قیمت بازار</li>
+                <li>نصب و تعویض در محل</li>
+                <li>ارسال سریع</li>
+                <li>پشتیبانی ۲۴/۷</li>
+            </ul>
+        </div>
+    </section>
+
+    <br />
+
+    <!-- ✅ دسته‌بندی بر اساس نوع خودرو -->
+    @if (model?.Categories != null && model.Categories.Any(c => c.ParentId != null))
+    {
+        var carCats = model.Categories
+            .Where(c => c.ParentId != null)
+            .GroupBy(s => s.PersianName)
+            .Select(g => g.First())
+            .OrderBy(s => s.PersianName == "بدون مدل" ? 1 : 0)
+            .ThenBy(s => s.PersianName)
+            .ToList();
+
+        <div class="container">
+            <h3 class="section-title text-center">دسته‌بندی بر اساس نوع خودرو</h3>
+            <div class="car-slider-wrapper">
+                <button class="car-prev">›</button>
+
+                <div class="car-slider">
+                    @foreach (var sub in carCats)
+                    {
+                        <div class="car-category-item text-center">
+                            <a href="@($"/product/bycar/{Uri.EscapeDataString(sub.PersianName)}")">
+                                <div class="car-circle">
+                                    <img src="@(string.IsNullOrEmpty(sub.SmallImage) ? "images/sadr_logo.png" : sub.SmallImage)"
+                                         alt="@sub.PersianName" title="@sub.PersianName" />
+                                </div>
+                                <h5 class="car-name">@sub.PersianName</h5>
+                            </a>
+                        </div>
+                    }
+                </div>
+
+                <button class="car-next">‹</button>
+            </div>
+        </div>
+    }
+
+    <!-- ✅ پیشنهاد شگفت‌انگیز -->
+    @if (model?.Wonder != null && model.Wonder.WonderDate.HasValue)
+    {
+        var finalDate = model.Wonder.WonderDate.Value
+            .AddDays(model.Wonder.Day ?? 0)
+            .AddHours(model.Wonder.Hour ?? 0)
+            .AddMinutes(model.Wonder.Minute ?? 0);
+
+        if (DateTime.Now.Date < finalDate.Date)
+        {
+            <br />
+            <div class="container wow bounceIn" data-wow-delay="0.6s" id="wonder">
+                <div class="py-xl-5 py-lg-3">
+                    <h3 class="title-w3 text-bl text-center font-weight-bold">پیشنهاد شگفت انگیز</h3>
+                    <p class="title-sub mb-5 text-center">موتورتو</p>
+                </div>
+                <div class="row" style="direction:rtl!important;">
+                    <div class="col-md-8 col-xs-12 text-center wond">
+                        <a href="@($"/product/{model.Wonder.SefUrl}")">
+                            <img src="@model.Wonder.AppLargeImage"
+                                 width="250"
+                                 alt="@model.Wonder.PersianName"
+                                 title="@model.Wonder.PersianName"
+                                 class="img-fluid img-responsive" />
+                            <br />
+                            <b style="direction:rtl">@model.Wonder.PersianName</b>
+                        </a>
+                    </div>
+                    <div class="col-md-4 col-xs-12 text-center">
+                        <p style="font-size:32px !important; color:#e31e24 !important;
+                                                          padding-top:75px !important; direction:ltr !important;"
+                           id="wonderful" class="text-center">
+                        </p>
+                        <span>زمان باقی مانده</span><br />
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                var countDownDate = new Date("@string.Format("{0:MMMM dd, yyyy HH:mm:ss}", finalDate)").getTime();
+                var x = setInterval(function () {
+                    var now = new Date().getTime();
+                    var distance = countDownDate - now;
+
+                    var days = Math.floor(distance / (1000 * 60 * 60 * 24));
+                    var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                    var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                    var el = document.getElementById("wonderful");
+                    if (el) {
+                        el.innerHTML = days + " : " + hours + " : "
+                            + minutes + " : " + seconds + " ";
+                    }
+
+                    if (distance < 0) {
+                        clearInterval(x);
+                        if (el) el.innerHTML = "EXPIRED";
+                    }
+                }, 1000);
+            </script>
+        }
+    }
+
+    <!-- ✅ محصولات جدید -->
+    @if (model?.LatestProducts != null && model.LatestProducts.Count > 0)
+    {
+        <div class="maincontent-area wow slideInRight" id="specialproducts">
+            <div class="zigzag-bottom"></div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="latest-product">
+                            <h3 class="section-title">محصولات جدید</h3>
+                            <div class="product-carousel">
+                                @foreach (var item in model.LatestProducts)
+                                {
+                                    <div class="single-product">
+                                        <div class="product-f-image">
+                                            @if (!string.IsNullOrEmpty(item.SiteFirstImage))
+                                            {
+                                                <img src="@item.SiteFirstImage" alt="@item.PersianName" title="@item.PersianName" />
+                                            }
+                                            else
+                                            {
+                                                <img src="images/sadr_logo.png" alt="@item.PersianName" title="@item.PersianName" />
+                                            }
+                                            <div class="product-hover">
+                                                @if (item.Stock > 0)
+                                                {
+                                                    <a class="add-to-cart-link btncard"
+                                                       productid="@item.Id"
+                                                       href="@($"/Home/Basket/{item.Id}")">
+                                                        <i class="fa fa-shopping-cart"></i> سبد خرید
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a class="add-to-cart-link" productid="@item.Id">
+                                                        <i class="fa fa-lock"></i>ناموجود
+                                                    </a>
+                                                }
+                                                <a href="@($"/Product/{item.SefUrl}")"
+                                                   class="view-details-link">
+                                                    <i class="fa fa-link"></i> جزئیات
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div class="product-title">
+                                            <h2>
+                                                <a href="@($"/Product/{item.SefUrl}")">
+                                                    @item.PersianName
+                                                </a>
+                                            </h2>
+                                            <div class="product-carousel-price">
+                                                @if (item.DiscountPercent > 0)
+                                                {
+                                                    var priceWithDiscount =
+                                                    item.UnitPrice - (item.UnitPrice * item.DiscountPercent / 100);
+
+                                                    <ins>@priceWithDiscount.ToString("N0") ریال</ins>
+                                                    <del>@item.UnitPrice.ToString("N0")</del>
+                                                }
+                                                else
+                                                {
+                                                    <ins>@item.UnitPrice.ToString("N0") ریال</ins>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div> <!-- product-carousel -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ✅ محصولات ویژه -->
+    @if (model?.SpecialProducts != null && model.SpecialProducts.Count > 0)
+    {
+        <br />
+        <div class="maincontent-area wow slideInRight" id="specialproducts2">
+            <div class="zigzag-bottom"></div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="latest-product">
+                            <h3 class="section-title">محصولات ویژه</h3>
+                            <div class="product-carousel">
+                                @foreach (var item in model.SpecialProducts)
+                                {
+                                    <div class="single-product">
+                                        <div class="product-f-image">
+                                            <img src="@item.SiteFirstImage" alt="@item.PersianName" title="@item.PersianName" />
+                                            <div class="product-hover">
+                                                @if (item.Stock > 0)
+                                                {
+                                                    <a class="add-to-cart-link btncard"
+                                                       productid="@item.Id"
+                                                       href="@($"/Home/Basket/{item.Id}")">
+                                                        <i class="fa fa-shopping-cart"></i> سبد خرید
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a class="add-to-cart-link" productid="@item.Id">
+                                                        <i class="fa fa-lock"></i>ناموجود
+                                                    </a>
+                                                }
+                                                <a href="@($"/Product/{item.SefUrl}")"
+                                                   class="view-details-link">
+                                                    <i class="fa fa-link"></i> جزئیات
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <h2>
+                                            <a href="@($"/Product/{item.SefUrl}")">@item.PersianName</a>
+                                        </h2>
+
+                                        <div class="product-carousel-price">
+                                            @if (item.DiscountPercent > 0)
+                                            {
+                                                var priceWithDiscount =
+                                                item.UnitPrice - (item.UnitPrice * item.DiscountPercent / 100);
+
+                                                <ins>@priceWithDiscount.ToString("N0") ریال</ins>
+                                                <del>@item.UnitPrice.ToString("N0")</del>
+                                            }
+                                            else
+                                            {
+                                                <ins>@item.UnitPrice.ToString("N0") ریال</ins>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div> <!-- product-carousel -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@if (_hasLoadError)
+{
+    <script>
+        window.addEventListener('load', function () {
+            if (window.showErrorModal) {
+                window.showErrorModal("@(_errorMessage ?? "خطا در دریافت اطلاعات، لطفاً دوباره تلاش کنید")");
+            } else {
+                alert("@(_errorMessage ?? "خطا در دریافت اطلاعات، لطفاً دوباره تلاش کنید")");
+            }
+        });
+    </script>
+}
+
+@code {
+    private HomeIndexViewModel? model;
+    private bool isLoading = true;
+
+    // برای مدیریت خطا
+    private bool _hasLoadError = false;
+    private string? _errorMessage;
+    private bool _errorModalShown = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            model = await Http.GetFromJsonAsync<HomeIndexViewModel>("home/index");
+        }
+        catch
+        {
+            _hasLoadError = true;
+            _errorMessage = "خطا در دریافت اطلاعات، لطفاً دوباره تلاش کنید";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_hasLoadError && !_errorModalShown)
+        {
+            try
+            {
+                await JS.InvokeVoidAsync("showErrorModal", _errorMessage);
+                _errorModalShown = true;   // فقط یک بار
+            }
+            catch (Microsoft.JSInterop.JSException jsEx)
+            {
+                Console.WriteLine($"JS error in showErrorModal: {jsEx.Message}");
+                _errorModalShown = true;   // نذار بی‌نهایت تلاش کنه
+            }
+            catch (InvalidOperationException)
+            {
+                // در prerender اینجا می‌افتیم؛ instance بعدی (interactive)
+                // دوباره OnAfterRenderAsync اجرا می‌شود
+            }
+        }
+    }
+
+    // بقیه DTO ها همون که قبلاً نوشتم:
+    public class HomeIndexViewModel
+    {
+        public List<SliderDto> Sliders { get; set; } = new();
+        public List<CategoryDto> Categories { get; set; } = new();
+        public List<ProductDto> LatestProducts { get; set; } = new();
+        public List<ProductDto> SpecialProducts { get; set; } = new();
+        public ProductDto? Wonder { get; set; }
+    }
+
+    public class SliderDto
+    {
+        public string Title { get; set; }
+        public string Image { get; set; }
+        public string Link { get; set; }
+    }
+
+    public class CategoryDto
+    {
+        public int Id { get; set; }
+        public string PersianName { get; set; }
+        public string SmallImage { get; set; }
+        public int? ParentId { get; set; }
+    }
+
+    public class ProductDto
+    {
+        public int Id { get; set; }
+        public string PersianName { get; set; }
+        public string SiteFirstImage { get; set; }
+        public int UnitPrice { get; set; }
+        public int DiscountPercent { get; set; }
+        public string SefUrl { get; set; }
+        public int Stock { get; set; }
+
+        public DateTime? WonderDate { get; set; }
+        public int? Day { get; set; }
+        public int? Hour { get; set; }
+        public int? Minute { get; set; }
+        public string AppLargeImage { get; set; }
+
+        public bool IsSpecial { get; set; }
+        public bool IsWonderful { get; set; }
+        public DateTime CreateDate { get; set; }
+    }
+}
+

@@ -23,31 +23,9 @@
       "purpose": "maskable any"
     }
   ],
-  "shortcuts": [
-    {
-      "name": "سبد خرید",
-      "short_name": "سبد",
-      "url": "/Home/Cart",
-      "icons": [
-        {
-          "src": "/images/pwa/cart.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "دسته‌بندی‌ها",
-      "short_name": "دسته‌ها",
-      "url": "/#categories",
-      "icons": [
-        {
-          "src": "/images/pwa/cat.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    }
-  ],
-  "categories": [ "shopping", "automotive", "business" ]
+  "categories": [
+    "shopping",
+    "automotive",
+    "business"
+  ]
 }

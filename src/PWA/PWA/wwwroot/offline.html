@@ -1,25 +1,53 @@
-﻿<!doctype html>
+﻿<!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>آفلاین</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>آفلاین | موتورتو</title>
     <style>
         body {
-            font-family: tahoma,iransans,system-ui;
-            padding: 24px;
-            text-align: center
+            font-family: "iransans", sans-serif;
+            background: #f4f4f4;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
         }
 
-        a {
-            display: inline-block;
-            margin-top: 12px
+        .logo {
+            width: 100px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 10px;
+            color: #00016e;
+        }
+
+        p {
+            font-size: 1rem;
+            margin: 0 0 20px;
+        }
+
+        .btn {
+            background: #00016e;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 1rem;
         }
     </style>
 </head>
 <body>
-    <h3>اتصال اینترنت قطع است</h3>
-    <p>برای ادامه خرید، لطفاً اتصال خود را بررسی کنید.</p>
-    <a href="/">بازگشت به صفحه اصلی</a>
+    <img src="/images/sadr_logo.png" alt="Motoreto Logo" class="logo" />
+    <h1>اتصال اینترنت قطع است</h1>
+    <p>برای ادامه استفاده از موتورتو، لطفاً اینترنت خود را وصل کنید.</p>
+    <a href="/" class="btn">تلاش دوباره</a>
 </body>
 </html>
