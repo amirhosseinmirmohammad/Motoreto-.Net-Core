@@ -1,1 +1,70 @@
-test
+name: CI-CD Docker Motoreto
+
+on:
+  push:
+    branches: [ "main" ]        # هر push روی main → build + push
+    tags: [ "v*" ]              # هر تگ v1.0.0 مثلاً → build + push
+  pull_request:
+    branches: [ "main" ]        # برای PR فقط build و تست انجام می‌شود
+  workflow_dispatch:             # اجرا دستی از تب Actions
+
+env:
+  DOTNET_VERSION: "9.0.x"
+  IMAGE_NAME: "motoreto"
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore Motoreto.sln
+
+      - name: Build
+        run: dotnet build Motoreto.sln --configuration Release --no-restore
+
+      # اگر تست‌پروژه اضافه کردی، اینجا dotnet test رو برایش صدا بزن
+      # - name: Test
+      #   run: dotnet test Motoreto.Tests/Motoreto.Tests.csproj --configuration Release --no-build
+
+  docker_build_and_push:
+    needs: build_and_test       # اول job بالا باید موفق شود
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set image tag
+        id: vars
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            TAG="${GITHUB_REF_NAME}"
+          else
+            TAG="latest"
+          fi
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: src/Presentation/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.vars.outputs.tag }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
