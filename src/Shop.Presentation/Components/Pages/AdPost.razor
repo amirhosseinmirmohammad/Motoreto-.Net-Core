@@ -138,6 +138,11 @@ else
                 </div>
             </div>
 
+            <div class="col-md-4">
+                <label class="form-label small text-muted">سؤال امنیتی: @_capA + @_capB = ?</label>
+                <InputNumber @bind-Value="_capAnswer" class="form-control" />
+            </div>
+
             <div class="col-12">
                 <label class="form-label small text-muted d-block">تعهد آگهی‌دهنده</label>
                 <div class="form-check">
@@ -197,6 +202,17 @@ else
     private void SetVal(int id, string v) => _vals[id] = v;
     private void SetBool(int id, bool on) => _vals[id] = on ? "true" : "false";
 
+    // ---- کپچای ریاضی ----
+    private int _capA, _capB, _capAnswer;
+    private string _capInput = "";
+    private string CapInput { get => _capInput; set => _capInput = value ?? string.Empty; }
+    private void RegenerateCaptcha()
+    {
+        _capA = Random.Shared.Next(2, 9);
+        _capB = Random.Shared.Next(2, 9);
+        _capInput = "";
+    }
+
     protected override async Task OnInitializedAsync()
     {
         _cats = await Db.ClassifiedCategories.AsNoTracking()
@@ -204,6 +220,8 @@ else
             .Select(c => new ClassifiedCategory { Id = c.Id, Name = c.Name, Icon = c.Icon })
             .ToListAsync();
         _cities = await Db.Cities.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
+
+        RegenerateCaptcha();
 
         var auth = await AuthState.GetAuthenticationStateAsync();
         var uid = Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var g) ? g : Guid.Empty;
@@ -268,11 +286,28 @@ else
             _attrs.Select(a => new { name = a.Name, value = Val(a.Id) })
                   .Where(x => !string.IsNullOrWhiteSpace(x.value)));
 
+        // کپچای ریاضی (ضداسپم)
+        if (_capAnswer != _capA + _capB)
+        {
+            _err = "پاسخ کپچا اشتباه است.";
+            RegenerateCaptcha();
+            return;
+        }
+
         _busy = true;
         try
         {
             var auth = await AuthState.GetAuthenticationStateAsync();
             var uid = Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+
+            // سقف ضداسپم: حداکثر ۵ آگهی در روز برای هر کاربر
+            var todayCount = await Db.ClassifiedAds.CountAsync(a => a.UserId == uid && a.CreatedAt >= DateTime.UtcNow.Date);
+            if (todayCount >= 5)
+            {
+                _err = "سقف ثبت آگهی روزانه (۵ آگهی) پر شده است — فردا دوباره تلاش کنید.";
+                _busy = false;
+                return;
+            }
 
             // مدل دیوار: سهمیهٔ رایگان در هر دسته؛ عبور از سقف → آگهی پولی از کیف پول
             var cat = await Db.ClassifiedCategories.AsNoTracking().FirstAsync(c => c.Id == _catId);

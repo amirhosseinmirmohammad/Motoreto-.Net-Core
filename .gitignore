@@ -296,3 +296,4 @@ FakesAssemblies/
 # runtime logs
 server*.log
 src/Shop.Presentation/Logs/
+backups/

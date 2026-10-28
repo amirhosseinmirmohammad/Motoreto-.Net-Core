@@ -339,6 +339,12 @@ app.MapPost("/aff/lead/{code}", async (string code, IFormCollection form, Applic
             "classified-expire-cleanup",
             j => j.ExpireAndCleanupAsync(),
             Hangfire.Cron.HourInterval(1));
+
+        // بکاپ روزانه دیتابیس — ۰۳:۳۰ به وقت سرور
+        Hangfire.RecurringJob.AddOrUpdate<Shop.Infrastructure.Background.DatabaseBackupJob>(
+            "database-backup",
+            j => j.RunAsync(),
+            "30 3 * * *");
     }
 
     // ---------- CORS داینامیک (از SiteSettings) ----------

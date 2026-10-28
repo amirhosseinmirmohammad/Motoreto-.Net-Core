@@ -55,6 +55,9 @@ else if (_ad is not null)
     private bool _busy;
     private Guid _uid;
     private bool _isOwner;
+
+    private static readonly object SendLock = new();
+    private static readonly Dictionary<Guid, DateTime> _lastSent = new();
     private string? _filterErr;
     private AdHead? _ad;
     private List<Msg> _messages = new();
@@ -101,6 +104,17 @@ else if (_ad is not null)
     private async Task SendAsync()
     {
         if (string.IsNullOrWhiteSpace(_text)) return;
+
+        // محدودیت نرخ: حداکثر یک پیام هر ۲۰ ثانیه برای هر کاربر
+        lock (SendLock)
+        {
+            if (_lastSent.TryGetValue(_uid, out var last) && (DateTime.UtcNow - last).TotalSeconds < 20)
+            {
+                _filterErr = "کمی آهسته‌تر — بین پیام‌ها حداقل ۲۰ ثانیه فاصله بگذارید.";
+                return;
+            }
+            _lastSent[_uid] = DateTime.UtcNow;
+        }
 
         // فیلتر محتوای غیراخلاقی — قانون پروژه
         _filterErr = Shop.Shared.ContentFilter.ViolationMessage(_text);

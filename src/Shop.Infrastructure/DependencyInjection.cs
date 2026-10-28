@@ -98,6 +98,7 @@ public static class DependencyInjection
             .UsePostgreSqlStorage(o => o.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"))));
         services.AddHangfireServer();
         services.AddScoped<Background.ClassifiedJobs>();
+        services.AddScoped<Background.DatabaseBackupJob>();
 
         // ---- Seed اولیه ----
         services.AddScoped<DataSeeder>();

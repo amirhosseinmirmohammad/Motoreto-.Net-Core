@@ -288,6 +288,9 @@ else
 
     private Guid _myUid;
 
+    private static readonly object ChatLock = new();
+    private static readonly Dictionary<Guid, DateTime> _lastSent = new();
+
     private async Task ToggleFavAsync()
     {
         _favBusy = true;
@@ -318,6 +321,17 @@ else
     {
         _chatErr = Shop.Shared.ContentFilter.ViolationMessage(_chatText);
         if (_chatErr is not null) return;
+
+        // محدودیت نرخ
+        lock (ChatLock)
+        {
+            if (_lastSent.TryGetValue(_myUid, out var last) && (DateTime.UtcNow - last).TotalSeconds < 20)
+            {
+                _chatErr = "کمی آهسته‌تر — بین پیام‌ها حداقل ۲۰ ثانیه فاصله بگذارید.";
+                return;
+            }
+            _lastSent[_myUid] = DateTime.UtcNow;
+        }
 
         _chatBusy = true;
         try
