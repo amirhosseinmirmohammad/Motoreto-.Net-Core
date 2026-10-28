@@ -78,25 +78,40 @@ else
         }
     </div>
 
-    <div class="card border-0 shadow-sm rounded-4 p-4">
-        <h6 class="fw-bold mb-3">گفتگوهای من (پیام‌هایی که فرستاده‌ام یا پاسخ گرفته‌ام)</h6>
-        @if (_myChats.Count == 0)
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+        <h6 class="fw-bold mb-3">جستجوهای ذخیره‌شده</h6>
+        @if (_searches.Count == 0)
         {
-            <p class="text-muted small mb-0">گفتگویی وجود ندارد. از صفحهٔ هر آگهی می‌توانید به آگهی‌دهنده پیام دهید.</p>
+            <p class="text-muted small mb-0">جستجویی ذخیره نکرده‌اید — از صفحه آگهی‌ها با دکمه «ذخیره جستجو».</p>
         }
         else
         {
-            @foreach (var c in _myChats)
+            @foreach (var s in _searches)
             {
-                <NavLink href="@($"/panel/ads/chat/{c.AdId}")" class="text-decoration-none text-dark">
-                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
-                        <div>
-                            <b>@c.Title</b>
-                            <div class="small text-muted">آخرین پیام: @c.LastText</div>
-                        </div>
-                        <span class="small text-muted">@c.LastAt.ToPersianDateTime()</span>
-                    </div>
-                </NavLink>
+                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <NavLink href="@SearchLink(s)" class="small text-decoration-none text-dark">
+                        <i class="bi bi-search me-1"></i>@SearchLabel(s)
+                    </NavLink>
+                    <button class="btn btn-sm btn-outline-danger py-0" disabled="@_busy" @onclick="() => DeleteSearchAsync(s.Id)">حذف</button>
+                </div>
+            }
+        }
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h6 class="fw-bold mb-3">❤️ آگهی‌های ذخیره‌شده</h6>
+        @if (_favs.Count == 0)
+        {
+            <p class="text-muted small mb-0">آگهی ذخیره‌شده‌ای ندارید — از صفحه هر آگهی با دکمه «ذخیره آگهی».</p>
+        }
+        else
+        {
+            @foreach (var f in _favs)
+            {
+                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <NavLink href="@($"/ads/{f.AdId}")" class="small text-decoration-none text-dark">@f.Title</NavLink>
+                    <button class="btn btn-sm btn-outline-danger py-0" disabled="@_busy" @onclick="() => UnfavAsync(f.Id)">حذف</button>
+                </div>
             }
         }
     </div>
@@ -108,11 +123,16 @@ else
     private Guid _uid;
     private List<AdRow> _myAds = new();
     private List<ChatRow> _myChats = new();
+    private List<FavRow> _favs = new();
+    private List<SearchRow> _searches = new();
+    private Dictionary<int, CatPrices> _catPrices = new();
+    private Dictionary<int, string> _catNames = new();
 
     private sealed record AdRow(long Id, string Title, long? Price, ClassifiedAdStatus Status, long ViewCount, int CatId, bool Featured, bool Urgent, DateTime? ExpiresAt);
     private sealed record ChatRow(long AdId, string Title, string LastText, DateTime LastAt);
+    private sealed record FavRow(long Id, long AdId, string Title);
+    private sealed record SearchRow(long Id, string? Q, string? CatName, string? CityName);
     private sealed record CatPrices(long Bump, long Urgent, long Combo);
-    private Dictionary<int, CatPrices> _catPrices = new();
 
     private static class K
     {
@@ -136,7 +156,31 @@ else
             .Select(c => new { c.Id, c.BumpPrice, c.UrgentPrice, c.ComboPrice })
             .ToDictionaryAsync(c => c.Id, c => new CatPrices(c.BumpPrice, c.UrgentPrice, c.ComboPrice));
 
-        // گفتگوها: آگهی‌هایی که در آن‌ها پیام فرستاده‌ام یا مالکشان هستم
+        _catNames = await Db.ClassifiedCategories.AsNoTracking()
+            .Select(c => new { c.Id, c.Name })
+            .ToDictionaryAsync(c => c.Id, c => c.Name);
+
+        var cityNames = await Db.Cities.AsNoTracking().Select(c => new { c.Id, c.Name }).ToDictionaryAsync(c => c.Id, c => c.Name);
+
+        _favs = (await Db.ClassifiedFavorites.AsNoTracking()
+                .Where(f => f.UserId == _uid)
+                .OrderByDescending(f => f.Id)
+                .Select(f => new { f.Id, f.AdId, AdTitle = f.Ad.Title })
+                .ToListAsync())
+            .Select(f => new FavRow(f.Id, f.AdId, f.AdTitle))
+            .ToList();
+
+        var searches = await Db.ClassifiedSavedSearches.AsNoTracking()
+            .Where(s => s.UserId == _uid)
+            .OrderByDescending(s => s.Id)
+            .ToListAsync();
+        _searches = searches.Select(s => new SearchRow(
+            s.Id, s.Q,
+            s.CatId is null ? null : _catNames.GetValueOrDefault(s.CatId.Value),
+            s.CityId is null ? null : cityNames.GetValueOrDefault(s.CityId.Value))).ToList();
+        _searchesRaw = searches.ToDictionary(s => s.Id, s => s.CatId);
+        _searchesRawCity = searches.ToDictionary(s => s.Id, s => s.CityId);
+
         var chatAdIds = await Db.ClassifiedChatMessages
             .Where(m => m.UserId == _uid || m.Ad.UserId == _uid)
             .Select(m => m.AdId)
@@ -163,6 +207,22 @@ else
         _loading = false;
     }
 
+    private string SearchLabel(SearchRow s) => (s.Q ?? "همه آگهی‌ها")
+        + (s.CatName is null ? "" : " • " + s.CatName)
+        + (s.CityName is null ? "" : " • " + s.CityName);
+
+    private string SearchLink(SearchRow s)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(s.Q)) parts.Add("q=" + Uri.EscapeDataString(s.Q));
+        if (_searchesRaw.TryGetValue(s.Id, out var catId) && catId is not null) parts.Add("cat=" + catId);
+        if (_searchesRawCity.TryGetValue(s.Id, out var cityId) && cityId is not null) parts.Add("city=" + cityId);
+        return "/ads" + (parts.Count == 0 ? "" : "?" + string.Join("&", parts));
+    }
+
+    private Dictionary<long, int?> _searchesRaw = new();
+    private Dictionary<long, int?> _searchesRawCity = new();
+
     private async Task ToggleSoldAsync(long id)
     {
         _busy = true;
@@ -177,13 +237,13 @@ else
     {
         _busy = true;
         await Db.ClassifiedChatMessages.Where(m => m.AdId == id && m.Ad.UserId == _uid).ExecuteDeleteAsync();
+        await Db.ClassifiedFavorites.Where(f => f.AdId == id).ExecuteDeleteAsync();
         await Db.ClassifiedAds.Where(a => a.Id == id && a.UserId == _uid).ExecuteDeleteAsync();
         _msg = "آگهی حذف شد ✓";
         await OnInitializedAsync();
         _busy = false;
     }
 
-    /// <summary>تمدید آگهی ۳۰ روز دیگر (رایگان — آگهی تأییدشده قبلی).</summary>
     private async Task RenewAsync(long id)
     {
         _busy = true;
@@ -246,6 +306,22 @@ else
         {
             _busy = false;
         }
+    }
+
+    private async Task DeleteSearchAsync(long id)
+    {
+        _busy = true;
+        await Db.ClassifiedSavedSearches.Where(s => s.Id == id && s.UserId == _uid).ExecuteDeleteAsync();
+        await OnInitializedAsync();
+        _busy = false;
+    }
+
+    private async Task UnfavAsync(long id)
+    {
+        _busy = true;
+        await Db.ClassifiedFavorites.Where(f => f.Id == id && f.UserId == _uid).ExecuteDeleteAsync();
+        await OnInitializedAsync();
+        _busy = false;
     }
 
     private static string StatusText(ClassifiedAdStatus s) => s switch

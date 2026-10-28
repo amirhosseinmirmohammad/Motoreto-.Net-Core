@@ -115,6 +115,31 @@ public class ClassifiedAd
     public virtual List<ClassifiedChatMessage> ChatMessages { get; set; } = [];
 }
 
+/// <summary>آگهی ذخیره‌شده (علاقه‌مندی دیوار).</summary>
+public class ClassifiedFavorite
+{
+    public long Id { get; set; }
+    public Guid UserId { get; set; }
+    public virtual User User { get; set; } = default!;
+    public long AdId { get; set; }
+    public virtual ClassifiedAd Ad { get; set; } = default!;
+    public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>جستجوی ذخیره‌شده — با انتشار آگهیِ منطبق، به کاربر اعلان می‌رود.</summary>
+public class ClassifiedSavedSearch
+{
+    public long Id { get; set; }
+    public Guid UserId { get; set; }
+    public virtual User User { get; set; } = default!;
+
+    public string? Q { get; set; }
+    public int? CatId { get; set; }
+    public int? CityId { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+}
+
 /// <summary>پیام چت روی یک آگهی (خریدار ↔ آگهی‌دهنده).</summary>
 public class ClassifiedChatMessage
 {

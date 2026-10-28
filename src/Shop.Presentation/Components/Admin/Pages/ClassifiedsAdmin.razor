@@ -211,6 +211,21 @@ else
                       : "وضعیت آگهی شما تغییر کرد";
             await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
                 ownerId.Value, title, null, "bi-megaphone", $"/ads/{id}"));
+
+            // اعلان به کاربرانی که جستجوی منطبق ذخیره کرده‌اند
+            if (st == ClassifiedAdStatus.Approved)
+            {
+                var ad = await Db.ClassifiedAds.AsNoTracking().FirstAsync(a => a.Id == id);
+                var candidates = await Db.ClassifiedSavedSearches.AsNoTracking()
+                    .Where(s => s.UserId != ad.UserId)
+                    .Where(s => s.CatId == null || s.CatId == ad.ClassifiedCategoryId)
+                    .Where(s => s.CityId == null || s.CityId == ad.CityId)
+                    .Select(s => new { s.UserId, s.Q })
+                    .ToListAsync();
+                foreach (var m in candidates.Where(m => m.Q == null || ad.Title.Contains(m.Q) || (ad.Description ?? "").Contains(m.Q)).Take(200))
+                    await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                        m.UserId, "🔔 آگهی جدید مطابق جستجوی شما", ad.Title, "bi-search", $"/ads/{id}"));
+            }
         }
         await LoadAdsAsync();
         _busy = false;

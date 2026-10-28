@@ -54,6 +54,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ClassifiedAttribute> ClassifiedAttributes => Set<ClassifiedAttribute>();
     public DbSet<ClassifiedAd> ClassifiedAds => Set<ClassifiedAd>();
     public DbSet<ClassifiedChatMessage> ClassifiedChatMessages => Set<ClassifiedChatMessage>();
+    public DbSet<ClassifiedFavorite> ClassifiedFavorites => Set<ClassifiedFavorite>();
+    public DbSet<ClassifiedSavedSearch> ClassifiedSavedSearches => Set<ClassifiedSavedSearch>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 

@@ -827,6 +827,10 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("bump_price");
 
+                    b.Property<long>("ComboPrice")
+                        .HasColumnType("bigint")
+                        .HasColumnName("combo_price");
+
                     b.Property<int>("FreeAdLimit")
                         .HasColumnType("integer")
                         .HasColumnName("free_ad_limit");
@@ -903,6 +907,77 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_classified_chat_messages_user_id");
 
                     b.ToTable("classified_chat_messages", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedFavorite", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AdId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("ad_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_classified_favorites");
+
+                    b.HasIndex("AdId")
+                        .HasDatabaseName("ix_classified_favorites_ad_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_classified_favorites_user_id");
+
+                    b.ToTable("classified_favorites", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedSavedSearch", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int?>("CatId")
+                        .HasColumnType("integer")
+                        .HasColumnName("cat_id");
+
+                    b.Property<int?>("CityId")
+                        .HasColumnType("integer")
+                        .HasColumnName("city_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Q")
+                        .HasColumnType("text")
+                        .HasColumnName("q");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_classified_saved_searches");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_classified_saved_searches_user_id");
+
+                    b.ToTable("classified_saved_searches", (string)null);
                 });
 
             modelBuilder.Entity("Shop.Domain.Comment", b =>
@@ -3014,6 +3089,39 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasConstraintName("fk_classified_chat_messages_user_user_id");
 
                     b.Navigation("Ad");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedFavorite", b =>
+                {
+                    b.HasOne("Shop.Domain.ClassifiedAd", "Ad")
+                        .WithMany()
+                        .HasForeignKey("AdId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_favorites_classified_ads_ad_id");
+
+                    b.HasOne("Shop.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_favorites_user_user_id");
+
+                    b.Navigation("Ad");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedSavedSearch", b =>
+                {
+                    b.HasOne("Shop.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_saved_searches_user_user_id");
 
                     b.Navigation("User");
                 });

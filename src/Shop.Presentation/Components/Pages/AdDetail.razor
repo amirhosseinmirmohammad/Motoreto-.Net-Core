@@ -72,6 +72,12 @@ else
                     <div><i class="bi bi-eye"></i> بازدید: <b>@_ad.ViewCount.ToString("N0").ToFarsiDigits()</b></div>
                 </div>
                 <hr />
+                @if (_authed)
+                {
+                    <button class="btn btn-sm btn-outline-danger w-100 mb-2" disabled="@_favBusy" @onclick="ToggleFavAsync">
+                        @(_favSaved ? "❤️ ذخیره شد — حذف از ذخیره‌ها" : "🤍 ذخیره آگهی")
+                    </button>
+                }
                 @if (_showPhone)
                 {
                     <div class="text-center py-2 rounded-3 bg-light">
@@ -142,6 +148,7 @@ else
     [Parameter] public long Id { get; set; }
 
     private bool _loaded, _showPhone;
+    private bool _authed, _favSaved, _favBusy, _favBusyToggle;
     private bool _canChat, _isOwnerViewing, _chatSent, _chatBusy;
     private string _chatText = "";
     private string? _chatErr;
@@ -211,11 +218,42 @@ else
             if (auth.User.Identity?.IsAuthenticated == true
                 && Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var uid))
             {
+                _authed = true;
                 _isOwnerViewing = await Db.ClassifiedAds.AnyAsync(x => x.Id == Id && x.UserId == uid);
                 _canChat = !_isOwnerViewing;
+                _favSaved = await Db.ClassifiedFavorites.AnyAsync(f => f.UserId == uid && f.AdId == Id);
+                _myUid = uid;
             }
         }
         _loaded = true;
+    }
+
+    private Guid _myUid;
+
+    private async Task ToggleFavAsync()
+    {
+        _favBusy = true;
+        try
+        {
+            if (_favSaved)
+            {
+                await Db.ClassifiedFavorites.Where(f => f.UserId == _myUid && f.AdId == Id).ExecuteDeleteAsync();
+                _favSaved = false;
+            }
+            else
+            {
+                if (!await Db.ClassifiedFavorites.AnyAsync(f => f.UserId == _myUid && f.AdId == Id))
+                {
+                    Db.ClassifiedFavorites.Add(new ClassifiedFavorite { UserId = _myUid, AdId = Id, CreatedAt = DateTime.UtcNow });
+                    await Db.SaveChangesAsync();
+                }
+                _favSaved = true;
+            }
+        }
+        finally
+        {
+            _favBusy = false;
+        }
     }
 
     private async Task SendChatAsync()
