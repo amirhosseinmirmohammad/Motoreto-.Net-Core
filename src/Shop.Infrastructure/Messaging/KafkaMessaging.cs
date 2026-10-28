@@ -112,6 +112,7 @@ public class OutboxDispatcherJob(
             {
                 using var scope = scopes.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+                var push = scope.ServiceProvider.GetRequiredService<IPushSender>();
 
                 var pending = await db.OutboxMessages
                     .Where(o => o.PublishedAt == null && o.RetryCount < 50)
@@ -140,6 +141,7 @@ public class OutboxDispatcherJob(
                             });
                             row.PublishedAt = DateTime.UtcNow;
                             await broadcaster.PushAsync(evt.UserId, evt.Title, evt.Body, evt.Icon, evt.Link, stopping);
+                            try { await push.SendToUserAsync(evt.UserId, evt.Title, evt.Body, evt.Link, stopping); } catch { }
                         }
                         else
                         {
@@ -215,8 +217,7 @@ public class NotificationConsumerJob(
                         if (evt is null) continue;
 
                         using var scope = scopes.CreateScope();
-                        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                        db.Notifications.Add(new Notification
+                        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();                        db.Notifications.Add(new Notification
                         {
                             UserId = evt.UserId,
                             Title = evt.Title,
@@ -227,7 +228,7 @@ public class NotificationConsumerJob(
                         });
                         await db.SaveChangesAsync(stopping);
 
-                        // اعلان زنده (SignalR)
+                        // اعلان زنده (SignalR) + Web Push
                         try
                         {
                             await broadcaster.PushAsync(evt.UserId, evt.Title, evt.Body, evt.Icon, evt.Link, stopping);
@@ -236,7 +237,15 @@ public class NotificationConsumerJob(
                         {
                             logger.LogWarning(brEx, "broadcast SignalR ناموفق بود");
                         }
-
+                        try
+                        {
+                            var push = scope.ServiceProvider.GetRequiredService<IPushSender>();
+                            await push.SendToUserAsync(evt.UserId, evt.Title, evt.Body, evt.Link, stopping);
+                        }
+                        catch (Exception pushEx)
+                        {
+                            logger.LogWarning(pushEx, "Web Push ناموفق بود");
+                        }
                         // پیامک رویدادهای مهم (سفارش/پرداخت)
                         if (evt.Sms)
                         {

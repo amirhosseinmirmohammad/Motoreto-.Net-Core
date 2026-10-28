@@ -376,7 +376,36 @@
         notifConn.start().catch(function () { /* polling ۴۵ ثانیه‌ای پشتیبان است */ });
     }
 
-    // ---------- SignalR: چت زنده آگهی ----------
+    // ---------- Web Push: فعال‌سازی اعلان مرورگر ----------
+    window.enableWebPush = async function () {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return 'مرورگر شما Push را پشتیبانی نمی‌کند.';
+        var res = await fetch('/api/push/public-key');
+        var cfg = await res.json();
+        if (!cfg.key) return 'اعلان مرورگر تنظیم نشده است.';
+        var permission = await Notification.requestPermission();
+        if (permission !== 'granted') return 'اجازه اعلان داده نشد.';
+        var reg = await navigator.serviceWorker.ready;
+        var sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(cfg.key)
+        });
+        var raw = sub.toJSON();
+        var post = await fetch('/api/push/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': antiforgeryToken() },
+            body: JSON.stringify({ endpoint: sub.endpoint, p256dh: raw.keys.p256dh, auth: raw.keys.auth })
+        });
+        var r = await post.json();
+        return r.ok ? 'اعلان مرورگر فعال شد ✓ حتی با بسته‌بودن سایت پیام می‌گیرید.' : 'خطا در ذخیره اشتراک.';
+    };
+    function urlBase64ToUint8Array(base64String) {
+        var padding = '='.repeat((4 - base64String.length % 4) % 4);
+        var base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+        var raw = atob(base64);
+        var arr = new Uint8Array(raw.length);
+        for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
+        return arr;
+    }
     window.initChatHub = function (adId, dotnetRef) {
         function start() {
             if (!window.signalR) return;

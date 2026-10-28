@@ -4,13 +4,22 @@
 @inject ApplicationDbContext Db
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <h5 class="fw-bold mb-3">🔔 اعلان‌ها</h5>
 
 <div class="d-flex gap-2 mb-3">
     <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="ReadAllAsync">همه خوانده شد</button>
     <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="ClearAllAsync">پاک‌کردن همه</button>
+    <button class="btn btn-sm btn-outline-primary" disabled="@_pushBusy" @onclick="EnablePushAsync">
+        @(_pushBusy ? "..." : "🔔 فعال‌سازی اعلان مرورگر")
+    </button>
 </div>
+
+@if (_pushMsg is not null)
+{
+    <div class="alert alert-info py-2 small">@_pushMsg</div>
+}
 
 @if (_loading)
 {
@@ -43,9 +52,18 @@ else
 }
 
 @code {
-    private bool _loading = true, _busy;
+    private bool _loading = true, _busy, _pushBusy;
+    private string? _pushMsg;
     private Guid _uid;
     private List<Row> _rows = new();
+
+    private async Task EnablePushAsync()
+    {
+        _pushBusy = true;
+        try { _pushMsg = await JS.InvokeAsync<string>("enableWebPush"); }
+        catch { _pushMsg = "خطا در فعال‌سازی اعلان مرورگر."; }
+        finally { _pushBusy = false; }
+    }
 
     private sealed record Row(long Id, string Title, string? Body, string? Icon, string? Link, bool IsRead, DateTime Date);
 

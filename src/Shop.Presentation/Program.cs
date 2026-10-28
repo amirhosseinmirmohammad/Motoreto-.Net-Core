@@ -74,6 +74,7 @@ try
     builder.Services.AddScoped<Shop.Application.Interfaces.ISmsService, Shop.Presentation.Services.KavenegarSmsService>();
     builder.Services.AddSignalR();
     builder.Services.AddSingleton<Shop.Application.Interfaces.INotificationBroadcaster, Shop.Presentation.Services.SignalRBroadcaster>();
+    builder.Services.AddScoped<Shop.Application.Interfaces.IPushSender, Shop.Presentation.Services.PushNotificationSender>();
 
     // ---------- Identity ----------
     builder.Services

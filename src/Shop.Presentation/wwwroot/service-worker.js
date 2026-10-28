@@ -3,7 +3,7 @@
    - App shell + استاتیک: Cache First
    - صفحات: Network First با fallback آفلاین
    ============================================================ */
-const VERSION = 'shop-v2';
+const VERSION = 'shop-v3';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const OFFLINE_URL = '/offline.html';
@@ -78,4 +78,27 @@ self.addEventListener('fetch', (event) => {
                 )
         );
     }
+});
+
+// ---------- Web Push ----------
+self.addEventListener('push', (event) => {
+    let data = {};
+    try { data = event.data ? event.data.json() : {}; } catch (e) { }
+    event.waitUntil(self.registration.showNotification(data.title || 'اعلان جدید', {
+        body: data.body || '',
+        icon: '/images/icons/icon-192.png',
+        badge: '/images/icons/icon-192.png',
+        dir: 'rtl',
+        lang: 'fa',
+        data: { url: data.link || '/' }
+    }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const url = (event.notification.data && event.notification.data.url) || '/';
+    event.waitUntil(clients.matchAll({ type: 'window' }).then((list) => {
+        for (const c of list) if ('focus' in c) { c.navigate(url); return c.focus(); }
+        return clients.openWindow(url);
+    }));
 });
