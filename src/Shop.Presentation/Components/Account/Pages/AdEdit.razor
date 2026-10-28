@@ -1,0 +1,202 @@
+@page "/panel/ads/edit/{Id:long}"
+@layout UserLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+@if (_denied)
+{
+    <div class="alert alert-warning my-4">به این آگهی دسترسی ندارید.</div>
+}
+else
+{
+    <h5 class="fw-bold mb-1">✏️ ویرایش آگهی</h5>
+    <p class="text-muted small">پس از ویرایش، آگهی مجدداً برای تأیید به مدیر ارسال می‌شود.</p>
+
+    @if (_err is not null)
+    {
+        <div class="alert alert-danger py-2">@_err</div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <EditForm Model="_m" OnValidSubmit="SubmitAsync" class="row g-3">
+            <DataAnnotationsValidator />
+            <div class="col-12">
+                <label class="form-label small text-muted">عنوان *</label>
+                <InputText @bind-Value="_m.Title" class="form-control" />
+                <ValidationMessage For="() => _m.Title" class="text-danger small" />
+            </div>
+            <div class="col-12">
+                <label class="form-label small text-muted">توضیحات *</label>
+                <InputTextArea @bind-Value="_m.Description" class="form-control" rows="5" />
+                <ValidationMessage For="() => _m.Description" class="text-danger small" />
+            </div>
+
+            @foreach (var a in _attrs)
+            {
+                <div class="col-md-4">
+                    <label class="form-label small text-muted">@a.Name @(a.IsRequired ? "*" : "")</label>
+                    @if (a.Type == "select")
+                    {
+                        <select class="form-select" value="@Val(a.Id)" @onchange="e => SetVal(a.Id, e.Value?.ToString() ?? string.Empty)">
+                            <option value="">— انتخاب —</option>
+                            @foreach (var opt in (a.Options ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </select>
+                    }
+                    else if (a.Type == "bool")
+                    {
+                        <div class="form-check form-switch">
+                            <input type="checkbox" class="form-check-input" id="ea@a.Id" checked="@IsOn(a.Id)" @onchange="e => SetBool(a.Id, e.Value is true)" />
+                            <label class="form-check-label small" for="ea@a.Id">دارد</label>
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="@(a.Type == "number" ? "number" : "text")" class="form-control"
+                               value="@Val(a.Id)" @oninput="e => SetVal(a.Id, e.Value?.ToString() ?? string.Empty)" />
+                    }
+                </div>
+            }
+
+            <div class="col-md-6">
+                <label class="form-label small text-muted">نوع قیمت</label>
+                <select class="form-select" value="@_priceMode" @onchange="e => _priceMode = e.Value?.ToString() ?? string.Empty">
+                    <option value="with">قیمت‌دار</option>
+                    <option value="negotiable">توافقی</option>
+                    <option value="free">رایگان</option>
+                </select>
+            </div>
+            @if (_priceMode == "with")
+            {
+                <div class="col-md-6">
+                    <label class="form-label small text-muted">قیمت (تومان)</label>
+                    <InputNumber @bind-Value="_price" class="form-control" />
+                </div>
+            }
+            <div class="col-md-6">
+                <label class="form-label small text-muted">شماره تماس</label>
+                <InputText @bind-Value="_m.Phone" class="form-control" dir="ltr" />
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
+                    @(_busy ? "در حال ذخیره..." : "ذخیره و ارسال برای تأیید")
+                </button>
+                <NavLink href="/panel/ads" class="btn btn-outline-secondary ms-2">انصراف</NavLink>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public long Id { get; set; }
+
+    private bool _denied = true, _busy;
+    private string? _err;
+    private string _priceMode = "with";
+    private long? _price;
+    private int _catId;
+    private List<ClassifiedAttribute> _attrs = new();
+    private Dictionary<int, string> _vals = new();
+
+    private sealed record EditModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "عنوان الزامی است.")]
+        [System.ComponentModel.DataAnnotations.StringLength(120)]
+        public string Title { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "توضیحات الزامی است.")]
+        [System.ComponentModel.DataAnnotations.StringLength(4000)]
+        public string Description { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "شماره تماس الزامی است.")]
+        public string Phone { get; set; } = "";
+    }
+
+    private EditModel _m = new();
+
+    private string Val(int id) => _vals.TryGetValue(id, out var v) ? v : "";
+    private bool IsOn(int id) => Val(id) == "true";
+    private void SetVal(int id, string v) => _vals[id] = v;
+    private void SetBool(int id, bool on) => _vals[id] = on ? "true" : "false";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var uid = Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var g) ? g : Guid.Empty;
+
+        var a = await Db.ClassifiedAds.AsNoTracking().FirstOrDefaultAsync(x => x.Id == Id && x.UserId == uid);
+        if (a is null) return;
+
+        _denied = false;
+        _catId = a.ClassifiedCategoryId;
+        _m = new EditModel { Title = a.Title, Description = a.Description, Phone = a.Phone };
+        _priceMode = a.Price is null ? "negotiable" : a.Price == 0 ? "free" : "with";
+        _price = a.Price;
+
+        _attrs = await Db.ClassifiedAttributes.AsNoTracking()
+            .Where(x => x.CategoryId == _catId).OrderBy(x => x.SortOrder).ToListAsync();
+
+        // پیش‌پر کردن ویژگی‌ها از AttributesJson
+        if (!string.IsNullOrWhiteSpace(a.AttributesJson))
+        {
+            try
+            {
+                using var doc = System.Text.Json.JsonDocument.Parse(a.AttributesJson);
+                foreach (var el in doc.RootElement.EnumerateArray())
+                {
+                    var name = el.GetProperty("name").GetString();
+                    var attr = _attrs.FirstOrDefault(x => x.Name == name);
+                    if (attr is not null)
+                        _vals[attr.Id] = el.GetProperty("value").GetString() ?? "";
+                }
+            }
+            catch { }
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        _err = null;
+        foreach (var a in _attrs.Where(a => a.IsRequired))
+        {
+            if (string.IsNullOrWhiteSpace(Val(a.Id))) { _err = $"فیلد «{a.Name}» الزامی است."; return; }
+        }
+        var violation = Shop.Shared.ContentFilter.ViolationMessage(_m.Title)
+                        ?? Shop.Shared.ContentFilter.ViolationMessage(_m.Description);
+        if (violation is not null) { _err = violation; return; }
+
+        var price = _priceMode switch { "negotiable" => (long?)null, "free" => 0, _ => _price };
+        if (_priceMode == "with" && (price is null || price < 0)) { _err = "قیمت را وارد کنید."; return; }
+
+        _busy = true;
+        try
+        {
+            var attrsJson = System.Text.Json.JsonSerializer.Serialize(
+                _attrs.Select(x => new { name = x.Name, value = Val(x.Id) })
+                      .Where(x => !string.IsNullOrWhiteSpace(x.value)));
+
+            var a = await Db.ClassifiedAds.FirstAsync(x => x.Id == Id);
+            a.Title = _m.Title.Trim();
+            a.Description = _m.Description.Trim();
+            a.Price = price;
+            a.Phone = _m.Phone.Trim();
+            a.AttributesJson = attrsJson;
+            a.Status = ClassifiedAdStatus.Pending; // ویرایش → تأیید مجدد
+            await Db.SaveChangesAsync();
+            Nav.NavigateTo("/panel/ads");
+        }
+        catch (Exception ex)
+        {
+            _err = "خطا: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

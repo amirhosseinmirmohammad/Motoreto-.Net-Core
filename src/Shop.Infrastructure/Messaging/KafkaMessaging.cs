@@ -223,6 +223,24 @@ public class NotificationConsumerJob(
                             CreatedAt = DateTime.UtcNow
                         });
                         await db.SaveChangesAsync(stopping);
+
+                        // پیامک رویدادهای مهم (سفارش/پرداخت)
+                        if (evt.Sms)
+                        {
+                            try
+                            {
+                                var sms = scope.ServiceProvider.GetRequiredService<ISmsService>();
+                                var mobile = await db.Users.AsNoTracking().Where(u => u.Id == evt.UserId)
+                                    .Select(u => u.Mobile).FirstOrDefaultAsync(stopping);
+                                if (!string.IsNullOrWhiteSpace(mobile))
+                                    await sms.SendAsync(mobile, $"{evt.Title}\n{(evt.Body ?? "")}".Trim(), stopping);
+                            }
+                            catch (Exception smsEx)
+                            {
+                                logger.LogWarning(smsEx, "ارسال SMS اعلان ناموفق بود");
+                            }
+                        }
+
                         consumer.Commit(result);
                     }
                     catch (OperationCanceledException) { throw; }

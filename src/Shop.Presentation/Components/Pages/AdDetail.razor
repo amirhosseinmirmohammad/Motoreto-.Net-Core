@@ -90,6 +90,27 @@ else
                     <div class="alert alert-secondary py-2 mt-2 mb-0 text-center small">این آگهی فروخته/مسترد شده است</div>
                 }
 
+                <div class="text-center mt-2">
+                    @if (_reportSent)
+                    {
+                        <span class="small text-success">گزارش شما ثبت شد و بررسی می‌شود ✓</span>
+                    }
+                    else if (_reportOpen)
+                    {
+                        <textarea class="form-control form-control-sm" rows="2" placeholder="دلیل گزارش تخلف..."
+                                  value="@_reportText" @oninput="e => _reportText = e.Value?.ToString() ?? string.Empty"></textarea>
+                        @if (_reportErr is not null)
+                        {
+                            <div class="text-danger small mt-1">@_reportErr</div>
+                        }
+                        <button class="btn btn-sm btn-danger mt-1" disabled="@_reportBusy" @onclick="SendReportAsync">ارسال گزارش</button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-link text-danger small p-0 mt-2" @onclick="() => _reportOpen = true">⚠️ گزارش تخلف این آگهی</button>
+                    }
+                </div>
+
                 @if (_canChat)
                 {
                     <hr />
@@ -132,6 +153,38 @@ else
 
     private string? _active;
     private List<string> _gallery = new();
+    private bool _reportOpen, _reportSent, _reportBusy;
+    private string _reportText = "";
+    private string? _reportErr;
+
+    private async Task SendReportAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_reportText)) { _reportErr = "دلیل گزارش را بنویسید."; return; }
+        _reportBusy = true;
+        try
+        {
+            Db.SiteMessages.Add(new SiteMessage
+            {
+                FullName = "گزارش تخلف آگهی #" + Id,
+                Email = "-",
+                Subject = "گزارش تخلف آگهی #" + Id,
+                Body = _reportText.Trim() + "\n---\nآگهی: " + _ad?.Title + " | لینک: /ads/" + Id,
+                IsRead = false,
+                CreatedAt = DateTime.UtcNow
+            });
+            await Db.SaveChangesAsync();
+            _reportSent = true;
+            _reportOpen = false;
+        }
+        catch (Exception ex)
+        {
+            _reportErr = "خطا: " + ex.Message;
+        }
+        finally
+        {
+            _reportBusy = false;
+        }
+    }
 
     private void SetActive(string? img) => _active = img ?? _ad?.MainImage;
 

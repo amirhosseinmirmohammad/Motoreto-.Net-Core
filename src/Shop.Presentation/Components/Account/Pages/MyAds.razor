@@ -53,6 +53,14 @@ else
                                         @(a.Status == ClassifiedAdStatus.Sold ? "فعال‌سازی" : "فروخته شد")
                                     </button>
                                     <NavLink href="@($"/panel/ads/chat/{a.Id}")" class="btn btn-sm btn-outline-primary">گفتگو</NavLink>
+                                    @if (a.Status != ClassifiedAdStatus.Sold)
+                                    {
+                                        <NavLink href="@($"/panel/ads/edit/{a.Id}")" class="btn btn-sm btn-outline-secondary">ویرایش</NavLink>
+                                    }
+                                    @if (a.Status == ClassifiedAdStatus.Expired || (a.ExpiresAt is not null && a.ExpiresAt < DateTime.UtcNow.AddDays(7)))
+                                    {
+                                        <button class="btn btn-sm btn-outline-success" disabled="@_busy" @onclick="() => RenewAsync(a.Id)">تمدید ۳۰ روز</button>
+                                    }
                                     @if (a.Status == ClassifiedAdStatus.Approved)
                                     {
                                         var p = _catPrices.GetValueOrDefault(a.CatId);
@@ -101,7 +109,7 @@ else
     private List<AdRow> _myAds = new();
     private List<ChatRow> _myChats = new();
 
-    private sealed record AdRow(long Id, string Title, long? Price, ClassifiedAdStatus Status, long ViewCount, int CatId, bool Featured, bool Urgent);
+    private sealed record AdRow(long Id, string Title, long? Price, ClassifiedAdStatus Status, long ViewCount, int CatId, bool Featured, bool Urgent, DateTime? ExpiresAt);
     private sealed record ChatRow(long AdId, string Title, string LastText, DateTime LastAt);
     private sealed record CatPrices(long Bump, long Urgent, long Combo);
     private Dictionary<int, CatPrices> _catPrices = new();
@@ -121,7 +129,7 @@ else
         _myAds = await Db.ClassifiedAds.AsNoTracking()
             .Where(a => a.UserId == _uid)
             .OrderByDescending(a => a.Id)
-            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.Status, a.ViewCount, a.ClassifiedCategoryId, a.IsFeatured, a.IsUrgent))
+            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.Status, a.ViewCount, a.ClassifiedCategoryId, a.IsFeatured, a.IsUrgent, a.ExpiresAt))
             .ToListAsync();
 
         _catPrices = await Db.ClassifiedCategories.AsNoTracking()
@@ -171,6 +179,19 @@ else
         await Db.ClassifiedChatMessages.Where(m => m.AdId == id && m.Ad.UserId == _uid).ExecuteDeleteAsync();
         await Db.ClassifiedAds.Where(a => a.Id == id && a.UserId == _uid).ExecuteDeleteAsync();
         _msg = "آگهی حذف شد ✓";
+        await OnInitializedAsync();
+        _busy = false;
+    }
+
+    /// <summary>تمدید آگهی ۳۰ روز دیگر (رایگان — آگهی تأییدشده قبلی).</summary>
+    private async Task RenewAsync(long id)
+    {
+        _busy = true;
+        var a = await Db.ClassifiedAds.FirstAsync(x => x.Id == id && x.UserId == _uid);
+        a.ExpiresAt = DateTime.UtcNow.AddDays(30);
+        if (a.Status == ClassifiedAdStatus.Expired) a.Status = ClassifiedAdStatus.Approved;
+        await Db.SaveChangesAsync();
+        _msg = "آگهی ۳۰ روز دیگر تمدید شد ✓";
         await OnInitializedAsync();
         _busy = false;
     }

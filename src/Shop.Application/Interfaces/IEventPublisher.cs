@@ -1,7 +1,7 @@
 namespace Shop.Application.Interfaces;
 
-/// <summary>رویداد اعلان — از Kafka منتشر می‌شود (fallback: درج مستقیم برای dev بدون بروکر).</summary>
-public sealed record NotificationEvent(Guid UserId, string Title, string? Body, string? Icon, string? Link);
+/// <summary>رویداد اعلان — از Kafka منتشر می‌شود (fallback: درج مستقیم برای dev بدون بروکر). Sms=true → پیامک هم می‌رود.</summary>
+public sealed record NotificationEvent(Guid UserId, string Title, string? Body, string? Icon, string? Link, bool Sms = false);
 
 /// <summary>
 /// ناشر رویدادها (message broker): publish غیرمسدودکننده در مسیر درخواست؛

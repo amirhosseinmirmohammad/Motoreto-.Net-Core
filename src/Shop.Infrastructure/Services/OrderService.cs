@@ -239,7 +239,7 @@ public class OrderService(
                 userId,
                 $"سفارش {order.OrderNumber} ثبت شد",
                 $"مبلغ: {total:N0} تومان — در انتظار پرداخت/پردازش",
-                "bi-receipt", "/orders"), token);
+                "bi-receipt", "/orders", Sms: true), token);
 
             foreach (var sid in sellerIds)
             {
@@ -333,7 +333,7 @@ public class OrderService(
                 buyerId,
                 $"✓ پرداخت سفارش {paidOrderNumber} تأیید شد",
                 "کالای شما به‌زودی آماده‌سازی و ارسال می‌شود",
-                "bi-check2-circle", "/orders"), ct);
+                "bi-check2-circle", "/orders", Sms: true), ct);
 
             // باشگاه مشتریان: امتیاز خرید + پاداش معرفی
             var orderTotal = await db.Orders.Where(o => o.Id == orderId).Select(o => o.Total).FirstAsync(ct);
@@ -475,7 +475,7 @@ public class OrderService(
             await events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
                 order.UserId,
                 $"سفارش {order.OrderNumber} {statusTitle}",
-                null, "bi-box-seam", "/orders"), token);
+                null, "bi-box-seam", "/orders", Sms: status is OrderStatus.Shipped or OrderStatus.Canceled), token);
 
             return true;
         }, ct);
