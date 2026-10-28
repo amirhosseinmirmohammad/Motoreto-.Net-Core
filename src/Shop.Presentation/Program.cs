@@ -42,6 +42,15 @@ try
         options.InstanceName = "shop:";
     });
 
+    // ---------- Session (Redis-backed) — کپچا و وضعیت‌های موقت؛ آماده چند-سروری ----------
+    builder.Services.AddSession(options =>
+    {
+        options.Cookie.Name = "shop.session";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+        options.IdleTimeout = TimeSpan.FromMinutes(60);
+    });
+
     // ---------- لایه‌ها (Composition Root) ----------
     // ---------- JWT (برای API موبایل/سرویس‌ها) ----------
     builder.Services.AddSingleton(new Shop.Shared.JwtTokenService(new Shop.Shared.JwtTokenOptions
@@ -64,7 +73,7 @@ try
     builder.Services.AddHostedService<Shop.Presentation.Services.FeedSyncJob>();
     builder.Services.AddScoped<Shop.Application.Interfaces.ISmsService, Shop.Presentation.Services.KavenegarSmsService>();
     builder.Services.AddSignalR();
-    builder.Services.AddScoped<Shop.Application.Interfaces.INotificationBroadcaster, Shop.Presentation.Services.SignalRBroadcaster>();
+    builder.Services.AddSingleton<Shop.Application.Interfaces.INotificationBroadcaster, Shop.Presentation.Services.SignalRBroadcaster>();
 
     // ---------- Identity ----------
     builder.Services
@@ -329,6 +338,9 @@ app.MapPost("/aff/lead/{code}", async (string code, IFormCollection form, Applic
         }));
 
     app.UseRouting();
+
+    // Session (Redis) — قبل از هر اندپوینتی که استفاده می‌کند (کپچا)
+    app.UseSession();
 
     // ---------- Hangfire: داشبورد (فقط ادمین) + jobهای تکرارشونده ----------
     app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions

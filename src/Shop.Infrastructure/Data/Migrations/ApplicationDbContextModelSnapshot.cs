@@ -2698,6 +2698,10 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
+                    b.Property<bool>("IsIdentityVerified")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_identity_verified");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(50)

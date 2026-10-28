@@ -2,7 +2,7 @@
 
 > ⚠️ **قانون برای هر ایجنت:** بعد از هر تغییر، این فایل را به‌روز کن (بخش «آخرین تغییرات» و «کارهای باقی‌مانده»).
 > ⛔ **قانون ثابت پروژه: هیچ محتوای جنسی/مستهجن نباید در هیچ بخشی منتشر شود.** ورودی‌های عمومی (آگهی، چت، نظرات) باید از `Shop.Shared.ContentFilter.ViolationMessage()` عبور کنند؛ آگهی‌ها همیشه Pending→تأیید ادمین. متن حقوقی مرجع: `/terms`.
-> آخرین به‌روزرسانی: 2026-10-30 (نسخه ۱۵)
+> آخرین به‌روزرسانی: 2026-10-30 (نسخه ۱۶)
 
 ---
 
@@ -62,7 +62,13 @@ D:\Projects\Motoreto\stop-server.bat
 6. تست دستی جریان Checkout چندفروشنده‌ای (تعرفه‌های اختصاصی + فیلتر پرداخت).
 7. git ✅ — ریپو از قبل بود؛ کامیت‌ها منظم گرفته شود.
 
-## ۶.۵) آخرین تغییرات (نسخه ۱۵)
+## ۶.۵) آخرین تغییرات (نسخه ۱۶)
+- **تیک احراز هویت دیوار-مانند ✅** — `User.IsIdentityVerified` (مایگریشن `UserIdentityVerified`) + دکمه ادمین در `/manage/users` (با اعلان به کاربر) + badge «✔ احراز هویت‌شده» کنار نام آگهی‌دهنده در صفحه آگهی و «آگهی‌های من»
+- **Session Redis-backed ✅** — Session اصلاً کانفیگ نبود (کپچا در عمل کار نمی‌کرد!) → `AddSession + UseSession` روی IDistributedCache همان Redis (آماده چند-سروری، کوکی shop.session، ۶۰ دقیقه)
+- **رفع باگ DI ✅** — SignalRBroadcaster Scoped→Singleton (خطای «Cannot consume scoped service from singleton» که design-time مایگریشن را هم می‌شکست)
+- **نقشه Redis فعلی:** HybridCache L2 (منوی دسته‌ها/تنظیمات/اسلایدرها) + Session + آماده برای OutputCache توزیع‌شده
+
+## ۶.۴) آخرین تغییرات (نسخه ۱۵)
 - **SignalR ✅** — هاب `/hubs/app` (گروه user-{id} برای اعلان + گروه ad-{id} برای چت زنده با ?adId= در اتصال). `INotificationBroadcaster` (Application) + `SignalRBroadcaster` (Presentation): مصرف‌کننده کافکا و fallback outbox بعد از درج اعلان، push زنده می‌زنند. زنگوله + toast لحظه‌ای آپدیت می‌شوند (polling ۴۵ ثانیه فقط پشتیبان). چت: `initChatHub/disposeChatHub` در site.js + `OnRemoteMessage` JSInvokable در AdChat — پیام طرف مقابل بدون رفرش ظاهر می‌شود. signalr.min.js 8.0.7 لوکال + site.js v=11
 - **قواعد شماره آگهی‌دهنده ✅** — فقط کاربر واردشده؛ کلیک → نمایش + `tel:` برای تماس؛ هشدار «ساعات استراحت (۲۳ تا ۸) — ترجیحاً پیام/چت» به وقت ایران؛ ناشناس → لینک ورود با returnUrl
 - **مسیریابی ✅** — دکمه‌های گوگل‌مپ (directions) / ویز / نشان / بلد با مختصات آگهی؛ بدون مختصات → جستجوی متنی محله
