@@ -58,7 +58,7 @@ else
                             </td>
                             <td class="small">@p.Category</td>
                             <td class="small">@(p.Brand ?? "—")</td>
-                            <td class="small">@p.Price.ToString("N0")</td>
+                            <td class="small">@p.Price.ToString("N0") تومان</td>
                             <td>@p.Stock.ToString("N0")</td>
                             <td>
                                 <span class="badge bg-@(p.Active ? "success" : "secondary")">@(p.Active ? "فعال" : "غیرفعال")</span>
