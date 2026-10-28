@@ -115,7 +115,17 @@ else
             </div>
 
             <div class="col-12">
-                <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
+                <label class="form-label small text-muted d-block">تعهد آگهی‌دهنده</label>
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="agreeRules" checked="@_agree" @onchange="e => _agree = e.Value is true" />
+                    <label class="form-check-label small" for="agreeRules">
+                        <NavLink href="/terms" target="_blank">قوانین و مقررات</NavLink> را خوانده‌ام؛ کالای متعلق به من است و محتوای غیراخلاقی ندارد.
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary px-5" disabled="@(_busy || !_agree)">
                     @(_busy ? "در حال ثبت..." : "ثبت آگهی")
                 </button>
             </div>
@@ -124,7 +134,7 @@ else
 }
 
 @code {
-    private bool _busy, _done;
+    private bool _busy, _done, _agree;
     private string? _err;
     private int _catId;
     private string _priceMode = "with";
@@ -187,6 +197,11 @@ else
         _err = null;
         if (_catId == 0) { _err = "دسته‌بندی را انتخاب کنید."; return; }
         if (_m.CityId == 0) { _err = "شهر را انتخاب کنید."; return; }
+
+        // فیلتر محتوای غیراخلاقی — قانون پروژه: انتشار محتوای جنسی در هیچ بخشی ممنوع است
+        var violation = Shop.Shared.ContentFilter.ViolationMessage(_m.Title)
+                        ?? Shop.Shared.ContentFilter.ViolationMessage(_m.Description);
+        if (violation is not null) { _err = violation; return; }
 
         // اعتبارسنجی فیلدهای اجباری داینامیک
         foreach (var a in _attrs.Where(a => a.IsRequired))

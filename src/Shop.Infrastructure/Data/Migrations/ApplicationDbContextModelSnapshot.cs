@@ -693,6 +693,10 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("expires_at");
 
+                    b.Property<string>("ImagesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("images_json");
+
                     b.Property<bool>("IsFeatured")
                         .HasColumnType("boolean")
                         .HasColumnName("is_featured");
@@ -825,6 +829,48 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasName("pk_classified_categories");
 
                     b.ToTable("classified_categories", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedChatMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AdId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("ad_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<bool>("IsFromOwner")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_from_owner");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_classified_chat_messages");
+
+                    b.HasIndex("AdId")
+                        .HasDatabaseName("ix_classified_chat_messages_ad_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_classified_chat_messages_user_id");
+
+                    b.ToTable("classified_chat_messages", (string)null);
                 });
 
             modelBuilder.Entity("Shop.Domain.Comment", b =>
@@ -2831,6 +2877,27 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.Navigation("Category");
                 });
 
+            modelBuilder.Entity("Shop.Domain.ClassifiedChatMessage", b =>
+                {
+                    b.HasOne("Shop.Domain.ClassifiedAd", "Ad")
+                        .WithMany("ChatMessages")
+                        .HasForeignKey("AdId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_chat_messages_classified_ads_ad_id");
+
+                    b.HasOne("Shop.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_chat_messages_user_user_id");
+
+                    b.Navigation("Ad");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("Shop.Domain.Comment", b =>
                 {
                     b.HasOne("Shop.Domain.Product", "Product")
@@ -3172,6 +3239,11 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.Navigation("Children");
 
                     b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedAd", b =>
+                {
+                    b.Navigation("ChatMessages");
                 });
 
             modelBuilder.Entity("Shop.Domain.ClassifiedCategory", b =>

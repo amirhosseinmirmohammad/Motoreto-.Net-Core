@@ -31,6 +31,9 @@ public class BlogController(IBlogService blogs) : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddComment([FromBody] BlogCommentRequest request, CancellationToken ct)
     {
+        var violation = Shop.Shared.ContentFilter.ViolationMessage(request.Text);
+        if (violation is not null) return Json(new { success = false, message = violation });
+
         var (success, message) = await blogs.AddCommentAsync(request.BlogId, request.FullName, request.Text, ct);
         return Json(new { success, message });
     }

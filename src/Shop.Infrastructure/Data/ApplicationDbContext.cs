@@ -53,6 +53,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ClassifiedCategory> ClassifiedCategories => Set<ClassifiedCategory>();
     public DbSet<ClassifiedAttribute> ClassifiedAttributes => Set<ClassifiedAttribute>();
     public DbSet<ClassifiedAd> ClassifiedAds => Set<ClassifiedAd>();
+    public DbSet<ClassifiedChatMessage> ClassifiedChatMessages => Set<ClassifiedChatMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

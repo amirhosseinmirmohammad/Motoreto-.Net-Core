@@ -86,4 +86,24 @@ public class ClassifiedAd
     public DateTime CreatedAt { get; set; }
     /// <summary>تاریخ انقضای نمایش (پیش‌فرض +۳۰ روز).</summary>
     public DateTime? ExpiresAt { get; set; }
+
+    /// <summary>گالری تصاویر — URLهای جدا شده با کاما (MainImage تصویر اصلی است).</summary>
+    public string? ImagesJson { get; set; }
+
+    public virtual List<ClassifiedChatMessage> ChatMessages { get; set; } = [];
+}
+
+/// <summary>پیام چت روی یک آگهی (خریدار ↔ آگهی‌دهنده).</summary>
+public class ClassifiedChatMessage
+{
+    public long Id { get; set; }
+    public long AdId { get; set; }
+    public virtual ClassifiedAd Ad { get; set; } = default!;
+
+    public Guid UserId { get; set; }
+    public virtual User User { get; set; } = default!;
+
+    public string Text { get; set; } = default!;
+    public bool IsFromOwner { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

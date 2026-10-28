@@ -24,6 +24,10 @@ public class InteractionController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddComment([FromBody] CommentRequest request, CancellationToken ct)
     {
+        // فیلتر محتوای غیراخلاقی — قانون پروژه
+        var violation = Shop.Shared.ContentFilter.ViolationMessage(request.Text);
+        if (violation is not null) return Json(new { success = false, message = violation });
+
         var (success, message) = await comments.AddAsync(UserId, request.ProductId, request.Rating, request.Text, ct);
         return Json(new { success, message });
     }
