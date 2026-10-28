@@ -70,11 +70,34 @@ else
                     <div class="mb-1"><i class="bi bi-geo-alt"></i> شهر: <b>@_ad.CityName</b>@(_ad.Neighborhood is null ? "" : " — " + _ad.Neighborhood)</div>
                     @if (_ad.Lat is not null && _ad.Lng is not null)
                     {
-                        <div class="mb-1">
-                            <a href="@($"https://www.google.com/maps?q={_ad.Lat},{_ad.Lng}")" target="_blank" class="small">
-                                <i class="bi bi-map"></i> 📍 موقعیت روی نقشه
-                            </a>
+                        <div class="mb-2">
+                            <span class="small text-muted d-block mb-1"><i class="bi bi-signpost-2"></i> مسیریابی:</span>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <a class="btn btn-sm btn-outline-primary rounded-pill" target="_blank"
+                                   href="@($"https://www.google.com/maps/dir/?api=1&destination={_ad.Lat},{_ad.Lng}")">
+                                    <i class="bi bi-google"></i> گوگل‌مپ
+                                </a>
+                                <a class="btn btn-sm btn-outline-success rounded-pill" target="_blank"
+                                   href="@($"https://waze.com/ul?ll={_ad.Lat},{_ad.Lng}&navigate=yes")">
+                                    <i class="bi bi-navigation"></i> ویز
+                                </a>
+                                <a class="btn btn-sm btn-outline-info rounded-pill" target="_blank"
+                                   href="@($"https://neshan.org/maps/@{_ad.Lat},{_ad.Lng},15z")">
+                                    نشان
+                                </a>
+                                <a class="btn btn-sm btn-outline-secondary rounded-pill" target="_blank"
+                                   href="@($"https://balad.ir/location?latitude={_ad.Lat}&longitude={_ad.Lng}&zoom=15")">
+                                    بلد
+                                </a>
+                            </div>
                         </div>
+                    }
+                    else if (_authed)
+                    {
+                        <a class="btn btn-sm btn-outline-secondary rounded-pill mb-2" target="_blank"
+                           href="@($"https://www.google.com/maps/search/?api=1&query={Uri.EscapeDataString(_ad.CityName + " " + (_ad.Neighborhood ?? ""))}")">
+                            <i class="bi bi-map"></i> جستجوی محله روی نقشه
+                        </a>
                     }
                     <div class="mb-1"><i class="bi bi-clock"></i> ثبت: <b>@_ad.Date.ToPersianDateTime()</b></div>
                     <div><i class="bi bi-eye"></i> بازدید: <b>@_ad.ViewCount.ToString("N0").ToFarsiDigits()</b></div>
@@ -86,18 +109,31 @@ else
                         @(_favSaved ? "❤️ ذخیره شد — حذف از ذخیره‌ها" : "🤍 ذخیره آگهی")
                     </button>
                 }
-                @if (_showPhone)
+                @if (!_authed)
                 {
-                    <div class="text-center py-2 rounded-3 bg-light">
-                        <span class="small text-muted d-block">شماره تماس آگهی‌دهنده</span>
-                        <span class="fw-bold fs-5" dir="ltr">@_ad.Phone</span>
-                    </div>
+                    @if (_needLogin)
+                    {
+                        <div class="alert alert-warning py-2 small mb-2">
+                            برای مشاهده شماره تماس باید وارد حساب کاربری شوید.
+                            <a href="@($"/account/login?returnUrl=/ads/{Id}")" class="d-block mt-1">ورود | ثبت‌نام</a>
+                        </div>
+                    }
+                    <button class="btn btn-primary w-100" @onclick="TogglePhoneAsync">
+                        <i class="bi bi-telephone"></i> نمایش شماره تماس
+                    </button>
                 }
                 else
                 {
-                    <button class="btn btn-primary w-100 py-2" @onclick="() => _showPhone = true">
-                        <i class="bi bi-telephone"></i> نمایش شماره تماس
-                    </button>
+                    <div class="text-center py-2 rounded-3 bg-light">
+                        <span class="small text-muted d-block">شماره تماس آگهی‌دهنده — برای تماس کلیک کنید</span>
+                        <a href="tel:@_ad.Phone" class="fw-bold fs-5 d-block" dir="ltr">@_ad.Phone</a>
+                    </div>
+                    @if (_restWarning)
+                    {
+                        <div class="alert alert-info py-2 small mt-2 mb-0">
+                            ⏰ ساعات استراحت آگهی‌دهنده ممکن است باشد — ترجیحاً <b>پیام بدهید</b> یا از <b>گفتگو</b> استفاده کنید.
+                        </div>
+                    }
                 }
                 @if (_ad.Status == ClassifiedAdStatus.Sold)
                 {
@@ -155,13 +191,27 @@ else
 @code {
     [Parameter] public long Id { get; set; }
 
-    private bool _loaded, _showPhone;
-    private bool _authed, _favSaved, _favBusy, _favBusyToggle;
+    private bool _loaded, _showPhone, _needLogin, _restWarning;
+    private bool _authed, _favSaved, _favBusy;
     private bool _canChat, _isOwnerViewing, _chatSent, _chatBusy;
     private string _chatText = "";
     private string? _chatErr;
     private AdVm? _ad;
     private List<(string Name, string Value)> _attrs = new();
+
+    private async Task TogglePhoneAsync()
+    {
+        if (!_authed) { _needLogin = true; return; }
+
+        if (!_showPhone)
+        {
+            // ساعات استراحت: ۲۳ تا ۸ صبح به وقت ایران
+            var iran = Shop.Shared.PersianDateHelper.ToIranTime(DateTime.UtcNow);
+            _restWarning = iran.Hour >= 23 || iran.Hour < 8;
+        }
+        _showPhone = true;
+        await Task.CompletedTask;
+    }
 
     private sealed record AdVm(long Id, string Title, string? Description, long? Price, string Phone, string? MainImage,
         string CityName, string? Neighborhood, double? Lat, double? Lng, string CategoryName, DateTime Date, long ViewCount, ClassifiedAdStatus Status, string? AttrJson, string? ImagesJson);
