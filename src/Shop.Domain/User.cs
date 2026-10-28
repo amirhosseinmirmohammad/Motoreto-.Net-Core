@@ -17,6 +17,9 @@ public class User : IdentityUser<Guid>
 
     public bool IsActive { get; set; } = true;
 
+    /// <summary>احراز هویت‌شده توسط ادمین (تیک آبی دیوار-مانند کنار نام در آگهی‌ها و چت).</summary>
+    public bool IsIdentityVerified { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     // ---- آدرس پیش‌فرض ----

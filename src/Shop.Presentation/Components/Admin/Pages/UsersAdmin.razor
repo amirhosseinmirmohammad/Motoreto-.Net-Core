@@ -138,6 +138,9 @@ else
                                 <button class="btn btn-sm btn-outline-secondary" disabled="@u.IsAdmin || _busy" @onclick="() => ToggleAsync(u.Id)" title="@((u.IsAdmin ? "ادمین قابل تغییر نیست" : ""))">
                                     @(u.Active ? "غیرفعال" : "فعال")
                                 </button>
+                                <button class="btn btn-sm btn-outline-info" disabled="@u.IsAdmin || _busy" @onclick="() => ToggleVerifyAsync(u.Id)" title="تیک احراز هویت دیوار-مانند">
+                                    @(u.Verified ? "لغو ✔" : "احراز ✔")
+                                </button>
                                 <button class="btn btn-sm btn-outline-danger" disabled="@u.IsAdmin || _busy" @onclick="() => DeleteAsync(u.Id)" title="@((u.IsAdmin ? "ادمین قابل حذف نیست" : ""))">حذف</button>
                             </td>
                         </tr>
@@ -326,7 +329,7 @@ else
         await LoadAsync();
     }
 
-    private sealed record URow(Guid Id, string Name, string Email, string? Mobile, int Orders, long Wallet, bool Active, bool IsAdmin);
+    private sealed record URow(Guid Id, string Name, string Email, string? Mobile, int Orders, long Wallet, bool Active, bool IsAdmin, bool Verified);
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
@@ -370,7 +373,8 @@ else
                 Db.Orders.Count(o => o.UserId == u.Id),
                 u.WalletBalance,
                 u.IsActive,
-                false))
+                false,
+                u.IsIdentityVerified))
             .ToListAsync();
 
         var total = await query.CountAsync();
@@ -383,6 +387,19 @@ else
 
         _rows = _rows.Select(u => u with { IsAdmin = adminIds.Contains(u.Id) }).ToList();
         _loading = false;
+    }
+
+    private async Task ToggleVerifyAsync(Guid id)
+    {
+        _busy = true;
+        var u = await Db.Users.FirstAsync(x => x.Id == id);
+        u.IsIdentityVerified = !u.IsIdentityVerified;
+        await Db.SaveChangesAsync();
+        if (u.IsIdentityVerified)
+            await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                u.Id, "✔ حساب شما احراز هویت شد", "تیک آبی کنار نام شما در آگهی‌ها نمایش داده می‌شود", "bi-patch-check-fill", "/panel"));
+        await LoadAsync();
+        _busy = false;
     }
 
     private async Task ToggleAsync(Guid id)

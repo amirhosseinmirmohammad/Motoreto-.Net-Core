@@ -67,6 +67,13 @@ else
                 </div>
                 <hr />
                 <div class="small text-muted">
+                    <div class="mb-1"><i class="bi bi-person-badge"></i> آگهی‌دهنده:
+                        <b>@_ad.OwnerName</b>
+                        @if (_ad.OwnerVerified)
+                        {
+                            <span class="badge bg-info text-dark ms-1">✔ احراز هویت‌شده</span>
+                        }
+                    </div>
                     <div class="mb-1"><i class="bi bi-tag"></i> دسته: <b>@_ad.CategoryName</b></div>
                     <div class="mb-1"><i class="bi bi-geo-alt"></i> شهر: <b>@_ad.CityName</b>@(_ad.Neighborhood is null ? "" : " — " + _ad.Neighborhood)</div>
                     @if (_ad.Lat is not null && _ad.Lng is not null)
@@ -215,7 +222,7 @@ else
     }
 
     private sealed record AdVm(long Id, string Title, string? Description, long? Price, string Phone, string? MainImage,
-        string CityName, string? Neighborhood, double? Lat, double? Lng, string CategoryName, DateTime Date, long ViewCount, ClassifiedAdStatus Status, string? AttrJson, string? ImagesJson);
+        string CityName, string? Neighborhood, double? Lat, double? Lng, string CategoryName, string OwnerName, bool OwnerVerified, DateTime Date, long ViewCount, ClassifiedAdStatus Status, string? AttrJson, string? ImagesJson);
 
     private string? _active;
     private List<string> _gallery = new();
@@ -259,7 +266,9 @@ else
         var a = await Db.ClassifiedAds.AsNoTracking()
             .Where(x => x.Id == Id && (x.Status == ClassifiedAdStatus.Approved || x.Status == ClassifiedAdStatus.Sold))
             .Select(x => new AdVm(x.Id, x.Title, x.Description, x.Price, x.Phone, x.MainImage,
-                x.City.Name, x.Neighborhood, x.Latitude, x.Longitude, x.Category.Name, x.CreatedAt, x.ViewCount, x.Status, x.AttributesJson, x.ImagesJson))
+                x.City.Name, x.Neighborhood, x.Latitude, x.Longitude, x.Category.Name,
+                (x.User.FirstName ?? "") + " " + (x.User.LastName ?? ""), x.User.IsIdentityVerified,
+                x.CreatedAt, x.ViewCount, x.Status, x.AttributesJson, x.ImagesJson))
             .FirstOrDefaultAsync();
 
         if (a is not null)

@@ -43,6 +43,10 @@ else
                                     {
                                         <span class="badge bg-danger ms-1">⚡ فوری</span>
                                     }
+                                    @if (a.OwnerVerified)
+                                    {
+                                        <span class="badge bg-info text-dark ms-1" title="احراز هویت‌شده">✔</span>
+                                    }
                                 </td>
                                 <td class="small">@(a.Price is null ? "توافقی" : a.Price == 0 ? "رایگان" : a.Price.Value.ToString("N0"))</td>
                                 <td><span class="badge bg-@(a.Status == ClassifiedAdStatus.Approved ? "success" : a.Status == ClassifiedAdStatus.Pending ? "warning text-dark" : "secondary")">@StatusText(a.Status)</span></td>
@@ -128,7 +132,7 @@ else
     private Dictionary<int, CatPrices> _catPrices = new();
     private Dictionary<int, string> _catNames = new();
 
-    private sealed record AdRow(long Id, string Title, long? Price, ClassifiedAdStatus Status, long ViewCount, int CatId, bool Featured, bool Urgent, DateTime? ExpiresAt);
+    private sealed record AdRow(long Id, string Title, long? Price, ClassifiedAdStatus Status, long ViewCount, int CatId, bool Featured, bool Urgent, DateTime? ExpiresAt, bool OwnerVerified);
     private sealed record ChatRow(long AdId, string Title, string LastText, DateTime LastAt);
     private sealed record FavRow(long Id, long AdId, string Title);
     private sealed record SearchRow(long Id, string? Q, string? CatName, string? CityName);
@@ -149,7 +153,7 @@ else
         _myAds = await Db.ClassifiedAds.AsNoTracking()
             .Where(a => a.UserId == _uid)
             .OrderByDescending(a => a.Id)
-            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.Status, a.ViewCount, a.ClassifiedCategoryId, a.IsFeatured, a.IsUrgent, a.ExpiresAt))
+            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.Status, a.ViewCount, a.ClassifiedCategoryId, a.IsFeatured, a.IsUrgent, a.ExpiresAt, a.User.IsIdentityVerified))
             .ToListAsync();
 
         _catPrices = await Db.ClassifiedCategories.AsNoTracking()
