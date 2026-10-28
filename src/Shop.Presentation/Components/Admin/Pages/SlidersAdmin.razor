@@ -1,0 +1,193 @@
+@page "/manage/sliders"
+@layout AdminLayout
+@attribute [Authorize]
+@using Microsoft.Extensions.Caching.Hybrid
+@inject ISliderService Sliders
+@inject HybridCache Cache
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-1">🖼️ اسلایدر صفحه اصلی</h4>
+<p class="text-muted small">بنرها ۱۶۰۰×۶۰۰ هستند؛ تصویر جدید را آپلود کنید (خودکار WebP و فضای ابری) و متن/لینک را ویرایش کنید. تغییرات فوراً در صفحه اصلی اعمال می‌شود.</p>
+
+@* ---------- اسلایدر جدید ---------- *@
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <h6 class="fw-bold mb-3">➕ اسلایدر جدید</h6>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label small text-muted">عنوان *</label>
+            <input type="text" class="form-control" value="@_newTitle" @oninput="NewTitleChanged" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted">لینک (اختیاری)</label>
+            <input type="text" class="form-control" dir="ltr" placeholder="/products" value="@_newLink" @oninput="NewLinkChanged" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted">تصویر بنر *</label>
+            <UploadDropzone @bind-Value="_newImage" />
+        </div>
+        <div class="col-12">
+            <button class="btn btn-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_newTitle) || string.IsNullOrWhiteSpace(_newImage))" @onclick="AddAsync">
+                افزودن اسلایدر
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    @foreach (var s in _rows)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+            <div class="row g-3 align-items-start">
+                <div class="col-lg-3">
+                    <img src="@s.Image" class="rounded-3 border w-100" style="aspect-ratio:1600/600;object-fit:cover" alt="@s.Title" />
+                </div>
+                <div class="col-lg-9">
+                    <div class="row g-2">
+                        <div class="col-md-5">
+                            <label class="form-label small text-muted mb-1">عنوان</label>
+                            <input type="text" class="form-control form-control-sm" value="@_draft[s.Id].Title" @oninput="e => TitleInput(s.Id, e)" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted mb-1">لینک</label>
+                            <input type="text" class="form-control form-control-sm" dir="ltr" value="@_draft[s.Id].Link" @oninput="e => _draft[s.Id].Link = e.Value?.ToString()" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small text-muted mb-1">ترتیب</label>
+                            <input type="number" class="form-control form-control-sm" value="@_draft[s.Id].SortOrder" @oninput="e => _draft[s.Id].SortOrder = int.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+                        </div>
+                        <div class="col-12">
+                            <UploadDropzone @bind-Value="_draft[s.Id].Image" />
+                        </div>
+                        <div class="col-12 d-flex gap-2 align-items-center flex-wrap">
+                            <button class="btn btn-sm btn-primary" disabled="@_busy" @onclick="() => SaveAsync(s.Id)">ذخیره</button>
+                            <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(s.Id)">
+                                @(s.IsActive ? "غیرفعال کن" : "فعال کن")
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(s.Id)">حذف</button>
+                            <span class="badge bg-@(s.IsActive ? "success" : "secondary") ms-2">@(s.IsActive ? "نمایش" : "مخفی")</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@if (_msg is not null)
+{
+    <div class="alert alert-success py-2 mt-2">@_msg</div>
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private string _newTitle = "", _newLink = "", _newImage = "";
+    private string? _msg;
+    private List<Slider> _rows = new();
+
+    private void NewTitleChanged(ChangeEventArgs e) => _newTitle = e.Value?.ToString() ?? "";
+
+    private void NewLinkChanged(ChangeEventArgs e) => _newLink = e.Value?.ToString() ?? "";
+
+    private void TitleInput(int id, ChangeEventArgs e) => _draft[id].Title = e.Value?.ToString() ?? "";
+
+    /// <summary>پیش‌نویس ویرایش هر اسلایدر (Title/Link/SortOrder/Image).</summary>
+    private Dictionary<int, Draft> _draft = new();
+
+    private sealed class Draft
+    {
+        public string Title { get; set; } = "";
+        public string Link { get; set; } = "";
+        public int SortOrder { get; set; }
+        public string? Image { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _rows = await Sliders.GetAllAsync();
+        _draft = _rows.ToDictionary(
+            s => s.Id,
+            s => new Draft { Title = s.Title, Link = s.Link ?? "", SortOrder = s.SortOrder, Image = s.Image });
+
+        _loading = false;
+    }
+
+    /// <summary>تخلیه کش صفحه اصلی — تغییرات فوراً دیده می‌شود.</summary>
+    private async Task EvictHomeAsync() => await Cache.RemoveAsync("home-data-v1");
+
+    private async Task AddAsync()
+    {
+        _busy = true;
+
+        var maxOrder = await Db.Sliders.AnyAsync()
+            ? await Db.Sliders.MaxAsync(s => s.SortOrder)
+            : 0;
+
+        await Sliders.CreateAsync(new Slider
+        {
+            Title = _newTitle.Trim(),
+            Link = string.IsNullOrWhiteSpace(_newLink) ? null : _newLink.Trim(),
+            Image = _newImage!,
+            SortOrder = maxOrder + 1,
+            IsActive = true
+        });
+
+        _newTitle = ""; _newLink = ""; _newImage = "";
+        _msg = "اسلایدر جدید اضافه شد ✓";
+        await EvictHomeAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task SaveAsync(int id)
+    {
+        _busy = true;
+        var d = _draft[id];
+        var s = await Sliders.GetByIdAsync(id);
+
+        if (s is not null)
+        {
+            s.Title = d.Title.Trim();
+            s.Link = string.IsNullOrWhiteSpace(d.Link) ? null : d.Link.Trim();
+            s.SortOrder = d.SortOrder;
+            if (!string.IsNullOrWhiteSpace(d.Image)) s.Image = d.Image;
+            await Sliders.UpdateAsync(s);
+        }
+
+        _msg = "ذخیره شد ✓";
+        await EvictHomeAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task ToggleAsync(int id)
+    {
+        _busy = true;
+        var s = await Sliders.GetByIdAsync(id);
+        if (s is not null)
+        {
+            s.IsActive = !s.IsActive;
+            await Sliders.UpdateAsync(s);
+        }
+
+        await EvictHomeAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        _busy = true;
+        await Sliders.DeleteAsync(id);
+        _msg = "حذف شد.";
+        await EvictHomeAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+}

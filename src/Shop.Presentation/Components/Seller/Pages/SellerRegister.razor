@@ -1,0 +1,199 @@
+@page "/seller/register"
+@layout SellerLayout
+@attribute [Authorize]
+@inject ISellerService Sellers
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<h5 class="fw-bold mb-1">📝 ثبت‌نام فروشنده در مارکت‌پلیس</h5>
+<p class="text-muted small">فرم را کامل کنید؛ دسته‌بندی‌هایی که در آن‌ها فعالیت می‌کنید را انتخاب کنید تا فقط کالاهای همان دسته‌ها را ببینید.</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger py-2">@_error</div>
+}
+
+<div class="card border-0 shadow-sm rounded-4 p-4">
+    <EditForm Model="_m" OnValidSubmit="SubmitAsync" class="row g-3">
+        <DataAnnotationsValidator />
+
+        <div class="col-12">
+            <label class="form-label small text-muted fw-bold">نوع شخصیت</label>
+            <div class="d-flex gap-4">
+                <InputRadioGroup @bind-Value="_m.Type" class="d-flex gap-4">
+                    <label class="d-flex align-items-center gap-1"><InputRadio Value="1" /> حقیقی</label>
+                    <label class="d-flex align-items-center gap-1"><InputRadio Value="2" /> حقوقی</label>
+                </InputRadioGroup>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <label class="form-label small text-muted">نام فروشگاه *</label>
+            <InputText @bind-Value="_m.StoreName" class="form-control" />
+            <ValidationMessage For="() => _m.StoreName" class="text-danger small" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">تلفن فروشگاه</label>
+            <InputText @bind-Value="_m.Phone" class="form-control" />
+        </div>
+        <div class="col-12">
+            <label class="form-label small text-muted">آدرس فروشگاه / انبار</label>
+            <InputText @bind-Value="_m.Address" class="form-control" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">ایمیل</label>
+            <InputText @bind-Value="_m.Email" class="form-control" dir="ltr" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">شماره شبا (تسویه فروش)</label>
+            <InputText @bind-Value="_m.Sheba" class="form-control" dir="ltr" placeholder="IR..." />
+            <ValidationMessage For="() => _m.Sheba" class="text-danger small" />
+        </div>
+
+        @if (_m.Type == 1)
+        {
+            <div class="col-12"><hr /><h6 class="fw-bold">اطلاعات شخص حقیقی</h6></div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نام *</label>
+                <InputText @bind-Value="_m.FirstName" class="form-control" />
+                <ValidationMessage For="() => _m.FirstName" class="text-danger small" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نام خانوادگی *</label>
+                <InputText @bind-Value="_m.LastName" class="form-control" />
+                <ValidationMessage For="() => _m.LastName" class="text-danger small" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">کد ملی *</label>
+                <InputText @bind-Value="_m.NationalCode" class="form-control" maxlength="10" />
+                <ValidationMessage For="() => _m.NationalCode" class="text-danger small" />
+            </div>
+        }
+        else
+        {
+            <div class="col-12"><hr /><h6 class="fw-bold">اطلاعات شخص حقوقی</h6></div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">نام شرکت *</label>
+                <InputText @bind-Value="_m.CompanyName" class="form-control" />
+                <ValidationMessage For="() => _m.CompanyName" class="text-danger small" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">شناسه ملی شرکت *</label>
+                <InputText @bind-Value="_m.CompanyNationalId" class="form-control" maxlength="11" />
+                <ValidationMessage For="() => _m.CompanyNationalId" class="text-danger small" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">کد اقتصادی</label>
+                <InputText @bind-Value="_m.EconomicCode" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">شماره ثبت شرکت</label>
+                <InputText @bind-Value="_m.RegistrationNumber" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نام مدیرعامل</label>
+                <InputText @bind-Value="_m.CeoName" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">کد ملی مدیرعامل</label>
+                <InputText @bind-Value="_m.CeoNationalId" class="form-control" maxlength="10" />
+            </div>
+        }
+
+        <div class="col-md-6">
+            <label class="form-label small text-muted">شماره جواز کسب / شماره ثبت *</label>
+            <InputText @bind-Value="_m.BusinessLicenseNumber" class="form-control" />
+            <ValidationMessage For="() => _m.BusinessLicenseNumber" class="text-danger small" />
+        </div>
+
+        <div class="col-12">
+            <label class="form-label small text-muted">دسته‌بندی‌های فعالیت فروشگاه * (چند انتخابی)</label>
+            <MultiSelect Options="_cats.Select(c => new MultiSelect.Opt(c.Id.ToString(), c.Label)).ToList()"
+                         Values="_catIds"
+                         ValuesChanged="SetCats"
+                         Placeholder="جستجو و افزودن دسته..." />
+            <span class="text-danger small">@(_submitted && _catIds.Count == 0 ? "حداقل یک دسته انتخاب کنید." : "")</span>
+        </div>
+
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary w-100 py-2" disabled="@_busy">
+                @(_busy ? "در حال ثبت..." : "ثبت درخواست فروشندگی")
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private SellerApplyViewModel _m = new();
+    private List<string> _catIds = [];
+    private List<CatRow> _cats = new();
+    private bool _submitted;
+    private bool _busy;
+    private string? _error;
+
+    private sealed record CatRow(int Id, string Name, string Parent)
+    {
+        public string Label => Parent.Length == 0 ? Name : $"{Parent} → {Name}";
+    }
+
+    private void SetCats(List<string> v) => _catIds = v;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cats = await Db.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive && c.ParentId != null)
+            .OrderBy(c => c.ParentId).ThenBy(c => c.SortOrder)
+            .Select(c => new CatRow(c.Id, c.Name, c.Parent != null ? c.Parent.Name : ""))
+            .ToListAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _submitted = true;
+        if (_catIds.Count == 0) return;
+
+        _busy = true;
+        _error = null;
+
+        try
+        {
+            var uid = await GetUserIdAsync();
+            var (ok, msg) = await Sellers.ApplyAsync(uid, _m);
+
+            if (ok)
+            {
+                // ذخیره دسته‌های فعالیت فروشنده
+                var seller = await Sellers.GetByUserAsync(uid);
+                if (seller is not null)
+                {
+                    var old = await Db.SellerCategories.Where(sc => sc.SellerId == seller.Id).ToListAsync();
+                    Db.SellerCategories.RemoveRange(old);
+                    foreach (var cid in _catIds.Select(int.Parse).Distinct())
+                        Db.SellerCategories.Add(new SellerCategory { SellerId = seller.Id, CategoryId = cid });
+                    await Db.SaveChangesAsync();
+                }
+
+                Nav.NavigateTo("/seller");
+            }
+            else
+            {
+                _error = msg;
+                _busy = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = "خطا: " + ex.Message;
+            _busy = false;
+        }
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+}

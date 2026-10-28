@@ -1,0 +1,106 @@
+@page "/manage/messages"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-3">✉️ پیام‌های تماس با ما</h4>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_rows.Count == 0)
+{
+    <div class="alert alert-light border">پیامی نیست.</div>
+}
+else
+{
+    @foreach (var m in _rows)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-2 @(m.Read ? "opacity-75" : "border-end border-4 border-danger")">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <div class="small">
+                        <b>@m.Name</b>
+                        <span class="text-muted" dir="ltr">(@m.Email)</span>
+                        @if (!m.Read)
+                        {
+                            <span class="badge bg-danger ms-1">جدید</span>
+                        }
+                        <span class="text-muted ms-2">@Fa(m.CreatedAt)</span>
+                    </div>
+                    <div class="fw-bold mt-1">@m.Subject</div>
+                    <div class="small text-muted mt-1" style="white-space:pre-line">@m.Body</div>
+                </div>
+                <div class="d-flex gap-1">
+                    @if (!m.Read)
+                    {
+                        <button class="btn btn-sm btn-outline-success" disabled="@_busy" @onclick="() => MarkReadAsync(m.Id)">خوانده شد</button>
+                    }
+                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(m.Id)">حذف</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+<Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
+
+@code {
+    private bool _loading = true, _busy;
+    private int _page = 1, _totalPages = 1;
+    private List<MRow> _rows = new();
+
+    private async Task GoPage(int p)
+    {
+        _page = p;
+        await LoadAsync();
+    }
+
+    private sealed record MRow(long Id, string Name, string Email, string Subject, string Body, bool Read, DateTime CreatedAt);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.SiteMessages
+            .AsNoTracking()
+            .OrderBy(m => m.IsRead).ThenByDescending(m => m.Id)
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(m => new MRow(m.Id, m.FullName, m.Email, m.Subject, m.Body, m.IsRead, m.CreatedAt))
+            .ToListAsync();
+
+        var total = await Db.SiteMessages.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+
+        _loading = false;
+    }
+
+    private async Task MarkReadAsync(long id)
+    {
+        _busy = true;
+        var m = await Db.SiteMessages.FirstAsync(x => x.Id == id);
+        m.IsRead = true;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        _busy = true;
+        var m = await Db.SiteMessages.FirstAsync(x => x.Id == id);
+        Db.SiteMessages.Remove(m);
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private static string Fa(DateTime d)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+    }
+}

@@ -1,0 +1,51 @@
+@model ContactPageViewModel
+@{
+    ViewData["Title"] = "تماس با ما";
+    var s = Model.Settings;
+}
+<div class="container mt-4 mb-5">
+    <div class="row g-3">
+        <div class="col-12 col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <h5 class="fw-bold mb-3"><i class="bi bi-headset"></i> راه‌های ارتباطی</h5>
+                <ul class="list-unstyled">
+                    <li class="py-2"><i class="bi bi-telephone text-primary me-2"></i> @s.SupportPhone.ToFarsiDigits()</li>
+                    <li class="py-2"><i class="bi bi-envelope text-primary me-2"></i> <span dir="ltr">@s.Email</span></li>
+                    <li class="py-2"><i class="bi bi-geo-alt text-primary me-2"></i> @s.Address</li>
+                    <li class="py-2"><i class="bi bi-clock text-primary me-2"></i> شنبه تا پنجشنبه، ۹ تا ۱۸</li>
+                </ul>
+            </div>
+        </div>
+        <div class="col-12 col-lg-7">
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <h5 class="fw-bold mb-3">ارسال پیام</h5>
+                @if (TempData["Success"] is string ok)
+                {
+                    <div class="alert alert-success rounded-4">@ok</div>
+                }
+                <form asp-action="Contact" method="post">
+                    <div asp-validation-summary="All" class="text-danger small mb-2"></div>
+                    <div class="row">
+                        <div class="col-12 col-md-6 mb-3">
+                            <label asp-for="Message.FullName" class="form-label small"></label>
+                            <input asp-for="Message.FullName" class="form-control" />
+                        </div>
+                        <div class="col-12 col-md-6 mb-3">
+                            <label asp-for="Message.Email" class="form-label small"></label>
+                            <input asp-for="Message.Email" class="form-control" dir="ltr" />
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label asp-for="Message.Subject" class="form-label small"></label>
+                            <input asp-for="Message.Subject" class="form-control" />
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label asp-for="Message.Body" class="form-label small"></label>
+                            <textarea asp-for="Message.Body" class="form-control" rows="4"></textarea>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">ارسال پیام</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

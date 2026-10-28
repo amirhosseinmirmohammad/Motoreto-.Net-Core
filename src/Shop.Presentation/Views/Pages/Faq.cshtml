@@ -1,0 +1,30 @@
+@{
+    ViewData["Title"] = "سوالات متداول";
+    var faqs = new (string Q, string A)[]
+    {
+        ("چطور سفارش خود را ثبت کنم؟", "محصول مورد نظر را به سبد خرید اضافه کنید، سپس مراحل تسویه حساب را کامل کنید. موجودی شما به‌مدت ۲۰ دقیقه رزرو می‌شود."),
+        ("هزینه ارسال چقدر است؟", "هزینه ارسال با پست پیشتاز برای خریدهای بالای سقف تعیین‌شده رایگان است. ارسال اکسپرس هزینه جداگانه دارد."),
+        ("امکان بازگشت کالا وجود دارد؟", "بله، تا ۷ روز پس از تحویل، در صورت باز نشدن پلمب کالا امکان بازگشت وجود دارد."),
+        ("پرداخت در محل دارید؟", "بله، هنگام تسویه می‌توانید روش پرداخت در محل (کد به کد) را انتخاب کنید."),
+        ("چطور سفارشم را پیگیری کنم؟", "از پنل کاربری بخش «سفارش‌های من» وضعیت لحظه‌ای سفارش را ببینید."),
+        ("محصولی ناموجود است، کی شارژ می‌شود؟", "با عضویت در خبرنامه یا فعال‌سازی اعلان، به‌محض شارژ موجودی مطلع می‌شوید.")
+    };
+}
+<div class="container mt-4 mb-5">
+    <h1 class="fs-4 fw-bold mb-4 text-center"><i class="bi bi-question-circle"></i> سوالات متداول</h1>
+    <div class="accordion" id="faqAccordion" style="max-width: 780px; margin: auto;">
+        @for (var i = 0; i < faqs.Length; i++)
+        {
+            <div class="accordion-item border-0 mb-2 rounded-4 overflow-hidden shadow-sm">
+                <h2 class="accordion-header">
+                    <button class="accordion-button @(i > 0 ? "collapsed" : "")" type="button" data-bs-toggle="collapse" data-bs-target="#faq@i">
+                        @faqs[i].Q
+                    </button>
+                </h2>
+                <div id="faq@i" class="accordion-collapse collapse @(i == 0 ? "show" : "")" data-bs-parent="#faqAccordion">
+                    <div class="accordion-body text-muted">@faqs[i].A</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

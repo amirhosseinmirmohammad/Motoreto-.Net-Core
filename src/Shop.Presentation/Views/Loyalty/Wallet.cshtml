@@ -1,0 +1,82 @@
+@model List<WalletTransactionDto>
+@{
+    ViewData["Title"] = "کیف پول";
+    var balance = (long)ViewBag.Balance;
+    var points = (long)ViewBag.Points;
+    var referralCode = (string)ViewBag.ReferralCode;
+    var referralLink = (string)ViewBag.ReferralLink;
+}
+<div class="container mt-4 mb-5">
+    <h1 class="fs-4 fw-bold mb-4"><i class="bi bi-wallet2"></i> کیف پول و امتیازها</h1>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 text-center h-100" style="background: linear-gradient(135deg, var(--brand), #b3123c); color: #fff;">
+                <i class="bi bi-wallet2 fs-2"></i>
+                <div class="fs-3 fw-bold mt-2">@balance.ToToman()</div>
+                <small class="opacity-75">موجودی کیف پول</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 text-center h-100">
+                <i class="bi bi-star-fill fs-2 text-warning"></i>
+                <div class="fs-3 fw-bold mt-2">@points.ToString("N0").ToFarsiDigits()</div>
+                <small class="text-muted">امتیاز باشگاه مشتریان</small>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                <h6 class="fw-bold"><i class="bi bi-people text-primary"></i> دوستانت را دعوت کن</h6>
+                <p class="text-muted small mb-2">با کد معرفی، بعد از اولین خرید دوستت هر دو شارژ می‌گیرید.</p>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" class="form-control text-center fw-bold" value="@referralCode" id="refCode" readonly />
+                    <button class="btn btn-outline-primary" type="button" id="copyRefBtn">کپی</button>
+                </div>
+                <input type="text" class="form-control form-control-sm text-muted" value="@referralLink" id="refLink" readonly />
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4">
+        <div class="card-header bg-white border-0 pt-3 fw-bold">گردش‌های کیف پول</div>
+        @if (Model.Count == 0)
+        {
+            <div class="card-body text-center text-muted py-5">هنوز گردشی ثبت نشده است.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>شرح</th><th>مبلغ</th><th>مانده</th><th>تاریخ</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Model)
+                        {
+                            <tr>
+                                <td class="small">@(t.Description ?? t.TypeTitle) @(t.OrderId is not null ? $"— سفارش {t.OrderId.Value.ToString().ToFarsiDigits()}" : "")</td>
+                                <td class="fw-bold small @(t.Amount >= 0 ? "text-success" : "text-danger")">
+                                    @(t.Amount >= 0 ? "+" : "−") @Math.Abs(t.Amount).ToToman()
+                                </td>
+                                <td class="small">@t.BalanceAfter.ToToman()</td>
+                                <td class="small text-muted">@t.CreatedAt.ToPersianDateTime()</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('copyRefBtn').addEventListener('click', function () {
+        var input = document.getElementById('refCode');
+        input.select();
+        navigator.clipboard.writeText(input.value).then(function () {
+            showToast('کد معرفی کپی شد ✓', 'success');
+        });
+    });
+</script>
+}

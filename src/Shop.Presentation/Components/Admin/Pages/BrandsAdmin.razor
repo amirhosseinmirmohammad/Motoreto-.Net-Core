@@ -1,0 +1,213 @@
+@page "/manage/brands"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-1">🏷️ برندها</h4>
+<p class="text-muted small">هر برند می‌تواند به چند دسته‌بندی تعلق داشته باشد؛ در فرم محصول، فقط برندهای مرتبط با دسته‌های انتخابی نمایش داده می‌شوند.</p>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+            <h6 class="fw-bold mb-3">برند جدید</h6>
+            @if (_err is not null)
+            {
+                <div class="alert alert-danger py-2 small">@_err</div>
+            }
+            <div class="mb-2">
+                <label class="form-label small text-muted">نام برند *</label>
+                <input type="text" class="form-control" value="@_newName" @oninput="NewNameChanged" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label small text-muted">دسته‌بندی‌ها (چند انتخابی)</label>
+                <MultiSelect Options="_cats.Select(c => new MultiSelect.Opt(c.Id.ToString(), c.Label)).ToList()"
+                             Values="_newCatIds"
+                             ValuesChanged="NewCatsChanged"
+                             Placeholder="جستجو و افزودن دسته..." />
+            </div>
+            <button class="btn btn-primary w-100" disabled="@(_busy || string.IsNullOrWhiteSpace(_newName))" @onclick="AddAsync">
+                @(_busy ? "..." : "افزودن برند")
+            </button>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        @if (_loading)
+        {
+            <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+        }
+        else if (_rows.Count == 0)
+        {
+            <div class="alert alert-light border">برندی ثبت نشده است.</div>
+        }
+        else
+        {
+            @foreach (var b in _rows)
+            {
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-2">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control form-control-sm fw-bold" value="@_draft[b.Id].Name" @oninput="e => NameInput(b.Id, e)" />
+                        </div>
+                        <div class="col-md-6">
+                            <MultiSelect Options="_cats.Select(c => new MultiSelect.Opt(c.Id.ToString(), c.Label)).ToList()"
+                                         Values="_draft[b.Id].CatIds"
+                                         ValuesChanged="v => CatInput(b.Id, v)"
+                                         Placeholder="دسته‌های این برند..." />
+                        </div>
+                        <div class="col-md-2 d-flex gap-1 justify-content-end">
+                            <button class="btn btn-sm btn-primary" disabled="@_busy" @onclick="() => SaveAsync(b.Id)">ذخیره</button>
+                            <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(b.Id)">حذف</button>
+                        </div>
+                    </div>
+                    <div class="small text-muted mt-1">
+                        @if (_draft[b.Id].CatIds.Count == 0)
+                        {
+                            <span>بدون محدودیت دسته — در همه دسته‌ها نمایش داده می‌شود</span>
+                        }
+                        else
+                        {
+                            <span>@_draft[b.Id].CatIds.Count.ToString("N0").ToFarsiDigits() دسته انتخاب شده</span>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@if (_msg is not null)
+{
+    <div class="alert alert-success py-2 mt-3">@_msg</div>
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private string _newName = "";
+    private List<string> _newCatIds = [];
+    private string? _err, _msg;
+
+    private List<Brand> _rows = new();
+    private List<CatRow> _cats = new();
+    private Dictionary<int, BrandDraft> _draft = new();
+
+    private sealed record CatRow(int Id, string Name, string Parent)
+    {
+        public string Label => Parent.Length == 0 ? Name : $"{Parent} → {Name}";
+    }
+
+    private sealed class BrandDraft
+    {
+        public string Name { get; set; } = "";
+        public List<string> CatIds { get; set; } = [];
+    }
+
+    private void NewNameChanged(ChangeEventArgs e) => _newName = e.Value?.ToString() ?? "";
+
+    private void NewCatsChanged(List<string> v) => _newCatIds = v;
+
+    private void NameInput(int id, ChangeEventArgs e) => _draft[id].Name = e.Value?.ToString() ?? "";
+
+    private void CatInput(int id, List<string> v) => _draft[id].CatIds = v;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.Brands.AsNoTracking().OrderBy(b => b.Name).ToListAsync();
+
+        var mappings = await Db.BrandCategories.AsNoTracking().ToListAsync();
+
+        _cats = await Db.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.ParentId).ThenBy(c => c.SortOrder)
+            .Select(c => new CatRow(c.Id, c.Name, c.Parent != null ? c.Parent.Name : ""))
+            .ToListAsync();
+
+        _draft = _rows.ToDictionary(
+            b => b.Id,
+            b => new BrandDraft
+            {
+                Name = b.Name,
+                CatIds = mappings.Where(m => m.BrandId == b.Id).Select(m => m.CategoryId.ToString()).ToList()
+            });
+
+        _loading = false;
+    }
+
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newName)) return;
+        _busy = true;
+        _err = null;
+
+        try
+        {
+            var baseSlug = new string(_newName.Trim().Where(char.IsLetterOrDigit).ToArray());
+            var brand = new Brand
+            {
+                Name = _newName.Trim(),
+                Slug = $"brand-{(string.IsNullOrEmpty(baseSlug) ? "x" : baseSlug.ToLower())}-{Random.Shared.Next(100, 999)}"
+            };
+            Db.Brands.Add(brand);
+            await Db.SaveChangesAsync();
+
+            foreach (var cid in _newCatIds.Select(int.Parse).Distinct())
+                Db.BrandCategories.Add(new BrandCategory { BrandId = brand.Id, CategoryId = cid });
+            await Db.SaveChangesAsync();
+
+            _newName = "";
+            _newCatIds = [];
+            _msg = "برند اضافه شد ✓";
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _err = "خطا: " + ex.Message;
+        }
+
+        _busy = false;
+    }
+
+    private async Task SaveAsync(int id)
+    {
+        _busy = true;
+        var d = _draft[id];
+        var b = await Db.Brands.FirstAsync(x => x.Id == id);
+        b.Name = d.Name.Trim();
+
+        var old = await Db.BrandCategories.Where(bc => bc.BrandId == id).ToListAsync();
+        Db.BrandCategories.RemoveRange(old);
+        foreach (var cid in d.CatIds.Select(int.Parse).Distinct())
+            Db.BrandCategories.Add(new BrandCategory { BrandId = id, CategoryId = cid });
+
+        await Db.SaveChangesAsync();
+        _msg = "ذخیره شد ✓";
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        _busy = true;
+        var used = await Db.Products.AnyAsync(p => p.BrandId == id);
+        if (used)
+        {
+            _msg = null;
+            _err = null;
+            _busy = false;
+            _msg = "این برند به محصولاتی متصل است؛ ابتدا برند آن محصولات را تغییر دهید.";
+            return;
+        }
+
+        var b = await Db.Brands.FirstAsync(x => x.Id == id);
+        var links = await Db.BrandCategories.Where(bc => bc.BrandId == id).ToListAsync();
+        Db.BrandCategories.RemoveRange(links);
+        Db.Brands.Remove(b);
+        await Db.SaveChangesAsync();
+        _msg = "حذف شد.";
+        await LoadAsync();
+        _busy = false;
+    }
+}

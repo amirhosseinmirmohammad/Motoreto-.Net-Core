@@ -1,0 +1,28 @@
+<ul class="list-unstyled mb-0">
+    @foreach (var node in Nodes)
+    {
+        <li class="py-1">
+            <a href="@UrlFor(node)" class="text-decoration-none small @(node.Slug == Active ? "fw-bold text-danger" : "text-dark")">
+                @node.Name
+            </a>
+            @if (Depth > 1 && node.Children.Count > 0)
+            {
+                <div class="ps-3 mt-1 border-start">
+                    <CategoryTree Nodes="node.Children" Depth="Depth - 1" UrlFor="UrlFor" Active="Active" />
+                </div>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public List<CategoryNodeDto> Nodes { get; set; } = [];
+
+    /// <summary>عمق نمایش درخت (۳ = سه سطح کامل).</summary>
+    [Parameter] public int Depth { get; set; } = 3;
+
+    /// <summary>ساخت لینک برای هر نود (حفظ بقیه فیلترها).</summary>
+    [Parameter, EditorRequired] public Func<CategoryNodeDto, string> UrlFor { get; set; } = _ => "/products";
+
+    [Parameter] public string? Active { get; set; }
+}

@@ -1,0 +1,157 @@
+@model List<ProductCardDto>
+@{
+    ViewData["Title"] = "مقایسه محصولات";
+    var cheapest = Model.Where(m => m.Stock > 0).OrderBy(m => m.FinalPrice).FirstOrDefault();
+
+    // ماتریس ویژگی‌ها: اجتماع نام ویژگی‌های همه کالاها
+    var attrMaps = Model.Select(p => new { Product = p, Attrs = ParseAttrs(p.AttributesJson) }).ToList();
+    var attrNames = attrMaps.SelectMany(x => x.Attrs.Keys).Distinct().ToList();
+}
+<div class="container mt-4 mb-5">
+    <h1 class="fs-4 fw-bold mb-4"><i class="bi bi-bar-chart-line"></i> مقایسه محصولات</h1>
+
+    @if (Model.Count == 0)
+    {
+        <div class="text-center py-5 bg-white rounded-4">
+            <i class="bi bi-bar-chart-steps fs-1 text-muted"></i>
+            <p class="mt-3 text-muted">هنوز کالایی برای مقایسه انتخاب نکرده‌اید.</p>
+            <p class="text-muted small">در صفحه هر کالا، دکمه «افزودن به مقایسه» را بزنید (تا ۴ کالا).</p>
+            <a href="/products" class="btn btn-primary btn-sm">مشاهده محصولات</a>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm rounded-4 overflow-auto">
+            <table class="table table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>کالا</th>
+                        <th>فروشگاه</th>
+                        <th>قیمت</th>
+                        <th>تخفیف</th>
+                        <th>امتیاز</th>
+                        <th>موجودی</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model)
+                    {
+                        <tr class="@(p.Id == cheapest?.Id ? "table-success" : "")">
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <img src="@p.Image" width="48" height="48" class="rounded-3" alt="@p.Name" loading="lazy" />
+                                    <a href="/p/@p.Slug" class="text-decoration-none text-dark small">@p.Name</a>
+                                </div>
+                            </td>
+                            <td class="small">
+                                @if (p.OfferCount > 0)
+                                {
+                                    <span><i class="bi bi-shop"></i> @p.OfferCount.ToString().ToFarsiDigits() فروشنده</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">مارکت</span>
+                                }
+                            </td>
+                            <td>
+                                <strong>@p.FinalPrice.ToToman()</strong>
+                                @if (p.Id == cheapest?.Id)
+                                {
+                                    <span class="badge text-bg-success">ارزان‌ترین</span>
+                                }
+                            </td>
+                            <td>@(p.DiscountPercent > 0 ? p.DiscountPercent.ToString().ToFarsiDigits() + "٪" : "—")</td>
+                            <td class="small">@(p.AverageRating > 0 ? p.AverageRating.ToString("0.0").ToFarsiDigits() + " ★" : "—")</td>
+                            <td>@(p.Stock > 0 ? "موجود" : "ناموجود")</td>
+                            <td>
+                                <form asp-controller="Compare" asp-action="ToggleRemove" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-sm btn-outline-danger compare-remove" data-id="@p.Id" type="button">حذف</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="/products" class="btn btn-outline-primary btn-sm">افزودن کالای دیگر</a>
+        </div>
+
+        @* ---------- ماتریس مقایسه ویژگی‌ها ---------- *@
+        @if (attrNames.Count > 0)
+        {
+            <div class="card border-0 shadow-sm rounded-4 p-4 mt-4">
+                <h6 class="fw-bold mb-3"><i class="bi bi-list-check"></i> مقایسه ویژگی‌ها</h6>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="min-width:130px">ویژگی</th>
+                                @foreach (var x in attrMaps)
+                                {
+                                    <th class="small fw-bold">
+                                        <img src="@x.Product.Image" width="34" height="34" class="rounded-3 ms-1" alt="" loading="lazy" />
+                                        @x.Product.Name
+                                    </th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var name in attrNames)
+                            {
+                                <tr>
+                                    <td class="small fw-bold bg-light">@name</td>
+                                    @foreach (var x in attrMaps)
+                                    {
+                                        <td class="small">@(x.Attrs.TryGetValue(name, out var v) ? v.ToFarsiDigits() : "—")</td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@functions {
+    /// <summary>AttributesJson را به دیکشنری نام → مقادیر تبدیل می‌کند (بدون Exception).</summary>
+    private static Dictionary<string, string> ParseAttrs(string? json)
+    {
+        var result = new Dictionary<string, string>();
+        if (string.IsNullOrWhiteSpace(json)) return result;
+
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            foreach (var el in doc.RootElement.EnumerateArray())
+            {
+                if (!el.TryGetProperty("name", out var nameEl)) continue;
+                var name = nameEl.GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+
+                var values = new List<string>();
+                if (el.TryGetProperty("values", out var valuesEl) && valuesEl.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    foreach (var v in valuesEl.EnumerateArray())
+                    {
+                        var s = v.GetString();
+                        if (!string.IsNullOrWhiteSpace(s)) values.Add(s);
+                    }
+                }
+
+                result[name] = string.Join("، ", values);
+            }
+        }
+        catch
+        {
+            // JSON نامعتبر → بدون ویژگی
+        }
+
+        return result;
+    }
+}

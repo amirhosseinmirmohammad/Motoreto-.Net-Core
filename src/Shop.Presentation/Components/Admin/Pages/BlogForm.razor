@@ -1,0 +1,183 @@
+@page "/manage/blog/new"
+@page "/manage/blog/edit/{Id:long}"
+@layout AdminLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider Auth
+@inject Shop.Presentation.Services.ImageUploadService Uploader
+
+<h4 class="fw-bold mb-3">@(_edit ? "✏️ ویرایش مقاله" : "📰 مقاله جدید")</h4>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger py-2">@_error</div>
+}
+
+<div class="card border-0 shadow-sm rounded-4 p-4">
+    <EditForm Model="_m" OnValidSubmit="SubmitAsync" class="row g-3">
+        <DataAnnotationsValidator />
+
+        <div class="col-md-8">
+            <label class="form-label small text-muted">عنوان *</label>
+            <InputText @bind-Value="_m.Title" class="form-control" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted">اسلاگ (خالی = خودکار)</label>
+            <InputText @bind-Value="_m.Slug" class="form-control" dir="ltr" />
+        </div>
+        <div class="col-12">
+            <label class="form-label small text-muted">خلاصه *</label>
+            <InputTextArea @bind-Value="_m.ShortDescription" class="form-control" rows="2" />
+        </div>
+        <div class="col-12">
+            <label class="form-label small text-muted">متن کامل *</label>
+            <RichEditor @bind-Value="_m.Body" />
+        </div>
+        <div class="col-md-8">
+            <label class="form-label small text-muted">تصویر کاور</label>
+            <InputText @bind-Value="_m.CoverImage" class="form-control mb-1" dir="ltr" placeholder="مسیر دستی (اختیاری) — آپلود خودکار WebP می‌شود" />
+            <UploadDropzone @bind-Value="_m.CoverImage" />
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+            <div class="form-check form-switch">
+                <InputCheckbox @bind-Value="_m.IsVisible" class="form-check-input" id="swVis" />
+                <label class="form-check-label small" for="swVis">نمایش در سایت</label>
+            </div>
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
+                @(_busy ? "در حال ذخیره..." : "ذخیره مقاله")
+            </button>
+            <NavLink href="/manage/blog" class="btn btn-outline-secondary">انصراف</NavLink>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter] public long? Id { get; set; }
+
+    private bool _edit => Id is not null;
+    private bool _busy;
+    private string? _error;
+
+    private sealed record M
+    {
+        public string Title { get; set; } = "";
+        public string Slug { get; set; } = "";
+        public string ShortDescription { get; set; } = "";
+        public string Body { get; set; } = "";
+        public string CoverImage { get; set; } = "";
+        public bool IsVisible { get; set; } = true;
+    }
+
+    private M _m = new();
+    private bool _uploading;
+    private string? _uploadErr;
+
+    private async Task UploadCoverAsync(InputFileChangeEventArgs e)
+    {
+        _uploadErr = null;
+        if (e.FileCount == 0) return;
+
+        _uploading = true;
+        try
+        {
+            _m.CoverImage = await Uploader.SaveAsync(e.File);
+        }
+        catch (Exception ex)
+        {
+            _uploadErr = ex.Message;
+        }
+        _uploading = false;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_edit)
+        {
+            var b = await Db.Blogs.AsNoTracking().FirstOrDefaultAsync(x => x.Id == Id!.Value);
+
+            if (b is null)
+            {
+                Nav.NavigateTo("/manage/blog");
+                return;
+            }
+
+            _m = new M
+            {
+                Title = b.Title,
+                Slug = b.Slug,
+                ShortDescription = b.ShortDescription,
+                Body = b.Body,
+                CoverImage = b.CoverImage,
+                IsVisible = b.IsVisible
+            };
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_m.Title) || string.IsNullOrWhiteSpace(_m.Body))
+        {
+            _error = "عنوان و متن مقاله الزامی است.";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        try
+        {
+            var image = string.IsNullOrWhiteSpace(_m.CoverImage)
+                ? "/images/products/real/" + Random.Shared.Next(1, 61) + ".webp"
+                : _m.CoverImage.Trim();
+
+            if (!_edit)
+            {
+                var slug = !string.IsNullOrWhiteSpace(_m.Slug)
+                    ? _m.Slug.Trim()
+                    : "post-" + Random.Shared.Next(10000, 99999);
+
+                Db.Blogs.Add(new Blog
+                {
+                    Title = _m.Title.Trim(),
+                    Slug = slug,
+                    ShortDescription = _m.ShortDescription?.Trim() ?? "",
+                    Body = _m.Body,
+                    CoverImage = image,
+                    IsVisible = _m.IsVisible,
+                    AuthorId = await GetUserIdAsync(),
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                var b = await Db.Blogs.FirstAsync(x => x.Id == Id!.Value);
+                b.Title = _m.Title.Trim();
+                if (!string.IsNullOrWhiteSpace(_m.Slug)) b.Slug = _m.Slug.Trim();
+                b.ShortDescription = _m.ShortDescription?.Trim() ?? "";
+                b.Body = _m.Body;
+                b.CoverImage = image;
+                b.IsVisible = _m.IsVisible;
+            }
+
+            await Db.SaveChangesAsync();
+            Nav.NavigateTo("/manage/blog");
+        }
+        catch (Exception ex)
+        {
+            _error = "خطا در ذخیره‌سازی: " + ex.Message;
+            _busy = false;
+        }
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await Auth.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+}

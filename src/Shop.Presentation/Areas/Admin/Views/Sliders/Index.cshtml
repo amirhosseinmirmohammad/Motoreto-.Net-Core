@@ -1,0 +1,38 @@
+@model List<Slider>
+@{
+    ViewData["Title"] = "اسلایدرها";
+}
+<div class="toolbar">
+    <a href="/admin/sliders/create" class="btn" style="margin-inline-start:auto">＋ اسلایدر جدید</a>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>تصویر</th><th>عنوان</th><th>زیرعنوان</th><th>لینک</th><th>ترتیب</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td><img src="@s.Image" alt="" style="width:80px;height:32px;object-fit:cover;border-radius:6px" /></td>
+                    <td style="font-weight:600">@s.Title</td>
+                    <td class="text-muted2" style="white-space:normal">@s.SubTitle</td>
+                    <td dir="ltr" class="text-muted2">@s.Link</td>
+                    <td>@s.SortOrder.ToString().ToFarsiDigits()</td>
+                    <td>@(s.IsActive ? Html.Raw("<span class='badge badge-green'>فعال</span>") : Html.Raw("<span class='badge badge-gray'>خاموش</span>"))</td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            <a href="/admin/sliders/edit/@s.Id" class="btn btn-sm btn-light">ویرایش</a>
+                            <form method="post" action="/admin/sliders/toggle/@s.Id">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-light">@(s.IsActive ? "خاموش" : "روشن")</button>
+                            </form>
+                            <form method="post" action="/admin/sliders/delete/@s.Id" data-confirm="اسلایدر حذف شود؟">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-danger">حذف</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

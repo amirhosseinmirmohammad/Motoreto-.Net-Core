@@ -1,18 +1,29 @@
-﻿name: motoreto
+﻿name: shop
 
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: motoreto_user
-      POSTGRES_PASSWORD: "M@nred17"
-      POSTGRES_DB: motoreto
+  redis:
+    image: redis:7-alpine
     ports:
-      - "56432:5432"             
+      - "56379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: shop_user
+      POSTGRES_PASSWORD: "Shop!2026"
+      POSTGRES_DB: shop
+    ports:
+      - "56432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U motoreto_user -d motoreto"]
+      test: ["CMD-SHELL", "pg_isready -U shop_user -d shop"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -21,15 +32,13 @@ services:
   presentation:
     build:
       context: .
-      dockerfile: src/Presentation/Dockerfile
-      args:
-        BUILD_CONFIGURATION: Release
-    image: motoreto:${APP_VERSION:-dev}
-    container_name: motoreto-${APP_VERSION:-dev}
+      dockerfile: src/Shop.Presentation/Dockerfile
+    image: shop:latest
+    container_name: shop-app
     environment:
-      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: "http://+:80"
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=motoreto;Username=motoreto_user;Password=M@nred17;Include Error Detail=true"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=shop;Username=shop_user;Password=Shop!2026;Include Error Detail=true"
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ef4056" />
+    <title>@ViewData["Title"] - فروشگاه شاپ</title>
+
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/images/icons/icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/images/icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="شاپ" />
+
+    <environment include="Development">
+        <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.rtl.min.css" />
+        <link rel="stylesheet" href="~/lib/icons/bootstrap-icons.min.css" />
+        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    </environment>
+    <environment exclude="Development">
+        <link rel="stylesheet" href="~/lib/bootstrap/css/bootstrap.rtl.min.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/lib/icons/bootstrap-icons.min.css" asp-append-version="true" />
+        <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    </environment>
+    @await RenderSectionAsync("Styles", required: false)
+    @await RenderSectionAsync("Head", required: false)
+</head><body>
+    @await Html.PartialAsync("_Header")
+
+    <main class="page-content" id="pageContent">
+        @RenderBody()
+
+        @* سکشن‌های اسکریپت داخل container برای pjax *@
+    </main>
+
+    @await Html.PartialAsync("_Footer")
+
+    <div class="toast-container position-fixed bottom-0 start-0 p-3" id="toastContainer"></div>
+
+    <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/pjax.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

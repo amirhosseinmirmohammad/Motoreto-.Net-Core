@@ -1,0 +1,147 @@
+@page "/manage/sellers"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ISellerService Sellers
+
+<h4 class="fw-bold mb-1">🏪 فروشندگان مارکت‌پلیس</h4>
+<p class="text-muted small">درخواست‌های فروشندگی را بررسی و تأیید کنید؛ درصد کمیسیون روی هر فروش اعمال می‌شود.</p>
+
+<div class="d-flex gap-2 mb-3 flex-wrap align-items-end">
+    <div>
+        <label class="form-label small text-muted mb-1">فیلتر وضعیت</label>
+        <select class="form-select" value="@_filter" @onchange="FilterChanged" style="min-width:180px">
+            <option value="">همه</option>
+            <option value="PendingApproval">در انتظار تأیید</option>
+            <option value="Approved">تأییدشده</option>
+            <option value="Rejected">ردشده</option>
+        </select>
+    </div>
+    <div style="min-width:260px">
+        <label class="form-label small text-muted mb-1">دلیل رد (برای دکمه‌های رد)</label>
+        <input type="text" class="form-control" value="@_rejectReason" @oninput="ReasonChanged" />
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_sellers.Count == 0)
+{
+    <div class="alert alert-light border">فروشنده‌ای یافت نشد.</div>
+}
+else
+{
+    @foreach (var s in _sellers)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <div class="fw-bold">@s.StoreName <span class="badge bg-@StatusClass(s.Status) ms-1">@StatusText(s.Status)</span></div>
+                    <div class="small text-muted mt-1">
+                        مالک: @s.OwnerFullName
+                        • @TypeText(s.Type)
+                        • @(s.Type == SellerType.Individual ? $"کد ملی: {s.NationalCode}" : $"شناسه ملی: {s.CompanyNationalId}")
+                        • جواز: @s.BusinessLicenseNumber
+                    </div>
+                    @if (s.Status == SellerStatus.Rejected && !string.IsNullOrEmpty(s.RejectReason))
+                    {
+                        <div class="small text-danger mt-1">دلیل رد: @s.RejectReason</div>
+                    }
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    @if (s.Status == SellerStatus.Approved)
+                    {
+                        <span class="badge bg-dark">کمیسیون: @s.CommissionPercent٪</span>
+                    }
+                    @if (s.Status == SellerStatus.PendingApproval)
+                    {
+                        <input type="number" class="form-control form-control-sm" style="width:90px" min="1" max="50"
+                               value="@_commission" @oninput="e => _commission = int.TryParse(e.Value?.ToString(), out var v) ? v : 5" />
+                        <button class="btn btn-sm btn-success" disabled="@_busy" @onclick="() => ApproveAsync(s.Id)">تأیید</button>
+                        <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => RejectAsync(s.Id)">رد</button>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@if (_message is not null)
+{
+    <div class="toast-container position-fixed bottom-0 start-0 p-3">
+        <div class="toast show align-items-center text-bg-success border-0">
+            <div class="d-flex">
+                <div class="toast-body">@_message</div>
+                <button type="button" class="btn-close btn-close-white me-auto m-auto" @onclick="() => _message = null"></button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _filter = "";
+    private string _rejectReason = "مدارک ارسالی ناقص است.";
+    private int _commission = 5;
+    private bool _loading = true, _busy;
+    private string? _message;
+    private List<Seller> _sellers = new();
+
+    private void ReasonChanged(ChangeEventArgs e) => _rejectReason = e.Value?.ToString() ?? "";
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task FilterChanged(ChangeEventArgs e)
+    {
+        _filter = e.Value?.ToString() ?? "";
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        SellerStatus? status = _filter switch
+        {
+            "PendingApproval" => SellerStatus.PendingApproval,
+            "Approved" => SellerStatus.Approved,
+            "Rejected" => SellerStatus.Rejected,
+            _ => null
+        };
+
+        _sellers = await Sellers.GetAllForAdminAsync(status);
+        _loading = false;
+    }
+
+    private async Task ApproveAsync(long id)
+    {
+        _busy = true;
+        await Sellers.ApproveAsync(id, _commission);
+        _message = $"فروشنده با کمیسیون {_commission}٪ تأیید شد ✓";
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task RejectAsync(long id)
+    {
+        _busy = true;
+        await Sellers.RejectAsync(id, _rejectReason);
+        _message = "فروشنده رد شد.";
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private static string StatusText(SellerStatus s) => s switch
+    {
+        SellerStatus.Approved => "تأییدشده",
+        SellerStatus.Rejected => "ردشده",
+        _ => "در انتظار تأیید"
+    };
+
+    private static string StatusClass(SellerStatus s) => s switch
+    {
+        SellerStatus.Approved => "success",
+        SellerStatus.Rejected => "danger",
+        _ => "warning text-dark"
+    };
+
+    private static string TypeText(SellerType t) => t == SellerType.LegalEntity ? "حقوقی" : "حقیقی";
+}

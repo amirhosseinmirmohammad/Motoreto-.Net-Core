@@ -1,0 +1,471 @@
+@page "/"
+@rendermode InteractiveServer
+@inject IProductService ProductService
+@inject ISliderService SliderService
+@inject IBlogService BlogService
+@inject ICategoryService CategoryService
+@inject HybridCache Cache
+@inject IJSRuntime JS
+
+<PageTitle>فروشگاه آنلاین | خرید آنلاین با بهترین قیمت</PageTitle>
+
+@if (_model is null)
+{
+    @* ---------- Skeleton صفحه اصلی ---------- *@
+    <div class="container mt-3">
+        <div class="skeleton rounded-4" style="height:210px"></div>
+        <div class="mt-4 d-flex gap-2 overflow-hidden">
+            @for (var i = 0; i < 6; i++)
+            {
+                <div class="skeleton" style="flex:0 0 180px;height:240px"></div>
+            }
+        </div>
+        <div class="skeleton mt-4" style="height:110px"></div>
+        <div class="row g-3 mt-2">
+            @for (var i = 0; i < 6; i++)
+            {
+                <div class="col-6 col-md-4 col-lg-3 col-xl-2"><SkeletonCard /></div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    @* ---------- اسلایدر اصلی ---------- *@
+    @if (_model.Sliders.Count > 0)
+    {
+        <section class="container mt-3">
+            <div id="mainSlider" class="carousel slide rounded-4 overflow-hidden" data-bs-ride="carousel">
+                <div class="carousel-indicators">
+                    @for (var i = 0; i < _model.Sliders.Count; i++)
+                    {
+                        <button type="button" data-bs-target="#mainSlider" data-bs-slide-to="@i" class="@(i == 0 ? "active" : "")"></button>
+                    }
+                </div>
+                <div class="carousel-inner">
+                    @foreach (var (slider, i) in _model.Sliders.Select((s, i) => (s, i)))
+                    {
+                        <div class="carousel-item @(i == 0 ? "active" : "")" data-bs-interval="5000">
+                            <a href="@(slider.Link ?? "/products")" class="slider-slide">
+                                <img src="@slider.Image" class="d-block w-100 slider-img" alt="@slider.Title" />
+                                <div class="slider-overlay">
+                                    <span class="slider-badge">پیشنهاد ویژه مارکت</span>
+                                    <h3 class="slider-title">@slider.Title</h3>
+                                    <span class="slider-cta">مشاهده و خرید <i class="bi bi-arrow-left"></i></span>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#mainSlider" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
+                <button class="carousel-control-next" type="button" data-bs-target="#mainSlider" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+            </div>
+        </section>
+    }
+
+    @* ---------- پیشنهاد شگفت‌انگیز ---------- *@
+    @if (_model.Amazing.Count > 0)
+    {
+        <section class="container mt-4">
+            <div class="amazing-box rounded-4 p-3">
+                <div class="d-flex align-items-center justify-content-between mb-3 px-2 flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <h2 class="amazing-title mb-0"><i class="bi bi-lightning-charge-fill"></i> پیشنهاد شگفت‌انگیز</h2>
+                        <CountdownTimer EndsAt="_model.AmazingEndsAt" />
+                    </div>
+                    <a href="/products?sort=discount" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+                </div>
+                <div class="row g-3 flex-nowrap overflow-auto scroll-row pb-1" data-reveal-stagger>
+                    @foreach (var product in _model.Amazing)
+                    {
+                        <div class="col-6 col-md-4 col-lg-2 reveal" style="min-width:180px">
+                            <ProductCard Product="product" />
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+
+    @* ---------- دسته‌بندی‌ها ---------- *@
+    @if (_model.Categories.Count > 0)
+    {
+        <div class="container mt-4">
+            <div class="category-strip rounded-4 bg-white p-3">
+                <div class="row g-2 text-center" data-reveal-stagger>
+                    @foreach (var cat in _model.Categories.Take(8))
+                    {
+                        <div class="col-3 col-md reveal">
+                            <a href="/products?category=@cat.Slug" class="cat-strip-item">
+                                <i class="bi @(cat.Icon ?? "bi-tag")"></i>
+                                <span>@cat.Name</span>
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+
+    @* ---------- ماسونری: محبوب‌های مارکت (پربازدیدترین‌ها — دیتای متمایز) *@
+    @if (_model.MostViewed.Count >= 4)
+    {
+        <section class="container mt-5">
+            <div class="section-head reveal">
+                <h2 class="section-title"><i class="bi bi-bag-heart text-danger"></i> محبوب‌های مارکت</h2>
+                <a href="/products?sort=bestseller" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+            </div>
+            <div class="mgrid">
+                @{
+                    var colA = new[] { 0, 3 };
+                    var colB = new[] { 1, 4 };
+                    var colC = new[] { 2, 5 };
+                }
+                <div class="mcol" data-reveal-stagger>
+                    @foreach (var i in colA)
+                    {
+                        var p = _model.MostViewed[i];
+                        <a href="/p/@p.Slug" class="m-card reveal">
+                            <div class="m-img"><img src="@p.Image" alt="@p.Name" loading="lazy" decoding="async" /></div>
+                            <div class="m-body">
+                                <div class="m-name">@p.Name</div>
+                                <div class="m-sub">@p.EnglishName</div>
+                                <div class="m-price">@p.FinalPrice.ToToman()</div>
+                            </div>
+                        </a>
+                    }
+                </div>
+                <div class="mcol" data-reveal-stagger>
+                    @foreach (var i in colB)
+                    {
+                        var p = _model.MostViewed[i];
+                        <a href="/p/@p.Slug" class="m-card @(i == 1 ? "tall" : "") reveal">
+                            <div class="m-img"><img src="@p.Image" alt="@p.Name" loading="lazy" decoding="async" /></div>
+                            <div class="m-body">
+                                <div class="m-name">@p.Name</div>
+                                <div class="m-sub">@p.EnglishName</div>
+                                <div class="m-price">@p.FinalPrice.ToToman()</div>
+                            </div>
+                        </a>
+                    }
+                </div>
+                <div class="mcol" data-reveal-stagger>
+                    @foreach (var i in colC)
+                    {
+                        var p = _model.MostViewed[i];
+                        <a href="/p/@p.Slug" class="m-card reveal">
+                            <div class="m-img"><img src="@p.Image" alt="@p.Name" loading="lazy" decoding="async" /></div>
+                            <div class="m-body">
+                                <div class="m-name">@p.Name</div>
+                                <div class="m-sub">@p.EnglishName</div>
+                                <div class="m-price">@p.FinalPrice.ToToman()</div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </div>
+        </section>
+    }
+
+    @* ---------- منتخب ادیتور ---------- *@
+    @if (_model.Special.Count > 0)
+    {
+        <section class="container mt-4">
+            <div class="section-head reveal">
+                <h2 class="section-title"><i class="bi bi-stars text-warning"></i> منتخب ادیتور</h2>
+                <a href="/products?sort=bestseller" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+            </div>
+            <div class="row g-3" data-reveal-stagger>
+                @foreach (var product in _model.Special)
+                {
+                    <div class="col-6 col-md-4 col-lg-3 col-xl-2 reveal"><ProductCard Product="product" /></div>
+                }
+            </div>
+        </section>
+    }
+
+    @* ---------- پرفروش‌ترین‌ها ---------- *@
+    @if (_model.Best.Count > 0)
+    {
+        <section class="container mt-4">
+            <div class="section-head reveal">
+                <h2 class="section-title"><i class="bi bi-fire text-danger"></i> پرفروش‌ترین‌ها</h2>
+                <a href="/products?sort=bestseller" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+            </div>
+            <div class="row g-3" data-reveal-stagger>
+                @foreach (var product in _model.Best)
+                {
+                    <div class="col-6 col-md-4 col-lg-3 col-xl-2 reveal"><ProductCard Product="product" /></div>
+                }
+            </div>
+        </section>
+    }
+
+    @* ---------- جدیدترین محصولات ---------- *@
+    @if (_model.Newest.Count > 0)
+    {
+        <section class="container mt-4">
+            <div class="section-head reveal">
+                <h2 class="section-title"><i class="bi bi-clock-history text-primary"></i> جدیدترین محصولات</h2>
+                <a href="/products" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+            </div>
+            <div class="row g-3" data-reveal-stagger>
+                @foreach (var product in _model.Newest)
+                {
+                    <div class="col-6 col-md-4 col-lg-3 col-xl-2 reveal"><ProductCard Product="product" /></div>
+                }
+            </div>
+        </section>
+    }
+
+    @* ---------- وبلاگ (گرید تمیز) ---------- *@
+    @if (_model.Posts.Count > 0)
+    {
+        <section class="container mt-5 mb-5">
+            <div class="section-head reveal">
+                <h2 class="section-title"><i class="bi bi-journal-text text-success"></i> از وبلاگ</h2>
+                <a href="/blog" class="see-all">همه مقالات <i class="bi bi-chevron-left"></i></a>
+            </div>
+            <div class="bgrid" data-reveal-stagger>
+                @foreach (var post in _model.Posts)
+                {
+                    <a href="/blog/@post.Slug" class="b-card reveal">
+                        <div class="b-img">
+                            <img src="@post.CoverImage" alt="@post.Title" loading="lazy" decoding="async" />
+                        </div>
+                        <div class="b-body">
+                            <div class="b-title">@post.Title</div>
+                            <div class="b-sub">@post.ShortDescription</div>
+                            <div class="b-views"><i class="bi bi-eye me-1"></i>@post.ViewCount.ToString("N0").ToFarsiDigits() بازدید</div>
+                        </div>
+                    </a>
+                }
+            </div>
+        </section>
+    }
+
+    @* ================= سکشن‌های معرفی (سبک لندینگ) ================= *@
+
+    @* ---------- قبل و بعد ---------- *@
+    <section class="landing-section bg-gradient-soft">
+        <div class="container">
+            <div class="landing-badge reveal reveal-pop">قبل و بعد</div>
+            <h2 class="landing-title reveal">همه‌چیز، با خیال <span class="text-brand">راحت</span></h2>
+            <p class="landing-sub reveal">خرید آنلاین بدون استرس — رزرو موجودی، پرداخت امن، ضمانت بازگشت و ارسال سریع.</p>
+
+            <div class="row g-4 justify-content-center mt-2">
+                <div class="col-12 col-md-5 reveal reveal-right">
+                    <div class="compare-card compare-bad">
+                        <div class="compare-tag">خرید حضوری سنتی</div>
+                        <ul>
+                            <li><i class="bi bi-x-circle"></i> رفت‌وآمد و اتلاف وقت در ترافیک</li>
+                            <li><i class="bi bi-x-circle"></i> مقایسه قیمت بین فروشگاه‌ها تقریباً غیرممکن</li>
+                            <li><i class="bi bi-x-circle"></i> بدون ضمانت بازگشت کالا</li>
+                            <li><i class="bi bi-x-circle"></i> پرداخت نقدی و بدون امتیاز</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-12 col-md-5 reveal reveal-left">
+                    <div class="compare-card compare-good">
+                        <div class="compare-tag">با مارکت</div>
+                        <ul>
+                            <li><i class="bi bi-check-circle-fill"></i> مقایسه قیمت چند فروشنده روی یک کالا</li>
+                            <li><i class="bi bi-check-circle-fill"></i> رزرو موجودی و پرداخت امن در چند ثانیه</li>
+                            <li><i class="bi bi-check-circle-fill"></i> ۷ روز ضمانت بازگشت بدون دلیل</li>
+                            <li><i class="bi bi-check-circle-fill"></i> امتیاز و کیف پول با هر خرید</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* ---------- باشگاه مشتریان ---------- *@
+    <section class="landing-section">
+        <div class="container">
+            <div class="landing-badge reveal reveal-pop">باشگاه مشتریان</div>
+            <h2 class="landing-title reveal">خرید کن، <span class="text-brand">امتیاز بگیر</span></h2>
+            <p class="landing-sub reveal">با هر خرید امتیاز و شارژ کیف پول بگیر، دوستانت را معرفی کن و از مزایای باشگاه مشتریان بهره‌مند شو.</p>
+
+            <div class="row g-3 mt-3" data-reveal-stagger>
+                <div class="col-12 col-md-6 col-lg-3 reveal reveal-zoom">
+                    <div class="feature-card">
+                        <div class="feature-icon">👛</div>
+                        <h3>کیف پول</h3>
+                        <p>شارژ کن و بدون کارت بانکی، یک‌ضرب پرداخت کن.</p>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-3 reveal reveal-zoom">
+                    <div class="feature-card">
+                        <div class="feature-icon">⭐</div>
+                        <h3>امتیاز خرید</h3>
+                        <p>هر ۱۰ هزار تومان خرید = ۱ امتیاز باشگاه مشتریان.</p>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-3 reveal reveal-zoom">
+                    <div class="feature-card">
+                        <div class="feature-icon">🎁</div>
+                        <h3>معرفی دوستان</h3>
+                        <p>کد معرفی بده؛ بعد از اولین خرید دوستت، هر دو شارژ می‌گیرید.</p>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-3 reveal reveal-zoom">
+                    <div class="feature-card">
+                        <div class="feature-icon">🏪</div>
+                        <h3>فروشنده شو</h3>
+                        <p>فروشگاهت را ثبت کن، مدارک را بفرست و از مارکت‌پلیس بفروش.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* ---------- PWA ---------- *@
+    <section class="landing-section bg-gradient-soft mb-4">
+        <div class="container">
+            <div class="row align-items-center g-4">
+                <div class="col-12 col-md-6">
+                    <div class="landing-badge reveal reveal-pop">PWA</div>
+                    <h2 class="landing-title reveal">مارکت، <span class="text-brand">توی جیبت</span></h2>
+                    <p class="landing-sub reveal">بدون نصب از استور! فروشگاه را مثل اپلیکیشن روی گوشی یا دسکتاپ نصب کن — سریع‌تر باز می‌شود، آفلاین هم کار می‌کند.</p>
+                    <div class="d-flex flex-wrap gap-2 mt-3 reveal">
+                        <button class="btn btn-primary px-4 py-2 fw-bold" id="installPwaBtn" hidden type="button">
+                            <i class="bi bi-download me-1"></i> نصب اپلیکیشن
+                        </button>
+                        <button class="btn btn-outline-secondary px-4 py-2" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#installHelp" aria-expanded="false" aria-controls="installHelp">
+                            <i class="bi bi-question-circle me-1"></i> راهنمای نصب
+                        </button>
+                    </div>
+                    <div class="collapse mt-3" id="installHelp">
+                        <div class="card border-0 shadow-sm d-inline-block" style="max-width:440px">
+                            <div class="card-body small lh-lg">
+                                <div class="mb-2"><i class="bi bi-android2 text-success me-1"></i> <b>اندروید (کروم):</b> منوی سه‌نقطه ← «Add to Home screen»</div>
+                                <div class="mb-2"><i class="bi bi-laptop text-primary me-1"></i> <b>ویندوز / مک:</b> آیکون نصب در انتهای نوار آدرس مرورگر</div>
+                                <div><i class="bi bi-apple me-1"></i> <b>آیفون (سافاری):</b> دکمه Share ← «Add to Home Screen»</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 text-center">
+                    <div class="pwa-phone-wrap reveal reveal-zoom">
+                        <div class="phone-mockup">
+                            <div class="phone-screen">
+                                <div class="phone-status">
+                                    <span>۱۲:۳۰</span>
+                                    <span><i class="bi bi-wifi"></i> <i class="bi bi-battery-full"></i></span>
+                                </div>
+                                <div class="phone-header">
+                                    <span><i class="bi bi-bag-heart-fill text-danger"></i> مارکت</span>
+                                    <i class="bi bi-cart3"></i>
+                                </div>
+                                <div class="phone-search">
+                                    <span>جستجو در محصولات…</span>
+                                    <i class="bi bi-search"></i>
+                                </div>
+                                <div class="phone-banner">⚡ پیشنهاد شگفت‌انگیز تا ۵۰٪ تخفیف</div>
+                                <div class="phone-products">
+                                    <div class="phone-product">
+                                        <img src="/images/products/p001.svg" alt="" loading="lazy" />
+                                        <div class="pp-line"></div>
+                                        <div class="pp-line short"></div>
+                                        <div class="pp-price"></div>
+                                    </div>
+                                    <div class="phone-product">
+                                        <img src="/images/products/p015.svg" alt="" loading="lazy" />
+                                        <div class="pp-line"></div>
+                                        <div class="pp-line short"></div>
+                                        <div class="pp-price"></div>
+                                    </div>
+                                    <div class="phone-product">
+                                        <img src="/images/products/p029.svg" alt="" loading="lazy" />
+                                        <div class="pp-line"></div>
+                                        <div class="pp-line short"></div>
+                                        <div class="pp-price"></div>
+                                    </div>
+                                </div>
+                                <div class="phone-nav">
+                                    <i class="bi bi-house-door-fill on"></i>
+                                    <i class="bi bi-grid"></i>
+                                    <i class="bi bi-heart"></i>
+                                    <i class="bi bi-person"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+}
+
+@code {
+    private HomeData? _model;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // صفحه اصلی یکجا کش می‌شود (L1 حافظه + L2 Redis)
+        // ⚠️ کوئری‌ها ترتیبی‌اند: همه سرویس‌ها یک DbContext اسکوپ‌شده مشترک دارند و DbContext
+        // عملیات همزمان را نمی‌پذیرد. سرعت زیر ۱ ثانیه را کش ۶۰ ثانیه‌ای تأمین می‌کند.
+        _model = await Cache.GetOrCreateAsync(
+            "home-data-v1",
+            async token =>
+            {
+                var amazing = await ProductService.GetAmazingAsync(12, token);
+                var special = await ProductService.GetSpecialAsync(12, token);
+                var newest = await ProductService.GetNewestAsync(12, token);
+                var best = await ProductService.GetBestSellersAsync(12, token);
+                var viewed = await ProductService.GetMostViewedAsync(12, token);
+                var posts = await BlogService.GetLatestAsync(4, token);
+                var sliders = await SliderService.GetActiveAsync(token);
+                var menu = await CategoryService.GetMenuAsync(token);
+
+                return new HomeData
+                {
+                    Sliders = sliders,
+                    Categories = menu,
+                    Amazing = amazing,
+                    AmazingEndsAt = amazing.FirstOrDefault(p => p.AmazingEndsAt is not null)?.AmazingEndsAt,
+                    Special = special,
+                    Newest = newest,
+                    Best = best,
+                    MostViewed = viewed,
+                    Posts = posts
+                };
+            },
+            new HybridCacheEntryOptions
+            {
+                Expiration = TimeSpan.FromSeconds(60),
+                LocalCacheExpiration = TimeSpan.FromSeconds(15)
+            },
+            tags: ["home"]);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // بعد از هر رندر، انیمیشن reveal روی عناصر جدید مجدداً متصل می‌شود
+        // (fail-safe: اگر JS قدیمی/لودنشده بود، circuit نباید از بین برود)
+        try
+        {
+            await JS.InvokeVoidAsync("shopReveal.init");
+            await JS.InvokeVoidAsync("shopSlider.init");
+        }
+        catch (JSException)
+        {
+            // نسخه کش‌شده قدیمی site.js — انیمیشن skip می‌شود ولی صفحه سالم می‌ماند
+        }
+    }
+
+    private sealed class HomeData
+    {
+        public List<Slider> Sliders { get; init; } = [];
+        public List<CategoryNodeDto> Categories { get; init; } = [];
+        public List<ProductCardDto> Amazing { get; init; } = [];
+        public DateTime? AmazingEndsAt { get; init; }
+        public List<ProductCardDto> Special { get; init; } = [];
+        public List<ProductCardDto> Newest { get; init; } = [];
+        public List<ProductCardDto> Best { get; init; } = [];
+        public List<ProductCardDto> MostViewed { get; init; } = [];
+        public List<BlogPostDto> Posts { get; init; } = [];
+    }
+}

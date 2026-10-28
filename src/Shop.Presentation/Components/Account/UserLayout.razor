@@ -1,0 +1,17 @@
+@inherits LayoutComponentBase
+@attribute [Authorize]
+
+<div class="container py-4" style="max-width:1000px">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h4 class="mb-0"><i class="bi bi-person-circle text-primary"></i> پنل کاربری</h4>
+        <NavLink href="/" class="btn btn-sm btn-outline-secondary">بازگشت به فروشگاه</NavLink>
+    </div>
+
+    <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
+        <NavLink class="nav-link" href="/panel" Match="NavLinkMatch.All">🏠 خلاصه حساب</NavLink>
+        <NavLink class="nav-link" href="/panel/profile">👤 اطلاعات حساب</NavLink>
+        <NavLink class="nav-link" href="/panel/password">🔒 تغییر رمز عبور</NavLink>
+    </ul>
+
+    @Body
+</div>

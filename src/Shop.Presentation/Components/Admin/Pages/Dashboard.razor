@@ -1,0 +1,124 @@
+@page "/manage"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-4">📊 داشبورد مدیریت</h4>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">محصولات</div>
+                <div class="fs-3 fw-bold text-primary">@_products.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">سفارش‌ها</div>
+                <div class="fs-3 fw-bold text-success">@_orders.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">کاربران</div>
+                <div class="fs-3 fw-bold text-dark">@_users.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">فروشندگان</div>
+                <div class="fs-3 fw-bold text-warning">@_sellers.ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h6 class="fw-bold mb-3">آخرین سفارش‌ها</h6>
+        @if (_latest.Count == 0)
+        {
+            <p class="text-muted mb-0">هنوز سفارشی ثبت نشده است.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>شماره</th>
+                            <th>خریدار</th>
+                            <th>مبلغ</th>
+                            <th>وضعیت</th>
+                            <th>تاریخ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in _latest)
+                        {
+                            <tr>
+                                <td class="fw-bold">@o.Number</td>
+                                <td>@o.Buyer</td>
+                                <td>@o.Total.ToString("N0") تومان</td>
+                                <td><span class="badge bg-secondary">@OrderFa(o.Status)</span></td>
+                                <td>@Fa(o.CreatedAt)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private int _products, _orders, _users, _sellers;
+    private List<Row> _latest = new();
+
+    private sealed record Row(string Number, string Buyer, long Total, string Status, DateTime CreatedAt);
+
+    // کوئری‌ها ترتیبی — همه سرویس‌ها یک DbContext اسکوپ‌شده دارند
+    protected override async Task OnInitializedAsync()
+    {
+        _products = await Db.Products.CountAsync();
+        _orders = await Db.Orders.CountAsync();
+        _users = await Db.Users.CountAsync();
+        _sellers = await Db.Sellers.CountAsync();
+
+        _latest = await Db.Orders
+            .AsNoTracking()
+            .OrderByDescending(o => o.Id)
+            .Take(5)
+            .Select(o => new Row(
+                o.OrderNumber,
+                (o.User.FirstName ?? "") + " " + (o.User.LastName ?? ""),
+                o.Total,
+                o.Status.ToString(),
+                o.CreatedAt))
+            .ToListAsync();
+
+        _loading = false;
+    }
+
+    private static string OrderFa(string s) => s switch
+    {
+        "AwaitingPayment" => "در انتظار پرداخت",
+        "Paid" => "پرداخت شده",
+        "Processing" => "در حال پردازش",
+        "Shipped" => "ارسال شده",
+        "Delivered" => "تحویل شده",
+        "Canceled" => "لغو شده",
+        _ => s
+    };
+
+    private static string Fa(DateTime d)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00} {d.Hour:00}:{d.Minute:00}";
+    }
+}

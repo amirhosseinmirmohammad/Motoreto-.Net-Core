@@ -1,0 +1,56 @@
+@{
+    ViewData["Title"] = "درگاه پرداخت";
+    var amount = (long)ViewBag.Amount;
+    var orderId = (int)ViewBag.OrderId;
+    var authority = (string)ViewBag.Authority;
+    var orderNumber = (string)ViewBag.OrderNumber;
+    var userName = (string)ViewBag.UserName;
+}
+@section Styles {
+<style>
+    .bank-page {
+        max-width: 420px;
+        margin: 3rem auto;
+        border-radius: 1.25rem;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0,0,0,.15);
+        background: #fff;
+    }
+    .bank-header { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; padding: 1.25rem; }
+    .bank-body { padding: 1.5rem; }
+    .bank-row { display: flex; justify-content: space-between; padding: .65rem 0; border-bottom: 1px dashed #e5e7eb; font-size: .925rem; }
+</style>
+}
+
+<div class="bank-page">
+    <div class="bank-header d-flex align-items-center gap-2">
+        <i class="bi bi-bank fs-3"></i>
+        <div>
+            <strong>درگاه پرداخت اینترنتی</strong>
+            <div class="small opacity-75">شبیه‌سازی امن — محیط تست</div>
+        </div>
+    </div>
+    <div class="bank-body">
+        <div class="bank-row"><span class="text-muted">پذیرنده</span><strong>فروشگاه شاپ</strong></div>
+        <div class="bank-row"><span class="text-muted">شماره سفارش</span><span>@orderNumber.ToFarsiDigits()</span></div>
+        <div class="bank-row"><span class="text-muted">پرداخت‌کننده</span><span>@userName</span></div>
+        <div class="bank-row fs-5"><span class="text-muted">مبلغ</span><strong class="text-success">@amount.ToToman()</strong></div>
+
+        <form asp-controller="Payment" asp-action="Callback" method="post" class="mt-4">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="authority" value="@authority" />
+            <div class="d-grid gap-2">
+                <button type="submit" name="action" value="pay" class="btn btn-success py-2 fw-bold">
+                    <i class="bi bi-shield-check me-1"></i> پرداخت موفق (شبیه‌سازی)
+                </button>
+                <button type="submit" name="action" value="cancel" class="btn btn-outline-danger">
+                    انصراف از پرداخت
+                </button>
+            </div>
+        </form>
+
+        <p class="text-center text-muted small mt-3 mb-0">
+            <i class="bi bi-info-circle"></i> این یک درگاه شبیه‌سازی‌شده است. برای اتصال به درگاه واقعی، پیاده‌سازی <code>IPaymentGateway</code> جدید کافی است.
+        </p>
+    </div>
+</div>

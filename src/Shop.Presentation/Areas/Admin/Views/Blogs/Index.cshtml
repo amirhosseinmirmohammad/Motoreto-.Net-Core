@@ -1,0 +1,33 @@
+@model List<BlogPostDto>
+@{
+    ViewData["Title"] = "وبلاگ";
+}
+<div class="toolbar">
+    <a href="/admin/blogs/create" class="btn" style="margin-inline-start:auto">＋ مقاله جدید</a>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>عنوان</th><th>بازدید</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+        <tbody>
+            @foreach (var b in Model)
+            {
+                <tr>
+                    <td style="font-weight:600;white-space:normal;max-width:400px">@b.Title</td>
+                    <td>@b.ViewCount.ToString("N0").ToFarsiDigits()</td>
+                    <td class="text-muted2">@b.CreatedAt.ToPersianDate()</td>
+                    <td>@(b.IsVisible ? Html.Raw("<span class='badge badge-green'>منتشر شده</span>") : Html.Raw("<span class='badge badge-gray'>پیش‌نویس</span>"))</td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            <a href="/admin/blogs/edit/@b.Id" class="btn btn-sm btn-light">ویرایش</a>
+                            <a href="/blog/@b.Slug" target="_blank" class="btn btn-sm btn-light">نمایش</a>
+                            <form method="post" action="/admin/blogs/delete/@b.Id" data-confirm="مقاله حذف شود؟">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-danger">حذف</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

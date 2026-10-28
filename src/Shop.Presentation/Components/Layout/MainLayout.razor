@@ -1,0 +1,186 @@
+@inherits LayoutComponentBase
+@inject ISettingsService SettingsService
+@inject ICategoryService CategoryService
+@inject IJSRuntime JS
+
+<div class="site-header">
+    <div class="container">
+        <div class="header-top d-flex align-items-center gap-3 py-3">
+            <a href="/" class="brand d-flex align-items-center gap-2 text-decoration-none">
+                <span class="brand-logo"><i class="bi bi-bag-heart-fill"></i></span>
+                <span class="brand-name">@(_settings?.StoreName ?? "فروشگاه")</span>
+            </a>
+            <form class="search-box flex-grow-1 d-none d-md-block" action="/products" method="get">
+                <div class="position-relative">
+                    <input type="search" name="q" class="form-control search-input" placeholder="جستجو در محصولات..." autocomplete="off" />
+                    <i class="bi bi-search search-icon"></i>
+                </div>
+            </form>
+            <div class="header-actions d-flex align-items-center gap-2 ms-auto">
+                <a href="/compare" class="btn btn-icon d-none d-md-inline-block" title="مقایسه محصولات">
+                    <i class="bi bi-arrow-left-right"></i>
+                </a>
+                <a href="/cart" class="btn btn-icon position-relative" title="سبد خرید">
+                    <i class="bi bi-cart3 fs-5"></i>
+                </a>
+                <a href="/account/login" class="btn btn-user">
+                    <i class="bi bi-person me-1"></i> ورود | ثبت‌نام
+                </a>
+            </div>
+        </div>
+        <form class="d-md-none pb-2" action="/products" method="get">
+            <div class="position-relative">
+                <input type="search" name="q" class="form-control form-control-sm search-input" placeholder="جستجو در محصولات..." autocomplete="off" />
+                <i class="bi bi-search search-icon"></i>
+            </div>
+        </form>
+    </div>
+
+    <nav class="header-nav d-none d-lg-block">
+        <div class="container">
+            <ul class="nav-menu">
+                @foreach (var cat in _menu)
+                {
+                    <li class="has-sub">
+                        <a href="/products?category=@cat.Slug">
+                            @if (!string.IsNullOrEmpty(cat.Icon))
+                            {
+                                <i class="bi @cat.Icon me-1"></i>
+                            }
+                            @cat.Name
+                        </a>
+                        @if (cat.Children.Count > 0)
+                        {
+                            <div class="submenu">
+                                <div class="submenu-head">@cat.Name</div>
+                                @foreach (var child in cat.Children)
+                                {
+                                    <a href="/products?category=@child.Slug">@child.Name</a>
+                                    @foreach (var gc in child.Children)
+                                    {
+                                        <a href="/products?category=@gc.Slug" style="padding-inline-start:1.6rem;font-size:.8rem;color:#888">@gc.Name</a>
+                                    }
+                                }
+                                <a href="/products?category=@cat.Slug" class="submenu-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+                            </div>
+                        }
+                    </li>
+                }
+                <li><a href="/blog">وبلاگ</a></li>
+                <li><a href="/about">درباره ما</a></li>
+                <li><a href="/contact">تماس با ما</a></li>
+            </ul>
+        </div>
+    </nav>
+</div>
+
+<main class="page-content">
+    @Body
+</main>
+
+<footer class="site-footer mt-5">
+    <div class="container">
+        <div class="row g-4 py-4">
+            <div class="col-md-4">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="brand-logo"><i class="bi bi-bag-heart-fill"></i></span>
+                    <span class="fw-bold">@(_settings?.StoreName ?? "فروشگاه")</span>
+                </div>
+                <p class="text-muted small lh-lg">
+                    فروشگاه اینترنتی @(_settings?.StoreName) با تضمین اصالت کالا، ۷ روز ضمانت بازگشت بی‌قید و شرط و ارسال سریع به سراسر کشور.
+                </p>
+            </div>
+            <div class="col-6 col-md-2">
+                <h6 class="fw-bold mb-3">خدمات مشتریان</h6>
+                <ul class="list-unstyled d-grid gap-2">
+                    <li><a href="/faq" class="text-muted text-decoration-none small">پرسش‌های متداول</a></li>
+                    <li><a href="/terms" class="text-muted text-decoration-none small">قوانین و مقررات</a></li>
+                    <li><a href="/contact" class="text-muted text-decoration-none small">تماس با ما</a></li>
+                    <li><a href="/about" class="text-muted text-decoration-none small">درباره ما</a></li>
+                </ul>
+            </div>
+            <div class="col-6 col-md-2">
+                <h6 class="fw-bold mb-3">فروشگاه</h6>
+                <ul class="list-unstyled d-grid gap-2">
+                    <li><a href="/products" class="text-muted text-decoration-none small">همه محصولات</a></li>
+                    <li><a href="/products?sort=discount" class="text-muted text-decoration-none small">تخفیف‌ها و پیشنهادها</a></li>
+                    <li><a href="/blog" class="text-muted text-decoration-none small">وبلاگ</a></li>
+                    <li><a href="/compare" class="text-muted text-decoration-none small">مقایسه محصولات</a></li>
+                    <li><a href="/seller/register" class="text-muted text-decoration-none small">فروشنده شوید</a></li>
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h6 class="fw-bold mb-3">با ما در ارتباط باشید</h6>
+                <p class="small text-muted mb-2">
+                    <i class="bi bi-telephone me-1"></i> @(_settings?.SupportPhone ?? "-")
+                </p>
+                <form id="newsletterForm" class="d-flex gap-2 mb-1" style="max-width:340px" @onsubmit="SubscribeNewsletterAsync" @onsubmit:preventDefault>
+                    <input type="email" name="email" class="form-control form-control-sm" placeholder="ایمیل شما برای خبرنامه" required value="@_newsEmail" @oninput="@(e => _newsEmail = e.Value?.ToString())" />
+                    <button class="btn btn-primary btn-sm px-3 flex-shrink-0" type="submit" disabled="@_newsBusy">عضویت</button>
+                </form>
+                @if (_newsMessage is not null)
+                {
+                    <small class="d-block mb-2 @(_newsSuccess ? "text-success" : "text-danger")">@_newsMessage</small>
+                }
+                <div class="d-flex gap-2">
+                    <a href="#" class="btn btn-light btn-sm rounded-circle" aria-label="اینستاگرام"><i class="bi bi-instagram"></i></a>
+                    <a href="#" class="btn btn-light btn-sm rounded-circle" aria-label="تلگرام"><i class="bi bi-telegram"></i></a>
+                    <a href="#" class="btn btn-light btn-sm rounded-circle" aria-label="واتساپ"><i class="bi bi-whatsapp"></i></a>
+                </div>
+            </div>
+        </div>
+        <div class="py-3 text-center small text-muted border-top">
+            © تمامی حقوق مادی و معنوی این سایت متعلق به @(_settings?.StoreName ?? "فروشگاه") است.
+        </div>
+    </div>
+</footer>
+
+@code {
+    private SiteSettings? _settings;
+    private List<CategoryNodeDto> _menu = [];
+    private string? _newsEmail;
+    private string? _newsMessage;
+    private bool _newsSuccess;
+    private bool _newsBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await SettingsService.GetAsync();
+        _menu = await CategoryService.GetMenuAsync();
+    }
+
+    /// <summary>عضویت در خبرنامه — از shopApi.post با توکن Antiforgery داینامیک استفاده می‌کند.</summary>
+    private async Task SubscribeNewsletterAsync()
+    {
+        if (_newsBusy || string.IsNullOrWhiteSpace(_newsEmail)) return;
+
+        _newsBusy = true;
+        _newsMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var res = await JS.InvokeAsync<NewsLetterResult>("shopApi.post", "/api/newsletter",
+                new { email = _newsEmail.Trim() });
+
+            _newsSuccess = res?.Success == true;
+            _newsMessage = res?.Message ?? (_newsSuccess ? "عضویت شما ثبت شد." : "خطا در ثبت عضویت.");
+            if (_newsSuccess) _newsEmail = string.Empty;
+        }
+        catch
+        {
+            _newsSuccess = false;
+            _newsMessage = "خطا در ارتباط با سرور.";
+        }
+        finally
+        {
+            _newsBusy = false;
+        }
+    }
+
+    private sealed class NewsLetterResult
+    {
+        public bool Success { get; set; }
+        public string? Message { get; set; }
+    }
+}

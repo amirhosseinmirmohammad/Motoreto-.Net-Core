@@ -1,0 +1,80 @@
+@* ---------- سلکت سرچ‌دار عمومی (فرم‌های Blazor) ---------- *@
+<div class="ss-wrap">
+    <input type="text" class="form-control" placeholder="@Placeholder" value="@_q"
+           @oninput="OnInput" @onfocus="Open" @onblur="Close" autocomplete="off" />
+    @if (!string.IsNullOrEmpty(_q))
+    {
+        <button type="button" class="ss-clear" @onclick="ClearQuery" tabindex="-1">×</button>
+    }
+
+    @if (_open)
+    {
+        <div class="ss-list">
+            @foreach (var o in Filtered.Take(50))
+            {
+                <div class="ss-item @(o.Value == Value ? "active" : "")" @onmousedown="() => Pick(o)">@o.Text</div>
+            }
+            @if (!Filtered.Any())
+            {
+                <div class="ss-item text-muted">موردی یافت نشد</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    public record Opt(string Value, string Text);
+
+    [Parameter] public List<Opt> Options { get; set; } = [];
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "جستجو و انتخاب...";
+
+    private string _q = "";
+    private bool _open;
+    private bool _initialized;
+
+    private IEnumerable<Opt> Filtered =>
+        string.IsNullOrWhiteSpace(_q)
+            ? Options
+            : Options.Where(o => o.Text.Contains(_q, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnParametersSet()
+    {
+        if (!_initialized)
+        {
+            _q = Options.FirstOrDefault(o => o.Value == Value)?.Text ?? "";
+            _initialized = true;
+        }
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        _q = e.Value?.ToString() ?? "";
+        _open = true;
+    }
+
+    private void Open()
+    {
+        _open = true;
+    }
+
+    private void Close()
+    {
+        _open = false;
+        _q = Options.FirstOrDefault(o => o.Value == Value)?.Text ?? "";
+    }
+
+    private void ClearQuery()
+    {
+        _q = "";
+        _ = ValueChanged.InvokeAsync(null);
+    }
+
+    private async Task Pick(Opt o)
+    {
+        _q = o.Text;
+        _open = false;
+        await ValueChanged.InvokeAsync(o.Value);
+    }
+}

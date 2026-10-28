@@ -1,0 +1,40 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "ورود";
+}
+@section Styles {
+<style>
+    .auth-box { max-width: 420px; margin: 3rem auto; }
+</style>
+}
+<div class="auth-box">
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <div class="text-center mb-4">
+            <i class="bi bi-person-circle display-5 text-primary"></i>
+            <h1 class="fs-4 fw-bold mt-2">ورود به حساب کاربری</h1>
+        </div>
+
+        <form asp-action="Login" method="post">
+            <input type="hidden" asp-for="ReturnUrl" />
+            <div asp-validation-summary="All" class="text-danger small mb-3"></div>
+
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label small"></label>
+                <input asp-for="Email" class="form-control" placeholder="you@example.com" dir="ltr" />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label small"></label>
+                <input asp-for="Password" class="form-control" dir="ltr" />
+            </div>
+            <div class="form-check mb-3">
+                <input asp-for="RememberMe" class="form-check-input" />
+                <label asp-for="RememberMe" class="form-check-label small"></label>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2">ورود</button>
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="/account/register" class="text-decoration-none small">حساب ندارید؟ ثبت‌نام کنید</a>
+        </div>
+    </div>
+</div>

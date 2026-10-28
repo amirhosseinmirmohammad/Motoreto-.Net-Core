@@ -1,0 +1,515 @@
+@page "/products"
+@rendermode InteractiveServer
+@inject IProductService ProductService
+@inject ICategoryService CategoryService
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@implements IDisposable
+
+<PageTitle>@(_activeName is null ? "فروشگاه | لیست محصولات" : $"خرید {_activeName}")</PageTitle>
+
+<div class="container mt-3">
+    @* مسیر راهنما *@
+    <nav class="small text-muted mb-2" aria-label="breadcrumb">
+        <a href="/" class="text-decoration-none text-muted">خانه</a>
+        <i class="bi bi-chevron-left mx-1" style="font-size:.65rem"></i>
+        <span class="text-dark">@(_activeName ?? "همه محصولات")</span>
+    </nav>
+
+    <div class="row g-3">
+        @* ---------- سایدبار فیلترها (الگوی مارکت‌پلیس) ---------- *@
+        <aside class="col-lg-3">
+            <div class="filter-panel bg-white rounded-3 p-3 mb-3">
+                @if (_menu.Count == 0)
+                {
+                    @for (var i = 0; i < 6; i++)
+                    {
+                        <div class="skeleton mt-2" style="height:.85rem;width:@(85 - i * 6)%"></div>
+                    }
+                }
+                else
+                {
+                    <details class="filter-sec" open>
+                        <summary>دسته‌بندی <i class="bi bi-chevron-down chev"></i></summary>
+                        <a href="@With(("category", null))"
+                           class="d-block small py-1 @(Category is null ? "fw-bold text-danger" : "text-decoration-none text-dark")">
+                            همه دسته‌ها
+                        </a>
+                        <CategoryTree Nodes="_menu" Depth="3" UrlFor="CategoryUrl" Active="Category" />
+                    </details>
+                }
+
+                @* ---------- محدوده قیمت ---------- *@
+                <details class="filter-sec" open>
+                    <summary>محدوده قیمت <i class="bi bi-chevron-down chev"></i></summary>
+                    <div class="d-flex gap-2 my-2">
+                        <input type="number" class="form-control form-control-sm" placeholder="از"
+                               min="0" value="@_minInput" @onchange="@(e => ApplyPrice(e, true))" />
+                        <input type="number" class="form-control form-control-sm" placeholder="تا"
+                               min="0" value="@_maxInput" @onchange="@(e => ApplyPrice(e, false))" />
+                    </div>
+                    <div class="d-grid gap-1 pb-1">
+                        <a class="small text-decoration-none text-dark py-1" href="@With(("min", null), ("max", null))">همه قیمت‌ها</a>
+                        <a class="small text-decoration-none text-dark py-1" href="@With(("min", null), ("max", "10000000"))">زیر ۱ میلیون تومان</a>
+                        <a class="small text-decoration-none text-dark py-1" href="@With(("min", "10000000"), ("max", "50000000"))">۱ تا ۵ میلیون تومان</a>
+                        <a class="small text-decoration-none text-dark py-1" href="@With(("min", "50000000"), ("max", "150000000"))">۵ تا ۱۵ میلیون تومان</a>
+                        <a class="small text-decoration-none text-dark py-1" href="@With(("min", "150000000"), ("max", null))">بالای ۱۵ میلیون تومان</a>
+                    </div>
+                </details>
+
+                @* ---------- برند (داینامیک از دیتا) ---------- *@
+                @if (_facets is { Brands.Count: > 0 })
+                {
+                    <details class="filter-sec" open>
+                        <summary class="justify-content-between">
+                            برند
+                            <span class="d-flex align-items-center gap-2">
+                                @if (_brands.Count > 0)
+                                {
+                                    <button type="button" class="f-clear" @onclick="@(() => Navigate(With(("brand", null))))">حذف ×</button>
+                                }
+                                <i class="bi bi-chevron-down chev"></i>
+                            </span>
+                        </summary>
+                        <div class="f-search">
+                            <input type="search" class="form-control form-control-sm" placeholder="جستجوی برند..."
+                                   value="@_brandSearch" @oninput="@(e => _brandSearch = e.Value?.ToString())" />
+                        </div>
+                        <div style="max-height:240px;overflow:auto">
+                            @foreach (var b in _facets.Brands.Where(b => string.IsNullOrEmpty(_brandSearch) || b.Name.Contains(_brandSearch, StringComparison.OrdinalIgnoreCase) || b.Slug.Contains(_brandSearch, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                var slug = b.Slug;
+                                var checkedNow = _brands.Contains(slug);
+                                <label class="f-row">
+                                    <span class="d-flex flex-column">
+                                        <span>@b.Name</span>
+                                        <span class="brand-latin" dir="ltr">@b.Slug</span>
+                                    </span>
+                                    <span class="d-flex align-items-center gap-2">
+                                        <span class="f-count">@b.Count.ToString("N0")</span>
+                                        <input type="checkbox" checked="@checkedNow" @onchange="@(e => ToggleBrand(slug, e.Value is true))" />
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+
+                @* ---------- ویژگی‌های داینامیک (تعریف ادمین — از دیتای واقعی محصولات) ---------- *@
+                @foreach (var attr in _facets?.Attributes ?? [])
+                {
+                    var selected = _attrFilters.TryGetValue(attr.Name, out var sel) ? sel : [];
+                    <details class="filter-sec" open>
+                        <summary class="justify-content-between">
+                            @attr.Name
+                            <span class="d-flex align-items-center gap-2">
+                                @if (selected.Count > 0)
+                                {
+                                    var an = attr.Name;
+                                    <button type="button" class="f-clear" @onclick="@(() => Navigate(With(("f_" + an, null))))">حذف ×</button>
+                                }
+                                <i class="bi bi-chevron-down chev"></i>
+                            </span>
+                        </summary>
+                        <div style="max-height:230px;overflow:auto">
+                            @foreach (var v in attr.Values)
+                            {
+                                var an2 = attr.Name;
+                                var val = v.Value;
+                                var checkedNow = selected.Contains(val);
+                                <label class="f-row">
+                                    <span>@val</span>
+                                    <span class="d-flex align-items-center gap-2">
+                                        <span class="f-count">@v.Count.ToString("N0")</span>
+                                        <input type="checkbox" checked="@checkedNow" @onchange="@(e => ToggleAttr(an2, val, e.Value is true))" />
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </details>
+                }
+
+                @* ---------- وضعیت کالا ---------- *@
+                <details class="filter-sec" open>
+                    <summary>وضعیت کالا <i class="bi bi-chevron-down chev"></i></summary>
+                    <div class="form-check form-switch f-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" checked="@Available"
+                               @onchange="@(e => Navigate(With(("available", e.Value is true ? "true" : null))))" />
+                        <label class="form-check-label flex-grow-1">فقط کالاهای موجود</label>
+                    </div>
+                    <div class="form-check form-switch f-switch">
+                        <input class="form-check-input" type="checkbox" role="switch" checked="@Discount"
+                               @onchange="@(e => Navigate(With(("discount", e.Value is true ? "true" : null))))" />
+                        <label class="form-check-label flex-grow-1">فقط تخفیف‌دارها</label>
+                    </div>
+                </details>
+            </div>
+        </aside>
+
+        @* ---------- نتایج ---------- *@
+        <div class="col-lg-9">
+            @* نوار مرتب‌سازی *@
+            <div class="d-flex flex-wrap align-items-center justify-content-between bg-white rounded-3 p-2 px-3 mb-3 gap-2">
+                <span class="text-muted small">
+                    <i class="bi bi-box-seam me-1"></i> @_totalCount.ToString("N0") کالا
+                </span>
+                <div class="d-flex flex-wrap gap-1">
+                    @foreach (var (sort, label) in SortOptions)
+                    {
+                        <a href="@With(("sort", sort))"
+                           class="btn btn-sm @(CurrentSort == sort ? "btn-primary" : "btn-outline-secondary")">@label</a>
+                    }
+                </div>
+            </div>
+
+            @* چیپ فیلترهای فعال *@
+            @if (HasActiveFilters)
+            {
+                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                    @if (_activeName is not null)
+                    {
+                        <a href="@With(("category", null))" class="badge bg-light text-dark border text-decoration-none p-2">
+                            @_activeName <i class="bi bi-x-lg ms-1" style="font-size:.6rem"></i>
+                        </a>
+                    }
+                    @foreach (var b in _brands)
+                    {
+                        var slug = b;
+                        var name = _facets?.Brands.FirstOrDefault(x => x.Slug == slug)?.Name ?? slug;
+                        <a href="@RemoveBrand(slug)" class="badge bg-light text-dark border text-decoration-none p-2">
+                            @name <i class="bi bi-x-lg ms-1" style="font-size:.6rem"></i>
+                        </a>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(Q))
+                    {
+                        <a href="@With(("q", null))" class="badge bg-light text-dark border text-decoration-none p-2">
+                            «@Q» <i class="bi bi-x-lg ms-1" style="font-size:.6rem"></i>
+                        </a>
+                    }
+                    @if (PriceLabel is not null)
+                    {
+                        <a href="@With(("min", null), ("max", null))" class="badge bg-light text-dark border text-decoration-none p-2">
+                            @PriceLabel <i class="bi bi-x-lg ms-1" style="font-size:.6rem"></i>
+                        </a>
+                    }
+                    @if (Available)
+                    {
+                        <a href="@With(("available", null))" class="badge bg-light text-dark border text-decoration-none p-2">
+                            فقط موجود <i class="bi bi-x-lg ms-1" style="font-size:.6rem"></i>
+                        </a>
+                    }
+                    @if (Discount)
+                    {
+                        <a href="@With(("discount", null))" class="badge bg-light text-dark border text-decoration-none p-2">
+                            فقط تخفیف‌دار <i class="bi bi-x-lg ms-1" style="font-size:.6rem"></i>
+                        </a>
+                    }
+                    <a href="/products" class="small text-danger text-decoration-none">حذف همه فیلترها</a>
+                </div>
+            }
+
+            @if (_initialLoading)
+            {
+                @* ---------- Skeleton اولیه ---------- *@
+                <div class="row row-cols-2 row-cols-md-3 g-3">
+                    @for (var i = 0; i < 6; i++)
+                    {
+                        <div class="col"><SkeletonCard /></div>
+                    }
+                </div>
+            }
+            else if (_items.Count > 0)
+            {
+                <div class="row row-cols-2 row-cols-md-3 g-3">
+                    @foreach (var p in _items)
+                    {
+                        <div class="col">
+                            <ProductCard Product="p" />
+                        </div>
+                    }
+
+                    @if (_loadingMore)
+                    {
+                        @for (var i = 0; i < 3; i++)
+                        {
+                            <div class="col"><SkeletonCard /></div>
+                        }
+                    }
+                </div>
+
+                @if (_hasMore)
+                {
+                    <div id="loadMoreSentinel" class="text-center py-4 text-muted small">
+                        <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                        در حال بارگذاری محصولات بیشتر...
+                    </div>
+                }
+                else
+                {
+                    <div class="text-center py-4 text-muted small border-top mt-4">
+                        <i class="bi bi-check2-circle text-success me-1"></i>
+                        همه @_totalCount.ToString("N0") کالا نمایش داده شد
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="text-center py-5 bg-white rounded-3">
+                    <i class="bi bi-search fs-1 text-muted d-block mb-2"></i>
+                    <p class="text-muted mb-0">محصولی با این فیلترها پیدا نشد.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<ProductCardDto> _items = [];
+    private List<CategoryNodeDto> _menu = [];
+    private ProductFacetsDto? _facets;
+    private string? _activeName;
+    private List<string> _brands = [];
+    private Dictionary<string, List<string>> _attrFilters = new(StringComparer.Ordinal);
+    private string? _brandSearch;
+    private string? _minInput;
+    private string? _maxInput;
+    private int _totalCount;
+    private int _nextPage = 1;
+    private bool _initialLoading = true;
+    private bool _loadingMore;
+    private bool _hasMore;
+    private string? _filterKey;
+    private string? _facetsKey;
+    private DotNetObjectReference<ProductList>? _selfRef;
+
+    private const int PageSize = 12;
+
+    private string CurrentSort => Sort ?? "newest";
+
+    private static readonly (string Sort, string Label)[] SortOptions =
+    [
+        ("newest", "جدیدترین"), ("bestseller", "پرفروش‌ترین"), ("discount", "بیشترین تخفیف"),
+        ("cheap", "ارزان‌ترین"), ("expensive", "گران‌ترین")
+    ];
+
+    // ---------- پارامترهای URL ----------
+    [SupplyParameterFromQuery(Name = "q")] public string? Q { get; set; }
+    [SupplyParameterFromQuery(Name = "category")] public string? Category { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")] public string? Sort { get; set; }
+    [SupplyParameterFromQuery(Name = "min")] public long? Min { get; set; }
+    [SupplyParameterFromQuery(Name = "max")] public long? Max { get; set; }
+    [SupplyParameterFromQuery(Name = "available")] public bool Available { get; set; }
+    [SupplyParameterFromQuery(Name = "discount")] public bool Discount { get; set; }
+
+    private bool HasActiveFilters =>
+        Category is not null || !string.IsNullOrWhiteSpace(Q) || Min is not null ||
+        Max is not null || Available || Discount || _brands.Count > 0 || _attrFilters.Count > 0;
+
+    private string? PriceLabel => (Min, Max) switch
+    {
+        (null, null) => null,
+        (null, long max) => $"تا {FormatToman(max)}",
+        (long min, null) => $"از {FormatToman(min)}",
+        _ => $"{FormatToman(Min!.Value)} تا {FormatToman(Max!.Value)}"
+    };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_menu.Count == 0)
+            _menu = await CategoryService.GetMenuAsync();
+
+        ParseDynamicQuery();
+        _activeName = FindName(_menu, Category);
+        _minInput = Min?.ToString();
+        _maxInput = Max?.ToString();
+
+        var key = $"{Q}|{Category}|{CurrentSort}|{Min}|{Max}|{Available}|{Discount}|{string.Join(",", _brands)}|{string.Join(";", _attrFilters.Select(kv => kv.Key + ":" + string.Join("|", kv.Value)))}";
+        var baseChanged = key != _filterKey;
+        if (!baseChanged) return;
+        _filterKey = key;
+
+        _items.Clear();
+        _nextPage = 1;
+        _hasMore = true;
+        _initialLoading = true;
+
+        var result = await ProductService.GetFilteredAsync(BuildFilter());
+        _items = result.Items;
+        _totalCount = result.TotalCount;
+        _nextPage = 2;
+        _hasMore = result.HasNext;
+        _initialLoading = false;
+
+        // Facets: برند + ویژگی‌ها با تعداد — روی نتیجه بدون فیلتر برند/ویژگی
+        if (_facets is null || _facetsKey != key)
+        {
+            _facets = await ProductService.GetFacetsAsync(BuildFilter());
+            _facetsKey = key;
+        }
+    }
+
+    /// <summary>برند و ویژگی‌ها را از query string می‌خواند (کلیدها داینامیک‌اند).</summary>
+    private void ParseDynamicQuery()
+    {
+        var qs = System.Web.HttpUtility.ParseQueryString(new Uri(Nav.Uri).Query);
+
+        _brands = qs["brand"]?
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Distinct().ToList() ?? [];
+
+        _attrFilters = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        foreach (var key in qs.AllKeys)
+        {
+            if (key is null || !key.StartsWith("f_", StringComparison.Ordinal)) continue;
+            var name = Uri.UnescapeDataString(key[2..]);
+            var vals = qs[key]?
+                .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Distinct().ToList();
+            if (vals is { Count: > 0 }) _attrFilters[name] = vals;
+        }
+    }
+
+    private ProductFilter BuildFilter(int? page = null) => new()
+    {
+        Q = Q,
+        CategorySlug = Category,
+        Sort = CurrentSort,
+        MinPrice = Min,
+        MaxPrice = Max,
+        OnlyAvailable = Available,
+        OnlyDiscounted = Discount,
+        BrandSlugs = _brands.Count > 0 ? _brands : null,
+        Attributes = _attrFilters.Count > 0
+            ? _attrFilters.Select(kv => new AttributeFilter { Name = kv.Key, Values = kv.Value }).ToList()
+            : null,
+        Page = page ?? 1,
+        PageSize = PageSize
+    };
+
+    /// <summary>ساخت لینک با حفظ فیلترها + تغییرات (null = حذف پارامتر) — شامل برند و ویژگی‌ها.</summary>
+    private string With(params (string Key, string? Value)[] changes)
+    {
+        var p = new Dictionary<string, string?>
+        {
+            ["q"] = Q,
+            ["category"] = Category,
+            ["sort"] = CurrentSort == "newest" ? null : CurrentSort,
+            ["min"] = Min?.ToString(),
+            ["max"] = Max?.ToString(),
+            ["available"] = Available ? "true" : null,
+            ["discount"] = Discount ? "true" : null,
+            ["brand"] = _brands.Count > 0 ? string.Join(',', _brands) : null
+        };
+        foreach (var (k, vals) in _attrFilters)
+            p["f_" + k] = string.Join('|', vals);
+
+        foreach (var (key, value) in changes)
+        {
+            if (value is null) p.Remove(key);
+            else p[key] = value;
+        }
+
+        var qs = string.Join("&", p
+            .Where(kv => !string.IsNullOrEmpty(kv.Value))
+            .Select(kv => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value!)}"));
+
+        return "/products" + (qs.Length == 0 ? string.Empty : "?" + qs);
+    }
+
+    private void ToggleBrand(string slug, bool on)
+    {
+        var next = new List<string>(_brands);
+        if (on) next.Add(slug); else next.Remove(slug);
+        Navigate(With(("brand", next.Count > 0 ? string.Join(',', next) : null), ("page", null)));
+    }
+
+    private string RemoveBrand(string slug)
+    {
+        var next = _brands.Where(b => b != slug).ToList();
+        return With(("brand", next.Count > 0 ? string.Join(',', next) : null));
+    }
+
+    private void ToggleAttr(string name, string value, bool on)
+    {
+        var next = new Dictionary<string, List<string>>(_attrFilters, StringComparer.Ordinal);
+        if (!next.TryGetValue(name, out var vals))
+            next[name] = vals = [];
+        if (on) vals.Add(value); else vals.Remove(value);
+        if (vals.Count == 0) next.Remove(name);
+
+        var changes = next.Count > 0
+            ? next.Select(kv => (Key: "f_" + kv.Key, Value: (string?)string.Join('|', kv.Value))).ToArray()
+            : new[] { (Key: "f_" + name, Value: (string?)null) };
+
+        Navigate(With(changes));
+    }
+
+    private void ApplyPrice(ChangeEventArgs e, bool isMin)
+    {
+        var raw = e.Value?.ToString();
+        if (!long.TryParse(raw, out var v) || v <= 0)
+        {
+            Navigate(With(isMin ? (("min", null)) : (("max", null))));
+            return;
+        }
+        Navigate(With(isMin ? (("min", v.ToString())) : (("max", v.ToString()))));
+    }
+
+    private void Navigate(string url) => Nav.NavigateTo(url);
+
+    private string CategoryUrl(CategoryNodeDto node) => With(("category", node.Slug));
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_initialLoading || !_hasMore)
+        {
+            await JS.InvokeVoidAsync("shopInfiniteScroll.dispose");
+            return;
+        }
+
+        _selfRef ??= DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("shopInfiniteScroll.init", _selfRef);
+    }
+
+    /// <summary>فراخوانی از IntersectionObserver — بارگذاری صفحه بعدی هنگام اسکرول.</summary>
+    [JSInvokable]
+    public async Task LoadMore()
+    {
+        if (_loadingMore || !_hasMore || _initialLoading) return;
+        _loadingMore = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ProductService.GetFilteredAsync(BuildFilter(_nextPage));
+            _items.AddRange(result.Items);
+            _nextPage++;
+            _hasMore = result.HasNext;
+        }
+        finally
+        {
+            _loadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string? FindName(List<CategoryNodeDto> nodes, string? slug)
+    {
+        if (slug is null) return null;
+        foreach (var n in nodes)
+        {
+            if (n.Slug == slug) return n.Name;
+            var found = FindName(n.Children, slug);
+            if (found is not null) return found;
+        }
+        return null;
+    }
+
+    private static string FormatToman(long rial) => (rial / 10).ToString("N0") + " تومان";
+
+    public void Dispose()
+    {
+        _selfRef?.Dispose();
+        _ = JS.InvokeVoidAsync("shopInfiniteScroll.dispose");
+    }
+}

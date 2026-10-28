@@ -1,0 +1,156 @@
+@page "/manage/products"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <h4 class="fw-bold mb-0">📦 مدیریت محصولات</h4>
+    <NavLink href="/manage/products/new" class="btn btn-primary btn-sm">+ محصول جدید</NavLink>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+    <div class="d-flex gap-2 flex-wrap">
+        <input type="text" class="form-control" placeholder="جستجوی نام محصول..."
+               value="@_q" @oninput="QChanged" @onkeyup="SearchAsync" style="max-width:340px" />
+        <select class="form-select" style="max-width:200px" value="@_sort" @onchange="SortChanged">
+            <option value="new">جدیدترین</option>
+            <option value="cheap">ارزان‌ترین</option>
+            <option value="exp">گران‌ترین</option>
+            <option value="stock">بیشترین موجودی</option>
+        </select>
+        <button class="btn btn-outline-primary px-4" @onclick="SearchAsync">جستجو</button>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>تصویر</th>
+                        <th>نام</th>
+                        <th>دسته</th>
+                        <th>برند</th>
+                        <th>قیمت</th>
+                        <th>موجودی</th>
+                        <th>وضعیت</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _rows)
+                    {
+                        <tr>
+                            <td><img src="@p.Image" width="48" height="48" style="object-fit:cover;border-radius:8px" loading="lazy" /></td>
+                            <td class="fw-bold" style="max-width:220px">
+                                @p.Name
+                                @if (p.IsAmazing)
+                                {
+                                    <span class="badge bg-danger me-1">شگفت‌انگیز</span>
+                                }
+                            </td>
+                            <td class="small">@p.Category</td>
+                            <td class="small">@(p.Brand ?? "—")</td>
+                            <td class="small">@p.Price.ToString("N0")</td>
+                            <td>@p.Stock.ToString("N0")</td>
+                            <td>
+                                <span class="badge bg-@(p.Active ? "success" : "secondary")">@(p.Active ? "فعال" : "غیرفعال")</span>
+                            </td>
+                            <td class="text-end" style="white-space:nowrap">
+                                <NavLink href="@($"/manage/products/edit/{p.Id}")" class="btn btn-sm btn-outline-primary">ویرایش</NavLink>
+                                <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(p.Id)">
+                                    @(p.Active ? "غیرفعال" : "فعال")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_rows.Count == 0)
+        {
+            <p class="text-muted text-center mb-0">محصولی یافت نشد.</p>
+        }
+    </div>
+
+    <Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
+}
+
+@code {
+    private string _q = "";
+    private string _sort = "new";
+    private bool _loading = true, _busy;
+    private int _page = 1, _totalPages = 1;
+    private List<PRow> _rows = new();
+
+    private async Task GoPage(int p)
+    {
+        _page = p;
+        await LoadAsync();
+    }
+
+    private void SortChanged(ChangeEventArgs e)
+    {
+        _sort = e.Value?.ToString() ?? "new";
+        _ = SearchAsync();
+    }
+
+    private sealed record PRow(long Id, string Name, string Image, string Category, string? Brand,
+        long Price, byte Discount, int Stock, bool Active, bool IsAmazing);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private void QChanged(ChangeEventArgs e) => _q = e.Value?.ToString() ?? "";
+
+    private async Task SearchAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var query = Db.Products.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(_q))
+            query = query.Where(p => p.Name.Contains(_q) || p.EnglishName.Contains(_q));
+
+        // sort بر اساس انتخاب کاربر
+        if (_sort == "cheap") query = query.OrderBy(p => p.UnitPrice);
+        else if (_sort == "exp") query = query.OrderByDescending(p => p.UnitPrice);
+        else if (_sort == "stock") query = query.OrderByDescending(p => p.Stock);
+        else query = query.OrderByDescending(p => p.Id);
+
+        var total = await query.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+
+        _rows = await query
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(p => new PRow(
+                p.Id, p.Name, p.MainImage, p.Category.Name,
+                p.Brand != null ? p.Brand.Name : null,
+                p.UnitPrice, p.DiscountPercent, p.Stock, p.IsActive, p.IsAmazing))
+            .ToListAsync();
+
+        _loading = false;
+    }
+
+    private async Task ToggleAsync(long id)
+    {
+        _busy = true;
+        var p = await Db.Products.FirstAsync(x => x.Id == id);
+        p.IsActive = !p.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+}

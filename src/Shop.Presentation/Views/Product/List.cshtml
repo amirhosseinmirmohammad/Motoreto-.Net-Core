@@ -1,0 +1,285 @@
+@model PagedResult<ProductCardDto>
+@inject Shop.Application.Interfaces.ICategoryService CategoryService
+@{
+    ViewData["Title"] = "لیست محصولات";
+    var query = ViewBag.Query as ProductListQuery;
+    var category = ViewBag.ActiveCategory as (int CategoryId, string Name)?;
+    var totalCount = (int)ViewBag.TotalCount;
+    var menu = await CategoryService.GetMenuAsync();
+    var activeCat = query?.Category;
+}
+
+@section Styles {
+<style>
+    .filter-card { background: #fff; border-radius: 16px; border: 1px solid #f0f0f5; overflow: hidden; }
+    .filter-section { border-bottom: 1px solid #f5f5f8; padding: 1rem 1.2rem; }
+    .filter-section:last-child { border-bottom: none; }
+    .filter-title {
+        font-size: .82rem; font-weight: 800; color: var(--ink);
+        cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+        user-select: none;
+    }
+    .filter-title i { transition: transform .2s; font-size: .75rem; color: #999; }
+    .filter-title.collapsed i { transform: rotate(-90deg); }
+    .filter-body { padding-top: .75rem; }
+    .filter-body.collapsed { display: none; }
+    .cat-tree-item { display: flex; align-items: center; gap: .5rem; padding: .3rem 0; }
+    .cat-tree-item a { color: var(--ink); text-decoration: none; font-size: .82rem; }
+    .cat-tree-item a:hover, .cat-tree-item a.active { color: var(--brand); font-weight: 700; }
+    .cat-tree-item.sub { padding-inline-start: 1.2rem; }
+    .cat-tree-item.sub2 { padding-inline-start: 2.2rem; font-size: .78rem; }
+    .filter-chip {
+        display: inline-flex; align-items: center; gap: .3rem;
+        background: var(--brand-soft); color: var(--brand);
+        font-size: .75rem; font-weight: 700;
+        border-radius: 999px; padding: .3rem .8rem;
+        border: 1px solid #f8c8d0;
+    }
+    .filter-chip a { color: var(--brand); text-decoration: none; margin-inline-start: .2rem; }
+    .price-inputs { display: flex; gap: .5rem; align-items: center; }
+    .price-inputs input { width: 100%; font-size: .82rem; }
+    .price-inputs span { color: #999; font-size: .78rem; flex-shrink: 0; }
+    .rating-filter { display: flex; gap: .3rem; }
+    .rating-star {
+        cursor: pointer; padding: .25rem .4rem; border-radius: 8px;
+        border: 1px solid #eee; font-size: .78rem; color: #999;
+        transition: all .15s;
+    }
+    .rating-star.active, .rating-star:hover { border-color: #f9a825; color: #f9a825; background: #fffde7; }
+    .switch-row { display: flex; align-items: center; justify-content: space-between; padding: .35rem 0; }
+    .switch-row label { font-size: .82rem; color: var(--ink); cursor: pointer; margin: 0; }
+    .filter-toggle-mobile { display: none; }
+    @@media (max-width: 991px) {
+        .filter-sidebar { display: none; }
+        .filter-sidebar.show { display: block; position: fixed; inset: 0; z-index: 2000; background: #fff; overflow-y: auto; padding: 1rem; }
+        .filter-toggle-mobile { display: inline-flex; }
+    }
+</style>
+}
+
+<div class="container mt-3">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/">خانه</a></li>
+            @if (category is not null)
+            {
+                <li class="breadcrumb-item active">@category.Value.Name</li>
+            }
+            else
+            {
+                <li class="breadcrumb-item active">همه محصولات</li>
+            }
+        </ol>
+    </nav>
+
+    @* فیلترهای فعال (chips) *@
+    @{
+        var activeFilters = new List<string>();
+        if (!string.IsNullOrEmpty(query?.Q))
+            activeFilters.Add($"جستجو: {query.Q}");
+        if (query?.Min > 0)
+            activeFilters.Add($"از {((long)(query.Min / 10)).ToGroupedNumber()} تومان");
+        if (query?.Max > 0)
+            activeFilters.Add($"تا {((long)(query.Max / 10)).ToGroupedNumber()} تومان");
+        if (query?.Available == true)
+            activeFilters.Add("فقط موجود");
+        if (query?.Discount == true)
+            activeFilters.Add("فقط تخفیف‌دار");
+    }
+    @if (activeFilters.Count > 0)
+    {
+        <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+            <span class="text-muted small">فیلترهای فعال:</span>
+            @foreach (var f in activeFilters)
+            {
+                <span class="filter-chip">@f <a href="/products"><i class="bi bi-x"></i></a></span>
+            }
+            <a href="/products" class="text-danger small text-decoration-none"><i class="bi bi-x-circle"></i> حذف همه</a>
+        </div>
+    }
+
+    <div class="row g-3">
+        @* ------- سایدبار فیلتر ------- *@
+        <aside class="col-lg-3 filter-sidebar" id="filterSidebar">
+            <div class="d-flex justify-content-between align-items-center mb-2 d-lg-none">
+                <strong class="fs-6">فیلترها</strong>
+                <button class="btn btn-sm btn-light" onclick="document.getElementById('filterSidebar').classList.remove('show')">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+
+            <div class="filter-card">
+                @* --- دسته‌بندی‌ها --- *@
+                <div class="filter-section">
+                    <div class="filter-title" onclick="this.nextElementSibling.classList.toggle('collapsed');this.classList.toggle('collapsed')">
+                        <span><i class="bi bi-grid me-1"></i> دسته‌بندی</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-body">
+                        <div class="cat-tree-item">
+                            <a href="/products?sort=@(query?.Sort)" class="@(string.IsNullOrEmpty(activeCat) ? "active" : "")">همه دسته‌ها</a>
+                        </div>
+                        @foreach (var root in menu)
+                        {
+                            <div class="cat-tree-item">
+                                <a href="/products?category=@root.Slug" class="@(activeCat == root.Slug ? "active" : "")">
+                                    @if (!string.IsNullOrEmpty(root.Icon))
+                                    {
+                                        <i class="bi @root.Icon me-1"></i>
+                                    }
+                                    @root.Name
+                                </a>
+                            </div>
+                            @foreach (var child in root.Children)
+                            {
+                                <div class="cat-tree-item sub">
+                                    <a href="/products?category=@child.Slug" class="@(activeCat == child.Slug ? "active" : "")">@child.Name</a>
+                                </div>
+                                @foreach (var gc in child.Children)
+                                {
+                                    <div class="cat-tree-item sub2">
+                                        <a href="/products?category=@gc.Slug" class="@(activeCat == gc.Slug ? "active" : "")">@gc.Name</a>
+                                    </div>
+                                }
+                            }
+                        }
+                    </div>
+                </div>
+
+                @* --- محدوده قیمت --- *@
+                <div class="filter-section">
+                    <div class="filter-title" onclick="this.nextElementSibling.classList.toggle('collapsed');this.classList.toggle('collapsed')">
+                        <span><i class="bi bi-cash-stack me-1"></i> محدوده قیمت (تومان)</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-body">
+                        <form method="get" action="/products" id="priceForm">
+                            <input type="hidden" name="q" value="@query?.Q" />
+                            <input type="hidden" name="sort" value="@query?.Sort" />
+                            @if (query?.Available == true) { <input type="hidden" name="available" value="true" /> }
+                            @if (query?.Discount == true) { <input type="hidden" name="discount" value="true" /> }
+                            @if (!string.IsNullOrEmpty(activeCat)) { <input type="hidden" name="category" value="@activeCat" /> }
+                            <div class="price-inputs mb-2">
+                                <input type="number" name="min" placeholder="از" value="@(query?.Min > 0 ? query.Min / 10 : null)" min="0" />
+                                <span>—</span>
+                                <input type="number" name="max" placeholder="تا" value="@(query?.Max > 0 ? query.Max / 10 : null)" min="0" />
+                            </div>
+                            <div class="d-flex flex-wrap gap-1 mb-2">
+                                <a href="/products?category=@(activeCat)&sort=@(query?.Sort)&min=0&max=5000000" class="btn btn-sm btn-outline-secondary" style="font-size:.72rem">تا ۵۰۰ هزار</a>
+                                <a href="/products?category=@(activeCat)&sort=@(query?.Sort)&min=5000000&max=20000000" class="btn btn-sm btn-outline-secondary" style="font-size:.72rem">۵۰۰ هزار - ۲ میلیون</a>
+                                <a href="/products?category=@(activeCat)&sort=@(query?.Sort)&min=20000000" class="btn btn-sm btn-outline-secondary" style="font-size:.72rem">بالای ۲ میلیون</a>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-sm w-100">اعمال قیمت</button>
+                        </form>
+                    </div>
+                </div>
+
+                @* --- امتیاز --- *@
+                <div class="filter-section">
+                    <div class="filter-title" onclick="this.nextElementSibling.classList.toggle('collapsed');this.classList.toggle('collapsed')">
+                        <span><i class="bi bi-star me-1"></i> حداقل امتیاز</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-body">
+                        <div class="rating-filter">
+                            @for (var star = 4; star >= 1; star--)
+                            {
+                                var url = $"/products?sort={query?.Sort}&minrating={star}";
+                                if (!string.IsNullOrEmpty(activeCat)) url += "&category=" + activeCat;
+                                <span class="rating-star" onclick="location.href='@url'">@star.ToString().ToFarsiDigits() ★</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @* --- وضعیت کالا --- *@
+                <div class="filter-section">
+                    <div class="filter-title" onclick="this.nextElementSibling.classList.toggle('collapsed');this.classList.toggle('collapsed')">
+                        <span><i class="bi bi-toggle-on me-1"></i> وضعیت کالا</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </div>
+                    <div class="filter-body">
+                        <div class="switch-row">
+                            <label>فقط کالاهای موجود</label>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" @(query?.Available == true ? "checked" : "")
+                                       onchange="toggleFilter('available', this.checked)" />
+                            </div>
+                        </div>
+                        <div class="switch-row">
+                            <label>فقط تخفیف‌دارها</label>
+                            <div class="form-check form-switch m-0">
+                                <input class="form-check-input" type="checkbox" @(query?.Discount == true ? "checked" : "")
+                                       onchange="toggleFilter('discount', this.checked)" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3">
+                    <a href="/products" class="btn btn-link btn-sm w-100 text-decoration-none text-muted">حذف همه فیلترها</a>
+                </div>
+            </div>
+        </aside>
+
+        @* ------- لیست محصولات ------- *@
+        <div class="col-12 col-lg-9">
+            <div class="d-flex flex-wrap align-items-center justify-content-between bg-white rounded-3 p-2 px-3 mb-3 gap-2">
+                <span class="text-muted small">@totalCount.ToString("N0").ToFarsiDigits() کالا</span>
+                <button class="btn btn-sm btn-outline-secondary filter-toggle-mobile d-lg-none" onclick="document.getElementById('filterSidebar').classList.toggle('show')">
+                    <i class="bi bi-funnel me-1"></i> فیلترها
+                </button>
+                <div class="btn-group btn-group-sm" role="group">
+                    <a href="#" data-sort="newest" class="btn sort-btn @(query?.Sort == "newest" ? "btn-primary" : "btn-outline-secondary")">جدیدترین</a>
+                    <a href="#" data-sort="bestseller" class="btn sort-btn @(query?.Sort == "bestseller" ? "btn-primary" : "btn-outline-secondary")">پرفروش‌ترین</a>
+                    <a href="#" data-sort="discount" class="btn sort-btn @(query?.Sort == "discount" ? "btn-primary" : "btn-outline-secondary")">تخفیف‌دار</a>
+                    <a href="#" data-sort="cheap" class="btn sort-btn @(query?.Sort == "cheap" ? "btn-primary" : "btn-outline-secondary")">ارزان‌ترین</a>
+                    <a href="#" data-sort="expensive" class="btn sort-btn @(query?.Sort == "expensive" ? "btn-primary" : "btn-outline-secondary")">گران‌ترین</a>
+                </div>
+            </div>
+
+            @if (Model.Items.Count == 0)
+            {
+                <div class="text-center py-5 bg-white rounded-4">
+                    <i class="bi bi-search fs-1 text-muted"></i>
+                    <p class="mt-3 text-muted">محصولی مطابق جستجوی شما پیدا نشد.</p>
+                    <a href="/products" class="btn btn-primary btn-sm">حذف فیلترها</a>
+                </div>
+            }
+            else
+            {
+                <div class="row g-3">
+                    @foreach (var product in Model.Items)
+                    {
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <partial name="_ProductCard" model="product" />
+                        </div>
+                    }
+                </div>
+                <partial name="_Pagination" model="Model" />
+            }
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    function toggleFilter(key, value) {
+        var url = new URL(window.location.href);
+        if (value) url.searchParams.set(key, 'true');
+        else url.searchParams.delete(key);
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+
+    document.querySelectorAll('.sort-btn').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            var url = new URL(window.location.href);
+            url.searchParams.set('sort', this.dataset.sort);
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        });
+    });
+</script>
+}

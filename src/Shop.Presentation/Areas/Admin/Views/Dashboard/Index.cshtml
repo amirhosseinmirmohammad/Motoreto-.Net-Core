@@ -1,0 +1,79 @@
+@model AdminDashboardDto
+@{
+    ViewData["Title"] = "داشبورد";
+    var maxOrders = Math.Max(1, Model.OrdersPerDay.Max(d => d.Value));
+}
+<div class="stats-grid">
+    <div class="stat"><div class="ico">🧾</div><div class="num">@Model.TotalOrders.ToString("N0")</div><div class="lbl">کل سفارش‌ها</div></div>
+    <div class="stat"><div class="ico">📅</div><div class="num">@Model.TodayOrders.ToString("N0")</div><div class="lbl">سفارش امروز</div></div>
+    <div class="stat"><div class="ico">💰</div><div class="num">@Model.TotalSales.ToToman()</div><div class="lbl">فروش کل</div></div>
+    <div class="stat"><div class="ico">👥</div><div class="num">@Model.TotalUsers.ToString("N0")</div><div class="lbl">کاربران</div></div>
+    <div class="stat"><div class="ico">📦</div><div class="num">@Model.TotalProducts.ToString("N0")</div><div class="lbl">محصولات فعال</div></div>
+    <div class="stat"><div class="ico">💬</div><div class="num">@Model.PendingComments.ToString("N0")</div><div class="lbl">نظر در انتظار</div></div>
+</div>
+
+<div class="two-col">
+    <div class="card">
+        <strong>سفارش‌های ۷ روز اخیر</strong>
+        <div class="bar-chart">
+            @foreach (var day in Model.OrdersPerDay)
+            {
+                var height = (int)(day.Value * 100.0 / maxOrders);
+                <div class="bar-col" title="@day.Value سفارش — @day.Amount.ToToman()">
+                    <div class="bar" style="height: @height%"></div>
+                    <div class="bar-label">@day.Label</div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <strong>موجودی کم</strong>
+        @if (Model.LowStockProducts.Count == 0)
+        {
+            <div class="empty">همه موجودی‌ها سلامت هستند ✅</div>
+        }
+        else
+        {
+            <table class="mt">
+                <tr><td>محصول</td><td>موجودی</td></tr>
+                @foreach (var p in Model.LowStockProducts)
+                {
+                    <tr>
+                        <td class="text-muted2" style="white-space:normal">@p.Name</td>
+                        <td><span class="badge @(p.Stock == 0 ? "badge-red" : "badge-amber")">@p.Stock.ToString().ToFarsiDigits()</span></td>
+                    </tr>
+                }
+            </table>
+        }
+    </div>
+</div>
+
+<div class="card mt">
+    <strong>آخرین سفارش‌ها</strong>
+    @if (Model.RecentOrders.Count == 0)
+    {
+        <div class="empty">هنوز سفارشی ثبت نشده است.</div>
+    }
+    else
+    {
+        <table class="mt">
+            <thead>
+                <tr><th>شماره</th><th>اقلام</th><th>مبلغ</th><th>تاریخ</th><th>وضعیت</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var order in Model.RecentOrders)
+                {
+                    <tr>
+                        <td>@order.OrderNumber.ToFarsiDigits()</td>
+                        <td>@order.ItemsCount.ToString().ToFarsiDigits()</td>
+                        <td>@order.Total.ToToman()</td>
+                        <td class="text-muted2">@order.CreatedAt.ToPersianDate()</td>
+                        <td><span class="badge badge-@order.StatusBadgeClass switch-badge">@order.StatusTitle</span></td>
+                        <td><a href="/admin/orders/details/@order.Id" class="btn btn-sm btn-light">مشاهده</a></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>

@@ -1,0 +1,31 @@
+@model OrderDetailDto
+@{
+    ViewData["Title"] = "نتیجه پرداخت";
+    var failed = (bool)(ViewBag.Failed ?? false);
+}
+
+<div class="container mt-5 mb-5">
+    <div class="text-center py-5 bg-white rounded-4 shadow-sm px-3">
+        @if (failed)
+        {
+            <i class="bi bi-x-circle display-1 text-danger"></i>
+            <h1 class="fs-3 fw-bold mt-3">پرداخت ناموفق بود</h1>
+            <p class="text-muted">متأسفانه پرداخت انجام نشد. مبلغی از حساب شما کسر نشده است.</p>
+            @if (Model.StatusTitle == "در انتظار پرداخت")
+            {
+                <a href="/payment/pay/@Model.Id" class="btn btn-primary mt-2">تلاش مجدد</a>
+            }
+        }
+        else
+        {
+            <i class="bi bi-check-circle display-1 text-success"></i>
+            <h1 class="fs-3 fw-bold mt-3">پرداخت با موفقیت انجام شد! 🎉</h1>
+            <p class="text-muted">سفارش <strong class="text-dark">@Model.OrderNumber.ToFarsiDigits()</strong> ثبت شد و به‌زودی پردازش می‌شود.</p>
+        }
+
+        <div class="d-flex justify-content-center gap-2 mt-4 flex-wrap">
+            <a href="/orders/@Model.Id" class="btn btn-outline-primary">مشاهده سفارش</a>
+            <a href="/products" class="btn btn-light border">ادامه خرید</a>
+        </div>
+    </div>
+</div>

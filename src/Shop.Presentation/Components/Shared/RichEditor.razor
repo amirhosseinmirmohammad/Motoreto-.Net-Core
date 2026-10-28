@@ -1,0 +1,43 @@
+@* ---------- ادیتور HTML فارسی/RTL (Quill) ---------- *@
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="rich-wrap">
+    <div id="@_id" class="rich-editor border rounded-3 bg-white"></div>
+</div>
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public int MinHeight { get; set; } = 140;
+
+    private string _id = "re-" + Guid.NewGuid().ToString("N")[..10];
+    private DotNetObjectReference<RichEditor>? _ref;
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _initialized) return;
+        _initialized = true;
+
+        _ref = DotNetObjectReference.Create(this);
+        try
+        {
+            await JS.InvokeVoidAsync("richEditor.init", _id, Value ?? "", MinHeight, _ref);
+        }
+        catch
+        {
+            // اگر Quill هنوز لود نشده بود، ادیتور متنی ساده جایگزین می‌شود
+        }
+    }
+
+    [JSInvokable]
+    public Task OnHtml(string html)
+        => ValueChanged.InvokeAsync(html == "<p><br></p>" || html == "<div><br></div>" ? "" : html);
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("richEditor.destroy", _id); } catch { }
+        _ref?.Dispose();
+    }
+}

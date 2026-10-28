@@ -1,0 +1,45 @@
+@model Shop.Application.DTOs.ProductCardDto
+@{
+    var lowStock = (int)(ViewBag.LowStockThreshold ?? 5);
+}
+<div class="product-card">
+    <a href="/p/@Model.Slug" class="product-card-link">
+        <div class="product-thumb">
+            <img src="@Model.Image" alt="@Model.Name" loading="lazy" width="220" height="220" />
+            @if (Model.DiscountPercent > 0)
+            {
+                <span class="discount-badge">@Model.DiscountPercent.ToString().ToFarsiDigits()٪</span>
+            }
+            @if (Model.IsAmazing)
+            {
+                <span class="amazing-badge"><i class="bi bi-lightning-charge-fill"></i> شگفت‌انگیز</span>
+            }
+        </div>
+        <h3 class="product-name">@Model.Name</h3>
+    </a>
+
+    <div class="product-meta">
+        @if (Model.AverageRating > 0)
+        {
+            <span class="rating"><i class="bi bi-star-fill"></i> @Model.AverageRating.ToString("0.0").ToFarsiDigits()</span>
+        }
+        <span class="category small text-muted">@Model.CategoryName</span>
+    </div>
+
+    <div class="product-price">
+        @if (Model.DiscountPercent > 0)
+        {
+            <del class="old-price">@Model.UnitPrice.ToToman()</del>
+        }
+        <strong class="new-price">@Model.FinalPrice.ToToman()</strong>
+    </div>
+
+    @if (Model.Stock <= 0)
+    {
+        <button class="btn btn-light w-100 mt-2" disabled>ناموجود</button>
+    }
+    else if (Model.Stock <= lowStock)
+    {
+        <div class="stock-warning mt-2"><i class="bi bi-exclamation-triangle"></i> تنها @Model.Stock.ToString().ToFarsiDigits() عدد در انبار</div>
+    }
+</div>

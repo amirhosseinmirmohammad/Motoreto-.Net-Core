@@ -1,0 +1,57 @@
+@inject Shop.Application.Interfaces.ISettingsService SettingsService
+@{
+    var settings = await SettingsService.GetAsync();
+}
+<footer class="site-footer">
+    <div class="container">
+        <div class="footer-top">
+            <div class="row g-4">
+                <div class="col-12 col-md-4">
+                    <h6 class="footer-title">@settings.StoreName</h6>
+                    <p class="footer-text">@(settings.Tagline ?? "فروشگاه آنلاین شما")</p>
+                    <div class="d-flex gap-3 fs-4">
+                        @if (!string.IsNullOrEmpty(settings.InstagramUrl))
+                        {
+                            <a href="@settings.InstagramUrl" target="_blank" rel="noopener" class="footer-social"><i class="bi bi-instagram"></i></a>
+                        }
+                        @if (!string.IsNullOrEmpty(settings.TelegramUrl))
+                        {
+                            <a href="@settings.TelegramUrl" target="_blank" rel="noopener" class="footer-social"><i class="bi bi-telegram"></i></a>
+                        }
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <h6 class="footer-title">راهنمای خرید</h6>
+                    <ul class="footer-links">
+                        <li><a href="/faq">سوالات متداول</a></li>
+                        <li><a href="/terms">قوانین و مقررات</a></li>
+                        <li><a href="/orders">پیگیری سفارش</a></li>
+                    </ul>
+                </div>
+                <div class="col-6 col-md-3">
+                    <h6 class="footer-title">فروشگاه</h6>
+                    <ul class="footer-links">
+                        <li><a href="/about">درباره ما</a></li>
+                        <li><a href="/contact">تماس با ما</a></li>
+                        <li><a href="/blog">وبلاگ</a></li>
+                    </ul>
+                </div>
+                <div class="col-12 col-md-3">
+                    <h6 class="footer-title">خبرنامه</h6>
+                    <p class="footer-text small">از تخفیف‌ها اول باخبر شوید:</p>
+                    <form class="newsletter-form" id="newsletterForm">
+                        @Html.AntiForgeryToken()
+                        <div class="input-group">
+                            <input type="email" name="email" class="form-control" placeholder="ایمیل شما" required />
+                            <button class="btn btn-primary" type="submit">عضویت</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom d-flex flex-wrap justify-content-between gap-2 py-3">
+            <span>© @DateTime.UtcNow.ToIranTime().Year @settings.StoreName — تمامی حقوق محفوظ است.</span>
+            <span>تلفن پشتیبانی: @settings.SupportPhone.ToFarsiDigits()</span>
+        </div>
+    </div>
+</footer>

@@ -1,0 +1,40 @@
+@model List<Discount>
+@{
+    ViewData["Title"] = "کدهای تخفیف";
+}
+<div class="toolbar">
+    <a href="/admin/discounts/create" class="btn" style="margin-inline-start:auto">＋ کد تخفیف جدید</a>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>کد</th><th>عنوان</th><th>درصد</th><th>حداکثر</th><th>حداقل خرید</th><th>مصرف</th><th>انقضا</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+        <tbody>
+            @foreach (var d in Model)
+            {
+                <tr>
+                    <td dir="ltr" style="font-weight:800;color:var(--brand)">@d.Code</td>
+                    <td style="white-space:normal">@d.Title</td>
+                    <td>@d.Percent.ToString().ToFarsiDigits()٪</td>
+                    <td>@(d.MaxAmount?.ToToman() ?? "—")</td>
+                    <td>@d.MinOrderAmount.ToToman()</td>
+                    <td>@d.UsedCount.ToString().ToFarsiDigits()@(d.UsageLimit is not null ? $" از {d.UsageLimit.Value.ToString().ToFarsiDigits()}" : "")</td>
+                    <td class="text-muted2">@(d.ExpireAt?.ToPersianDate() ?? "—")</td>
+                    <td>@(d.IsActive ? Html.Raw("<span class='badge badge-green'>فعال</span>") : Html.Raw("<span class='badge badge-gray'>خاموش</span>"))</td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            <a href="/admin/discounts/edit/@d.Id" class="btn btn-sm btn-light">ویرایش</a>
+                            <form method="post" action="/admin/discounts/toggle/@d.Id">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-light">@(d.IsActive ? "خاموش" : "روشن")</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Model.Count == 0)
+    {
+        <div class="empty">کد تخفیفی تعریف نشده است.</div>
+    }
+</div>

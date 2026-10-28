@@ -1,0 +1,183 @@
+@page "/manage/discounts"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-1">🎟️ کدهای تخفیف</h4>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 p-4">
+            <h6 class="fw-bold mb-3">کد جدید</h6>
+            @if (_err is not null)
+            {
+                <div class="alert alert-danger py-2 small">@_err</div>
+            }
+            <div class="mb-2">
+                <label class="form-label small text-muted">کد (لاتین) *</label>
+                <input type="text" class="form-control" dir="ltr" value="@_code" @oninput="e => _code = e.Value?.ToString()" />
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-muted">عنوان *</label>
+                <input type="text" class="form-control" value="@_title" @oninput="e => _title = e.Value?.ToString()" />
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label small text-muted">درصد *</label>
+                    <input type="number" class="form-control" min="1" max="100" value="@_percent" @oninput="e => _percent = byte.TryParse(e.Value?.ToString(), out var v) ? v : (byte)10" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">سقف استفاده</label>
+                    <input type="number" class="form-control" min="0" placeholder="0 = بی‌نهایت" value="@_limit" @oninput="e => _limit = int.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+                </div>
+            </div>
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label small text-muted">حداقل سفارش (تومان)</label>
+                    <input type="number" class="form-control" min="0" value="@_min" @oninput="e => _min = long.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">انقضا</label>
+                    <input type="date" class="form-control" value="@_expire" @oninput="e => _expire = e.Value?.ToString()" />
+                </div>
+            </div>
+            <button class="btn btn-primary w-100" disabled="@(_busy || string.IsNullOrWhiteSpace(_code))" @onclick="AddAsync">
+                @(_busy ? "..." : "ایجاد کد")
+            </button>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4 p-3">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>کد</th>
+                            <th>درصد</th>
+                            <th>استفاده</th>
+                            <th>انقضا</th>
+                            <th>وضعیت</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var d in _rows)
+                        {
+                            <tr>
+                                <td class="fw-bold" dir="ltr">@d.Code</td>
+                                <td>@d.Percent٪ <span class="text-muted small">@(d.MaxAmount is null ? "" : $"سقف {d.MaxAmount:N0}")</span></td>
+                                <td>@d.Used.ToString("N0") @(d.Limit is null ? "" : $"/ {d.Limit:N0}")</td>
+                                <td class="small">@(d.Expire is null ? "—" : Fa(d.Expire.Value))</td>
+                                <td><span class="badge bg-@(d.Active ? "success" : "secondary")">@(d.Active ? "فعال" : "غیرفعال")</span></td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(d.Id)">
+                                        @(d.Active ? "غیرفعال" : "فعال")
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_rows.Count == 0)
+            {
+                <p class="text-muted text-center mb-0">کدی ثبت نشده است.</p>
+            }
+        </div>
+    </div>
+</div>
+
+    <Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
+}
+
+@code {
+    private string _code = "", _title = "", _expire = "";
+    private byte _percent = 10;
+    private int _limit;
+    private long _min;
+    private bool _busy;
+    private string? _err;
+    private int _page = 1, _totalPages = 1;
+    private List<DRow> _rows = new();
+
+    private async Task GoPage(int p)
+    {
+        _page = p;
+        await LoadAsync();
+    }
+
+    private sealed record DRow(int Id, string Code, byte Percent, long? MaxAmount, int Used, int? Limit, DateTime? Expire, bool Active);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.Discounts
+            .AsNoTracking()
+            .OrderByDescending(d => d.Id)
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(d => new DRow(d.Id, d.Code, d.Percent, d.MaxAmount, d.UsedCount, d.UsageLimit, d.ExpireAt, d.IsActive))
+            .ToListAsync();
+
+        var total = await Db.Discounts.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+    }
+
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_code)) return;
+        _busy = true; _err = null;
+
+        try
+        {
+            var dup = await Db.Discounts.AnyAsync(d => d.Code == _code.Trim().ToUpper());
+            if (dup)
+            {
+                _err = "این کد قبلاً ثبت شده است.";
+                _busy = false;
+                return;
+            }
+
+            Db.Discounts.Add(new Discount
+            {
+                Code = _code.Trim().ToUpper(),
+                Title = string.IsNullOrWhiteSpace(_title) ? _code.Trim() : _title.Trim(),
+                Percent = Math.Clamp(_percent, (byte)1, (byte)100),
+                MaxAmount = null,
+                MinOrderAmount = _min,
+                UsageLimit = _limit > 0 ? _limit : null,
+                ExpireAt = DateTime.TryParse(_expire, out var dt) ? dt : null,
+                IsActive = true
+            });
+            await Db.SaveChangesAsync();
+
+            _code = ""; _title = ""; _expire = ""; _limit = 0; _min = 0;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _err = "خطا: " + ex.Message;
+        }
+
+        _busy = false;
+    }
+
+    private async Task ToggleAsync(int id)
+    {
+        _busy = true;
+        var d = await Db.Discounts.FirstAsync(x => x.Id == id);
+        d.IsActive = !d.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private static string Fa(DateTime d)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+    }
+}

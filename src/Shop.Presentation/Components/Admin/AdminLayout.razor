@@ -1,0 +1,72 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+@if (!_authorized)
+{
+    <div class="container mt-5 text-center py-5">
+        <div class="spinner-border text-primary"></div>
+        <p class="mt-3 text-muted">در حال بررسی دسترسی...</p>
+    </div>
+}
+else
+{
+    <div class="d-flex" style="min-height:100vh;background:#f4f5f9">
+        @* ---------- سایدبار ---------- *@
+        <aside style="width:230px;background:#1f2340;color:#cfd3e8;flex-shrink:0;position:sticky;top:0;height:100vh;overflow:auto">
+            <div class="p-3 fw-bold text-white border-bottom border-secondary">
+                <i class="bi bi-speedometer2 me-1"></i> پنل مدیریت
+            </div>
+            <nav class="d-grid gap-1 p-2 small">
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage" Match="NavLinkMatch.All">📊 داشبورد</NavLink>
+                <hr class="border-secondary my-1" />
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/products">📦 محصولات</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/brands">🏷️ برندها</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/categories">🗂️ دسته‌بندی‌ها</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/attributes">🎛️ ویژگی‌های دسته‌ها</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/inventory">🏬 انبار</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/discounts">🎟️ کدهای تخفیف</NavLink>
+                <hr class="border-secondary my-1" />
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/orders">🧾 سفارش‌ها</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/payments">💳 پرداخت‌ها</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/sellers">🏪 فروشندگان</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/affiliates">🤝 افیلیت</NavLink>
+                <hr class="border-secondary my-1" />
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/users">👥 کاربران</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/comments">💬 نظرات محصولات</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/blogcomments">📰 نظرات وبلاگ</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/blog">📰 وبلاگ</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/sliders">🖼️ اسلایدرها</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/messages">✉️ پیام‌ها</NavLink>
+                <NavLink class="nav-link text-white-50 p-2 rounded" href="/manage/settings">⚙️ تنظیمات</NavLink>
+                <hr class="border-secondary my-1" />
+                <a class="nav-link text-white-50 p-2 rounded" href="/">🏠 فروشگاه</a>
+            </nav>
+        </aside>
+
+        @* ---------- محتوا ---------- *@
+        <main class="flex-grow-1 p-4">
+            @Body
+        </main>
+    </div>
+}
+
+@code {
+    private bool _authorized;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var user = auth.User;
+
+        if (user.Identity?.IsAuthenticated == true && user.IsInRole("Administrator"))
+        {
+            _authorized = true;
+        }
+        else
+        {
+            Nav.NavigateTo("/account/login?returnUrl=" + Uri.EscapeDataString(Nav.Uri), true);
+        }
+    }
+}

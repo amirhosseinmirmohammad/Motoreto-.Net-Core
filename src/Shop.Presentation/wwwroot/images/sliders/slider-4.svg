@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="420" viewBox="0 0 1200 420">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#8b5cf6"/>
+      <stop offset="1" stop-color="#111827"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="420" fill="url(#g)"/>
+  <circle cx="1050" cy="80" r="180" fill="#ffffff" opacity="0.08"/>
+  <circle cx="120" cy="360" r="140" fill="#ffffff" opacity="0.06"/>
+  <text x="600" y="190" font-family="Vazirmatn, Tahoma, sans-serif" font-size="52" fill="#ffffff" text-anchor="middle" font-weight="bold" direction="rtl">مد و پوشاک فصل</text>
+  <text x="600" y="250" font-family="Vazirmatn, Tahoma, sans-serif" font-size="24" fill="#ffffff" opacity="0.85" text-anchor="middle" direction="rtl">برندهای محبوب، قیمت باورنکردنی</text>
+</svg>

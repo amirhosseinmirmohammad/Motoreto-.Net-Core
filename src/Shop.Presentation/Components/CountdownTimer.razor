@@ -1,0 +1,72 @@
+@implements IDisposable
+
+@if (EndsAt is not null)
+{
+    <span class="countdown" dir="ltr">
+        <span class="cd-box">@_h.ToFarsiDigits()</span>
+        <span class="cd-sep">:</span>
+        <span class="cd-box">@_m.ToFarsiDigits()</span>
+        <span class="cd-sep">:</span>
+        <span class="cd-box">@_s.ToFarsiDigits()</span>
+    </span>
+}
+
+@code {
+    private PeriodicTimer? _timer;
+    private string _h = "۰۰", _m = "۰۰", _s = "۰۰";
+
+    /// <summary>زمان پایان (null = بدون شمارش).</summary>
+    [Parameter] public DateTime? EndsAt { get; set; }
+
+    [Parameter] public string CssClass { get; set; } = string.Empty;
+
+    protected override void OnInitialized() => Start();
+
+    protected override void OnParametersSet() => Start();
+
+    private void Start()
+    {
+        _timer?.Dispose();
+        _timer = null;
+        if (EndsAt is null) return;
+        Update();
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = RunAsync(_timer);
+    }
+
+    private async Task RunAsync(PeriodicTimer timer)
+    {
+        try
+        {
+            while (await timer.WaitForNextTickAsync())
+            {
+                Update();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (ObjectDisposedException)
+        {
+            // تایمر با Dispose شدن کامپوننت لغو شد — طبیعی است.
+        }
+    }
+
+    private void Update()
+    {
+        if (EndsAt is null) return;
+
+        var left = EndsAt.Value - DateTime.Now;
+        if (left <= TimeSpan.Zero)
+        {
+            _h = _m = _s = "۰۰";
+            _timer?.Dispose();
+            _timer = null;
+            return;
+        }
+
+        _h = ((int)left.TotalHours).ToString("00");
+        _m = left.Minutes.ToString("00");
+        _s = left.Seconds.ToString("00");
+    }
+
+    public void Dispose() => _timer?.Dispose();
+}

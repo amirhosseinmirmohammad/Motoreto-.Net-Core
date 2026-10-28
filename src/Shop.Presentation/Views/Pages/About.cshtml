@@ -1,0 +1,29 @@
+@model SiteSettings
+@{
+    ViewData["Title"] = "درباره ما";
+}
+<div class="container mt-4 mb-5">
+    <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5">
+        <div class="text-center mb-4">
+            <i class="bi bi-info-circle display-5 text-primary"></i>
+            <h1 class="fs-3 fw-bold mt-2">درباره @Model.StoreName</h1>
+        </div>
+        <div class="about-content">@Html.Raw(Model.AboutUs)</div>
+
+        <hr class="my-4" />
+        <div class="row text-center g-3">
+            <div class="col-4">
+                <i class="bi bi-truck fs-3 text-success"></i>
+                <div class="small mt-1 fw-bold">ارسال سریع</div>
+            </div>
+            <div class="col-4">
+                <i class="bi bi-shield-check fs-3 text-primary"></i>
+                <div class="small mt-1 fw-bold">ضمانت اصالت</div>
+            </div>
+            <div class="col-4">
+                <i class="bi bi-arrow-repeat fs-3 text-warning"></i>
+                <div class="small mt-1 fw-bold">۷ روز بازگشت</div>
+            </div>
+        </div>
+    </div>
+</div>

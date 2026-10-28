@@ -1,0 +1,89 @@
+@page "/manage/payments"
+@layout AdminLayout
+@attribute [Authorize]
+@using Shop.Domain.Enums
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-3">💳 تراکنش‌های پرداخت</h4>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>سفارش</th>
+                        <th>مبلغ</th>
+                        <th>درگاه</th>
+                        <th>شناسه پیگیری</th>
+                        <th>وضعیت</th>
+                        <th>تاریخ</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in _rows)
+                    {
+                        <tr>
+                            <td class="fw-bold">@p.OrderNumber</td>
+                            <td>@p.Amount.ToString("N0") تومان</td>
+                            <td class="small" dir="ltr">@p.Gateway</td>
+                            <td class="small" dir="ltr">@(p.RefId ?? "—")</td>
+                            <td><span class="badge bg-@Badge(p.Status)">@Text(p.Status)</span></td>
+                            <td class="small">@Fa(p.CreatedAt)</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_rows.Count == 0)
+        {
+            <p class="text-muted text-center mb-0">تراکنشی ثبت نشده است.</p>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<PRow> _rows = new();
+
+    private sealed record PRow(string OrderNumber, long Amount, string Gateway, string? RefId, PaymentStatus Status, DateTime CreatedAt);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rows = await Db.Payments
+            .AsNoTracking()
+            .OrderByDescending(p => p.Id)
+            .Take(40)
+            .Select(p => new PRow(p.Order.OrderNumber, p.Amount, p.Gateway, p.RefId, p.Status, p.CreatedAt))
+            .ToListAsync();
+
+        _loading = false;
+    }
+
+    private static string Text(PaymentStatus s) => s switch
+    {
+        PaymentStatus.Pending => "در انتظار",
+        PaymentStatus.Success => "پرداخت شده",
+        PaymentStatus.Failed => "ناموفق",
+        _ => s.ToString()
+    };
+
+    private static string Badge(PaymentStatus s) => s switch
+    {
+        PaymentStatus.Pending => "warning text-dark",
+        PaymentStatus.Success => "success",
+        PaymentStatus.Failed => "danger",
+        _ => "secondary"
+    };
+
+    private static string Fa(DateTime d)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00} {d.Hour:00}:{d.Minute:00}";
+    }
+}

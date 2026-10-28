@@ -1,0 +1,140 @@
+@page "/seller"
+@layout SellerLayout
+@attribute [Authorize]
+@inject ISellerService Sellers
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_seller is null)
+{
+    <div class="alert alert-info">هنوز فروشگاهی ثبت نکرده‌اید.</div>
+    <NavLink href="/seller/register" class="btn btn-primary">ثبت‌نام فروشگاه</NavLink>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">فروشگاه</div>
+                <div class="fw-bold">@_seller.StoreName</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">وضعیت</div>
+                <div class="fw-bold"><span class="badge bg-@StatusClass(_seller.Status)">@StatusText(_seller.Status)</span></div>
+                @if (_seller.Status == SellerStatus.Rejected && !string.IsNullOrEmpty(_seller.RejectReason))
+                {
+                    <div class="small text-danger mt-1">دلیل: @_seller.RejectReason</div>
+                }
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">آفرهای فعال</div>
+                <div class="fs-3 fw-bold text-primary">@_offers.Count(o => o.IsActive).ToString("N0")</div>
+            </div>
+        </div>
+    </div>
+
+    @if (_message is not null)
+    {
+        <div class="alert alert-success py-2">@_message</div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h6 class="fw-bold mb-3">آفرهای من</h6>
+        @if (_offers.Count == 0)
+        {
+            <p class="text-muted mb-0">هنوز آفری ثبت نکرده‌اید. از تب «آفر جدید» شروع کنید.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>کالا</th>
+                            <th>قیمت نهایی</th>
+                            <th>تخفیف</th>
+                            <th>موجودی</th>
+                            <th>ارسال</th>
+                            <th>وضعیت</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var o in _offers)
+                        {
+                            <tr>
+                                <td class="fw-bold">@o.ProductName</td>
+                                <td>@o.FinalPrice.ToString("N0") تومان</td>
+                                <td>@(o.DiscountPercent > 0 ? o.DiscountPercent + "٪" : "—")</td>
+                                <td>@o.Available.ToString("N0")</td>
+                                <td>@o.DeliveryDays روز</td>
+                                <td><span class="badge bg-@(o.IsActive ? "success" : "secondary")">@(o.IsActive ? "فعال" : "غیرفعال")</span></td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(o.OfferId)">
+                                        تغییر وضعیت
+                                    </button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private string? _message;
+    private Seller? _seller;
+    private List<SellerOfferDto> _offers = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uid = await GetUserIdAsync();
+        _seller = await Sellers.GetByUserAsync(uid);
+        if (_seller is not null)
+            _offers = await Sellers.GetMyOffersAsync(uid);
+
+        _loading = false;
+    }
+
+    private async Task ToggleAsync(long offerId)
+    {
+        _busy = true;
+        var uid = await GetUserIdAsync();
+        var (_, msg) = await Sellers.ToggleOfferAsync(uid, offerId);
+        _message = msg;
+        _offers = await Sellers.GetMyOffersAsync(uid);
+        _busy = false;
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+
+    private static string StatusText(SellerStatus s) => s switch
+    {
+        SellerStatus.Approved => "تأیید شده ✓",
+        SellerStatus.Rejected => "رد شده ✗",
+        _ => "در انتظار تأیید"
+    };
+
+    private static string StatusClass(SellerStatus s) => s switch
+    {
+        SellerStatus.Approved => "success",
+        SellerStatus.Rejected => "danger",
+        _ => "warning text-dark"
+    };
+}

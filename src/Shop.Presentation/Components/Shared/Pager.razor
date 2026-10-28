@@ -1,0 +1,66 @@
+@* ---------- صفحه‌بندی پنل‌ها (اعداد فارسی، RTL) ---------- *@
+@if (TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm justify-content-center align-items-center mb-0 gap-1">
+            <li class="page-item @(Page <= 1 ? "disabled" : "")">
+                <button type="button" class="page-link rounded-3" @onclick="@(async () => await Go(Page - 1))">قبلی</button>
+            </li>
+
+            @foreach (var p in Pages())
+            {
+                @if (p == -1)
+                {
+                    <li class="page-item disabled"><span class="page-link border-0">…</span></li>
+                }
+                else
+                {
+                    <li class="page-item @(p == Page ? "active" : "")">
+                        <button type="button" class="page-link rounded-3" @onclick="@(async () => await Go(p))">@Fa(p)</button>
+                    </li>
+                }
+            }
+
+            <li class="page-item @(Page >= TotalPages ? "disabled" : "")">
+                <button type="button" class="page-link rounded-3" @onclick="@(async () => await Go(Page + 1))">بعدی</button>
+            </li>
+        </ul>
+    </nav>
+}
+
+@code {
+    [Parameter] public int Page { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public EventCallback<int> PageChanged { get; set; }
+
+    private IEnumerable<int> Pages()
+    {
+        var start = Math.Max(1, Page - 2);
+        var end = Math.Min(TotalPages, start + 4);
+        if (end - start < 4) start = Math.Max(1, end - 4);
+
+        var list = new List<int>();
+        if (start > 1)
+        {
+            list.Add(1);
+            if (start > 2) list.Add(-1);
+        }
+        for (var i = start; i <= end; i++) list.Add(i);
+        if (end < TotalPages)
+        {
+            if (end < TotalPages - 1) list.Add(-1);
+            list.Add(TotalPages);
+        }
+        return list;
+    }
+
+    private async Task Go(int p)
+    {
+        if (p >= 1 && p <= TotalPages && p != Page)
+            await PageChanged.InvokeAsync(p);
+    }
+
+    private static string Fa(int n) => n.ToString()
+        .Replace('0', '۰').Replace('1', '۱').Replace('2', '۲').Replace('3', '۳').Replace('4', '۴')
+        .Replace('5', '۵').Replace('6', '۶').Replace('7', '۷').Replace('8', '۸').Replace('9', '۹');
+}

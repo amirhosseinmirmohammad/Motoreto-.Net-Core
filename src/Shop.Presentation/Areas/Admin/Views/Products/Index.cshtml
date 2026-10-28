@@ -1,0 +1,107 @@
+@model dynamic
+@{
+    ViewData["Title"] = "محصولات";
+    var q = ViewBag.Q as string;
+    var categoryId = ViewBag.CategoryId as int?;
+    var page = (int)ViewBag.Page;
+    var pageSize = (int)ViewBag.PageSize;
+    var total = (int)ViewBag.TotalCount;
+    var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+    var categories = ViewBag.Categories as List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem>;
+}
+@functions {
+    private static string Fa(object? value) => Shop.Shared.PersianDateHelper.ToFarsiDigits(value?.ToString() ?? string.Empty);
+    private static string Toman(object? value) => Convert.ToInt64(value).ToToman();
+}
+<div class="toolbar">
+    <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="text" name="q" value="@q" placeholder="جستجو نام/کد..." style="width:200px" />
+        <select name="categoryId">
+            <option value="">همه دسته‌ها</option>
+            @if (categories != null)
+            {
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Value" selected="@(categoryId?.ToString() == c.Value)">@c.Text</option>
+                }
+            }
+        </select>
+        <button class="btn btn-light">فیلتر</button>
+    </form>
+    <a href="/admin/products/create" class="btn" style="margin-inline-start:auto">＋ محصول جدید</a>
+</div>
+
+<div class="table-wrap">
+    <table>
+        <thead>
+            <tr>
+                <th>محصول</th><th>دسته</th><th>قیمت</th><th>تخفیف</th><th>موجودی</th><th>فروش</th><th>وضعیت</th><th>عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <img src="@p.MainImage" alt="" loading="lazy" />
+                            <div>
+                                <div style="max-width:280px;white-space:normal;font-weight:600">@p.Name</div>
+                                <div class="text-muted2">@p.Code</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="text-muted2">@p.CategoryName</td>
+                    <td>@Toman(p.UnitPrice)</td>
+                    <td>@(p.DiscountPercent > 0 ? Fa(p.DiscountPercent) + "٪" : "—")</td>
+                    <td><span class="badge @(p.Stock - p.ReservedCount <= 0 ? "badge-red" : p.Stock <= 5 ? "badge-amber" : "badge-green")">@Fa(p.Stock - p.ReservedCount)</span></td>
+                    <td>@Fa(p.SalesCount)</td>
+                    <td>
+                        @if (p.IsActive)
+                        {
+                            <span class="badge badge-green">فعال</span>
+                        }
+                        else
+                        {
+                            <span class="badge badge-gray">غیرفعال</span>
+                        }
+                    </td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            <a href="/admin/products/edit/@p.Id" class="btn btn-sm btn-light">ویرایش</a>
+                            <form method="post" action="/admin/products/toggle/@p.Id">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-light">@(p.IsActive ? "غیرفعال" : "فعال")</button>
+                            </form>
+                            <form method="post" action="/admin/products/delete/@p.Id" data-confirm="محصول حذف شود؟">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-danger">حذف</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Model.Count == 0)
+    {
+        <div class="empty">محصولی یافت نشد.</div>
+    }
+</div>
+
+@if (totalPages > 1)
+{
+    <div class="pager">
+        @for (var i = 1; i <= totalPages; i++)
+        {
+            if (i == page)
+            {
+                <span class="current">@i.ToString().ToFarsiDigits()</span>
+            }
+            else
+            {
+                <a href="/admin/products?page=@i&q=@q&categoryId=@categoryId">@i.ToString().ToFarsiDigits()</a>
+            }
+        }
+    </div>
+}

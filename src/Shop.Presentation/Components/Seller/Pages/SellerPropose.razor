@@ -1,0 +1,213 @@
+@page "/seller/new-product"
+@layout SellerLayout
+@attribute [Authorize]
+@using System.Security.Claims
+@inject ISellerService Sellers
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject Shop.Presentation.Services.ImageUploadService Uploader
+
+<h5 class="fw-bold mb-1">💡 پیشنهاد کالای جدید</h5>
+<p class="text-muted small">کالا پس از ثبت، توسط کارشناسان بررسی و تأیید می‌شود؛ سپس فعال خواهد شد.</p>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger py-2">@_error</div>
+}
+
+<div class="card border-0 shadow-sm rounded-4 p-4">
+    <EditForm Model="_m" OnValidSubmit="SubmitAsync" class="row g-3">
+        <DataAnnotationsValidator />
+
+        <div class="col-md-6">
+            <label class="form-label small text-muted">نام محصول (فارسی) *</label>
+            <InputText @bind-Value="_m.Name" class="form-control" />
+            <ValidationMessage For="() => _m.Name" class="text-danger small" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">نام انگلیسی *</label>
+            <InputText @bind-Value="_m.EnglishName" class="form-control" dir="ltr" />
+            <ValidationMessage For="() => _m.EnglishName" class="text-danger small" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">دسته‌بندی *</label>
+            <SearchableSelect Options="_cats.Select(c => new SearchableSelect.Opt(c.Id.ToString(), c.Label)).ToList()"
+                              Value="_m.CategoryId.ToString()"
+                              ValueChanged="v => _m.CategoryId = int.TryParse(v, out var i) ? i : 0"
+                              Placeholder="جستجوی دسته‌بندی..." />
+            <ValidationMessage For="() => _m.CategoryId" class="text-danger small" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">برند</label>
+            <SearchableSelect Options="_brands.Select(b => new SearchableSelect.Opt(b.Id.ToString(), b.Name)).ToList()"
+                              Value="_m.BrandId?.ToString()"
+                              ValueChanged="v => _m.BrandId = int.TryParse(v, out var i) ? i : null"
+                              Placeholder="جستجوی برند..." />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted">قیمت (تومان) *</label>
+            <InputNumber @bind-Value="_m.UnitPrice" class="form-control" />
+            <ValidationMessage For="() => _m.UnitPrice" class="text-danger small" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted">درصد تخفیف</label>
+            <input type="number" class="form-control" min="0" max="90" value="@_m.DiscountPercent"
+                   @oninput="e => _m.DiscountPercent = byte.TryParse(e.Value?.ToString(), out var v) ? v : (byte)0" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small text-muted">موجودی</label>
+            <InputNumber @bind-Value="_m.Stock" class="form-control" />
+        </div>
+        <div class="col-12">
+            <label class="form-label small text-muted">توضیحات *</label>
+            <RichEditor @bind-Value="_m.Description" />
+            <ValidationMessage For="() => _m.Description" class="text-danger small" />
+        </div>
+
+        <div class="col-12">
+            <label class="form-label small text-muted">تصویر محصول (اختیاری — خودکار WebP و فضای ابری)</label>
+            <InputText @bind-Value="_m.MainImage" class="form-control mb-1" dir="ltr" placeholder="مسیر دستی (اختیاری)" />
+            <UploadDropzone @bind-Value="_m.MainImage" />
+        </div>
+
+        <div class="col-12">
+            <label class="form-label small text-muted fw-bold">ویژگی‌ها (مقادیر چندتایی با ویرگول)</label>
+            @for (var i = 0; i < _rows.Count; i++)
+            {
+                var idx = i;
+                <div class="row g-2 mb-2 align-items-center">
+                    <div class="col-5">
+                        <InputText @bind-Value="_rows[idx].Name" class="form-control form-control-sm" placeholder="نام ویژگی" />
+                    </div>
+                    <div class="col-6">
+                        <InputText @bind-Value="_rows[idx].Value" class="form-control form-control-sm" placeholder="مقدار / مقادیر" />
+                    </div>
+                    <div class="col-1">
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100" @onclick="() => _rows.RemoveAt(idx)">×</button>
+                    </div>
+                </div>
+            }
+            <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="AddRow">+ افزودن ویژگی</button>
+        </div>
+
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary w-100 py-2" disabled="@_busy">
+                @(_busy ? "در حال ثبت..." : "ثبت پیشنهاد برای بررسی")
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private AdminProductViewModel _m = new();
+    private List<AttrRow> _rows = [new()];
+    private List<CatRow> _cats = new();
+    private List<BrandRow> _brands = new();
+    private bool _busy;
+    private string? _error;
+    private bool _uploading;
+    private string? _uploadErr;
+
+    private async Task UploadImageAsync(InputFileChangeEventArgs e)
+    {
+        _uploadErr = null;
+        if (e.FileCount == 0) return;
+
+        _uploading = true;
+        try
+        {
+            _m.MainImage = await Uploader.SaveAsync(e.File);
+        }
+        catch (Exception ex)
+        {
+            _uploadErr = ex.Message;
+        }
+        _uploading = false;
+    }
+
+    private sealed record CatRow(int Id, string Name, string Parent)
+    {
+        public string Label => Parent.Length == 0 ? Name : $"{Parent} → {Name}";
+    }
+
+    private sealed record BrandRow(int Id, string Name);
+
+    private sealed class AttrRow
+    {
+        public string Name { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uid = await GetUserIdAsync();
+        var seller = await Sellers.GetByUserAsync(uid);
+
+        // دسته‌های مجاز فروشنده (اگر ثبت‌نام کرده باشد)
+        List<int> catIds = [];
+        if (seller is not null)
+        {
+            catIds = await Db.SellerCategories
+                .AsNoTracking()
+                .Where(sc => sc.SellerId == seller.Id)
+                .Select(sc => sc.CategoryId)
+                .ToListAsync();
+        }
+
+        var leafCats = Db.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive && c.ParentId != null);
+
+        if (catIds.Count > 0)
+            leafCats = leafCats.Where(c => catIds.Contains(c.Id));
+
+        _cats = await leafCats
+            .OrderBy(c => c.ParentId).ThenBy(c => c.SortOrder)
+            .Select(c => new CatRow(c.Id, c.Name, c.Parent != null ? c.Parent.Name : ""))
+            .ToListAsync();
+
+        // برندها فقط از دسته‌های فعالیت فروشنده (اگر نگاشت برند↔دسته تعریف شده باشد)
+        var anyMapping = await Db.BrandCategories.AnyAsync();
+        var brandQuery = Db.Brands.AsNoTracking();
+
+        if (anyMapping && catIds.Count > 0)
+            brandQuery = brandQuery.Where(b => Db.BrandCategories.Any(bc => bc.BrandId == b.Id && catIds.Contains(bc.CategoryId)));
+
+        _brands = await brandQuery
+            .OrderBy(b => b.Name)
+            .Select(b => new BrandRow(b.Id, b.Name))
+            .ToListAsync();
+    }
+
+    private void AddRow() => _rows.Add(new AttrRow());
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _error = null;
+
+        _m.AttrNames = _rows.Where(r => !string.IsNullOrWhiteSpace(r.Name)).Select(r => r.Name.Trim()).ToList();
+        _m.AttrValues = _rows.Where(r => !string.IsNullOrWhiteSpace(r.Name)).Select(r => r.Value.Trim()).ToList();
+
+        var uid = await GetUserIdAsync();
+        var (ok, msg, _) = await Sellers.ProposeProductAsync(uid, _m);
+
+        if (ok)
+        {
+            Nav.NavigateTo("/seller");
+        }
+        else
+        {
+            _error = msg;
+            _busy = false;
+        }
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+}

@@ -1,0 +1,191 @@
+@page "/manage/categories"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-1">🗂️ دسته‌بندی‌ها</h4>
+<p class="text-muted small">ساختار درختی منوی فروشگاه — والد و فرزند.</p>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 p-4">
+            <h6 class="fw-bold mb-3">افزودن دسته جدید</h6>
+            @if (_error is not null)
+            {
+                <div class="alert alert-danger py-2 small">@_error</div>
+            }
+            <div class="mb-2">
+                <label class="form-label small text-muted">نام دسته *</label>
+                <input type="text" class="form-control" value="@_name" @oninput="NameChanged" />
+            </div>
+            <div class="mb-2">
+                <label class="form-label small text-muted">والد (خالی = دسته اصلی)</label>
+                <select class="form-select" value="@_parentId" @onchange="ParentChanged">
+                    <option value="0">— دسته اصلی —</option>
+                    @foreach (var c in _parents)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="row g-2 mb-3">
+                <div class="col-6">
+                    <label class="form-label small text-muted">ترتیب</label>
+                    <input type="number" class="form-control" value="@_sortOrder" @oninput="e => _sortOrder = int.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">آیکون (Bi)</label>
+                    <input type="text" class="form-control" dir="ltr" placeholder="bi-phone" value="@_icon" @oninput="IconChanged" />
+                </div>
+            </div>
+            <button class="btn btn-primary w-100" disabled="@(_busy || string.IsNullOrWhiteSpace(_name))" @onclick="AddAsync">
+                @(_busy ? "..." : "افزودن دسته")
+            </button>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        @if (_loading)
+        {
+            <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+        }
+        else
+        {
+            @foreach (var parent in _tree)
+            {
+                <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="fw-bold fs-6">
+                            <i class="@(parent.Icon ?? "bi-folder") text-primary"></i> @parent.Name
+                            <span class="badge bg-secondary-subtle text-dark ms-1">@parent.ChildrenCount.ToString("N0") فرزند</span>
+                            @if (!parent.Active)
+                            {
+                                <span class="badge bg-secondary">غیرفعال</span>
+                            }
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(parent.Id)">
+                                @(parent.Active ? "غیرفعال" : "فعال")
+                            </button>
+                        </div>
+                    </div>
+                    @if (parent.Children.Count > 0)
+                    {
+                        <div class="mt-2 me-4 d-grid gap-1">
+                            @foreach (var ch in parent.Children)
+                            {
+                                <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                                    <div class="small">
+                                        <i class="bi-arrow-return-left text-muted"></i> @ch.Name
+                                        <span class="text-muted">(@ch.ProductsCount.ToString("N0") کالا)</span>
+                                        @if (!ch.Active)
+                                        {
+                                            <span class="badge bg-secondary ms-1">غیرفعال</span>
+                                        }
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary py-0" disabled="@_busy" @onclick="() => ToggleAsync(ch.Id)">
+                                        @(ch.Active ? "غیرفعال" : "فعال")
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        }
+    </div>
+</div>
+
+@code {
+    private bool _loading = true, _busy;
+    private string _name = "";
+    private string _icon = "";
+    private int _parentId;
+    private int _sortOrder;
+    private string? _error;
+
+    private List<CatRow> _parents = new();
+    private List<CatNode> _tree = new();
+
+    private sealed record CatRow(int Id, string Name);
+    private sealed record CatNode(int Id, string Name, string? Icon, bool Active, int ChildrenCount, int ProductsCount, List<CatNode> Children);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private void ParentChanged(ChangeEventArgs e) => _parentId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+
+    private void NameChanged(ChangeEventArgs e) => _name = e.Value?.ToString() ?? "";
+
+    private void IconChanged(ChangeEventArgs e) => _icon = e.Value?.ToString() ?? "";
+
+    private async Task LoadAsync()
+    {
+        var all = await Db.Categories
+            .AsNoTracking()
+            .OrderBy(c => c.ParentId).ThenBy(c => c.SortOrder)
+            .Select(c => new
+            {
+                c.Id, c.Name, c.Icon, c.IsActive, c.ParentId, c.SortOrder,
+                ChildrenCount = c.Children.Count,
+                ProductsCount = c.Products.Count
+            })
+            .ToListAsync();
+
+        _parents = all.Where(c => c.ParentId is null).Select(c => new CatRow(c.Id, c.Name)).ToList();
+
+        _tree = all.Where(c => c.ParentId is null)
+            .Select(c => new CatNode(
+                c.Id, c.Name, c.Icon, c.IsActive, c.ChildrenCount, c.ProductsCount,
+                all.Where(x => x.ParentId == c.Id)
+                   .Select(x => new CatNode(x.Id, x.Name, x.Icon, x.IsActive, 0, x.ProductsCount, new List<CatNode>()))
+                   .ToList()))
+            .ToList();
+
+        _loading = false;
+    }
+
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name)) return;
+        _busy = true;
+        _error = null;
+
+        try
+        {
+            var baseSlug = new string(_name.Trim().Where(char.IsLetterOrDigit).ToArray());
+            var cat = new Category
+            {
+                Name = _name.Trim(),
+                Slug = $"cat-{(string.IsNullOrEmpty(baseSlug) ? "x" : baseSlug.ToLower())}-{Random.Shared.Next(100, 999)}",
+                Icon = string.IsNullOrWhiteSpace(_icon) ? null : _icon.Trim(),
+                ParentId = _parentId == 0 ? null : _parentId,
+                SortOrder = _sortOrder,
+                IsActive = true
+            };
+
+            Db.Categories.Add(cat);
+            await Db.SaveChangesAsync();
+
+            _name = "";
+            _icon = "";
+            _sortOrder = 0;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = "خطا: " + ex.Message;
+        }
+
+        _busy = false;
+    }
+
+    private async Task ToggleAsync(int id)
+    {
+        _busy = true;
+        var c = await Db.Categories.FirstAsync(x => x.Id == id);
+        c.IsActive = !c.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+}

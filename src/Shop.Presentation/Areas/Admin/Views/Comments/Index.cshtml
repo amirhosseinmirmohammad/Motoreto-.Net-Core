@@ -1,0 +1,54 @@
+@model List<ProductCommentDto>
+@{
+    ViewData["Title"] = "نظرات محصولات";
+    var approved = ViewBag.Approved as bool?;
+}
+<div class="toolbar">
+    <a href="/admin/comments" class="btn btn-light @(approved == null ? "btn" : "")">همه</a>
+    <a href="/admin/comments?approved=false" class="btn btn-amber">در انتظار تأیید</a>
+    <a href="/admin/comments?approved=true" class="btn btn-green">تأییدشده</a>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>کاربر</th><th>محصول</th><th>امتیاز</th><th>متن</th><th>تاریخ</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td style="font-weight:600">@c.UserName</td>
+                    <td class="text-muted2" style="white-space:normal;max-width:160px">@c.ProductName</td>
+                    <td><span class="badge badge-amber">@c.Rating.ToString().ToFarsiDigits()★</span></td>
+                    <td style="white-space:normal;max-width:300px">@c.Text</td>
+                    <td class="text-muted2">@c.CreatedAt.ToPersianDate()</td>
+                    <td>@(c.IsApproved ? Html.Raw("<span class='badge badge-green'>تأیید</span>") : Html.Raw("<span class='badge badge-amber'>انتظار</span>"))</td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            @if (!c.IsApproved)
+                            {
+                                <form method="post" action="/admin/comments/approve/@c.Id">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-sm btn-green">تأیید</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form method="post" action="/admin/comments/reject/@c.Id">
+                                    @Html.AntiForgeryToken()
+                                    <button class="btn btn-sm btn-light">رد</button>
+                                </form>
+                            }
+                            <form method="post" action="/admin/comments/delete/@c.Id" data-confirm="نظر حذف شود؟">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-danger">حذف</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Model.Count == 0)
+    {
+        <div class="empty">نظری یافت نشد.</div>
+    }
+</div>

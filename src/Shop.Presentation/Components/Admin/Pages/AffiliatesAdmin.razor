@@ -1,0 +1,107 @@
+@page "/manage/affiliates"
+@layout AdminLayout
+@attribute [Authorize]
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-3">🤝 همکاران فروش (افیلیت)</h4>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_rows.Count == 0)
+{
+    <div class="alert alert-light border">هنوز همکاری ثبت نشده است. کاربران از پنل خودشان کد معرف می‌گیرند.</div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>کد</th>
+                        <th>همکار</th>
+                        <th>کمیسیون</th>
+                        <th>کلیک</th>
+                        <th>سفارش</th>
+                        <th>مبلغ سفارش‌ها</th>
+                        <th>کمیسیون کسب‌شده</th>
+                        <th>وضعیت</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in _rows)
+                    {
+                        <tr>
+                            <td class="fw-bold" dir="ltr">@a.Code</td>
+                            <td class="small">@a.UserName</td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm" style="width:80px" min="1" max="30"
+                                       value="@_draft[a.Id]" @oninput="e => _draft[a.Id] = int.TryParse(e.Value?.ToString(), out var v) ? v : _draft[a.Id]" />
+                            </td>
+                            <td>@a.Clicks.ToString("N0")</td>
+                            <td>@a.Orders.ToString("N0")</td>
+                            <td class="small">@a.Amount.ToString("N0") تومان</td>
+                            <td class="fw-bold text-success">@a.Earned.ToString("N0") تومان</td>
+                            <td><span class="badge bg-@(a.Active ? "success" : "secondary")">@(a.Active ? "فعال" : "غیرفعال")</span></td>
+                            <td class="text-end" style="white-space:nowrap">
+                                <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="() => SaveCommissionAsync(a.Id)">ذخیره</button>
+                                <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(a.Id)">
+                                    @(a.Active ? "غیرفعال" : "فعال")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private List<ARow> _rows = new();
+    private Dictionary<int, int> _draft = new();
+
+    private sealed record ARow(int Id, string Code, string UserName, int Commission, int Clicks, int Orders, long Amount, long Earned, bool Active);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.Affiliates
+            .AsNoTracking()
+            .OrderByDescending(a => a.Earned)
+            .Select(a => new ARow(
+                a.Id, a.Code,
+                (a.User.FirstName ?? "") + " " + (a.User.LastName ?? ""),
+                a.CommissionPercent, a.ClickCount, a.OrderCount, a.OrderAmount, a.Earned, a.IsActive))
+            .ToListAsync();
+
+        _draft = _rows.ToDictionary(a => a.Id, a => a.Commission);
+        _loading = false;
+    }
+
+    private async Task SaveCommissionAsync(int id)
+    {
+        _busy = true;
+        var a = await Db.Affiliates.FirstAsync(x => x.Id == id);
+        a.CommissionPercent = Math.Clamp(_draft[id], 1, 30);
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task ToggleAsync(int id)
+    {
+        _busy = true;
+        var a = await Db.Affiliates.FirstAsync(x => x.Id == id);
+        a.IsActive = !a.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+}

@@ -1,0 +1,85 @@
+@* ---------- سلکت سرچ‌دار چندانتخابی (چیپ + جستجو) ---------- *@
+<div class="ss-wrap ms-wrap">
+    @if (_selected.Count > 0)
+    {
+        <div class="ms-chips">
+            @foreach (var v in _selected.ToList())
+            {
+                <span class="ms-chip">
+                    @(_options.FirstOrDefault(o => o.Value == v)?.Text ?? v)
+                    <button type="button" class="ms-x" @onclick="() => Remove(v)">×</button>
+                </span>
+            }
+        </div>
+    }
+    <input type="text" class="form-control" placeholder="@Placeholder" value="@_q"
+           @oninput="OnInput" @onfocus="() => _open = true" @onblur="Close" autocomplete="off" />
+
+    @if (_open)
+    {
+        <div class="ss-list">
+            @foreach (var o in Filtered.Take(50))
+            {
+                <div class="ss-item @(_selected.Contains(o.Value) ? "active" : "")" @onmousedown="() => Toggle(o)">
+                    @o.Text
+                    @if (_selected.Contains(o.Value))
+                    {
+                        <i class="bi bi-check2 float-start"></i>
+                    }
+                </div>
+            }
+            @if (!Filtered.Any())
+            {
+                <div class="ss-item text-muted">موردی یافت نشد</div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    public record Opt(string Value, string Text);
+
+    [Parameter] public List<Opt> Options { get; set; } = [];
+    [Parameter] public List<string> Values { get; set; } = [];
+    [Parameter] public EventCallback<List<string>> ValuesChanged { get; set; }
+    [Parameter] public string Placeholder { get; set; } = "جستجو و افزودن...";
+
+    private List<string> _selected = [];
+    private List<Opt> _options = [];
+    private string _q = "";
+    private bool _open;
+
+    private IEnumerable<Opt> Filtered =>
+        _options.Where(o => !_selected.Contains(o.Value))
+                .Where(o => string.IsNullOrWhiteSpace(_q) || o.Text.Contains(_q, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnParametersSet()
+    {
+        _options = Options;
+        if (_selected.Count == 0 && Values.Count > 0)
+            _selected = Values.ToList();
+    }
+
+    private void OnInput(ChangeEventArgs e) => _q = e.Value?.ToString() ?? "";
+
+    private void Close()
+    {
+        _open = false;
+        _q = "";
+    }
+
+    private async Task Toggle(Opt o)
+    {
+        if (_selected.Contains(o.Value)) _selected.Remove(o.Value);
+        else _selected.Add(o.Value);
+
+        _q = "";
+        await ValuesChanged.InvokeAsync(_selected.ToList());
+    }
+
+    private async Task Remove(string v)
+    {
+        _selected.Remove(v);
+        await ValuesChanged.InvokeAsync(_selected.ToList());
+    }
+}

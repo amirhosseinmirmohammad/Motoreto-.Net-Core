@@ -1,0 +1,156 @@
+@page "/panel"
+@layout UserLayout
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject ApplicationDbContext Db
+@inject IJSRuntime JS
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="alert alert-light border mb-4">
+        سلام <b>@(_user!.FirstName) @_user!.LastName</b> عزیز، خوش آمدید! 👋
+        <div class="small text-muted mt-1">@_user!.Email</div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">سفارش‌های من</div>
+                <div class="fs-3 fw-bold text-primary">@_orders.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">علاقه‌مندی‌ها</div>
+                <div class="fs-3 fw-bold text-danger">@_favorites.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
+                <div class="small text-muted">موبایل</div>
+                <div class="fw-bold mt-2" dir="ltr">@(_user!.Mobile ?? "—")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4 flex-wrap">
+        <NavLink href="/panel/profile" class="btn btn-outline-primary btn-sm">ویرایش پروفایل</NavLink>
+        <NavLink href="/panel/password" class="btn btn-outline-secondary btn-sm">تغییر رمز عبور</NavLink>
+        <NavLink href="/products" class="btn btn-primary btn-sm">ادامه خرید</NavLink>
+    </div>
+
+    @* ---------- افیلیت ---------- *@
+    <div class="card border-0 shadow-sm rounded-4 p-4 mt-4">
+        <h6 class="fw-bold mb-2"><i class="bi bi-share text-primary"></i> دعوت و کسب درآمد (افیلیت)</h6>
+        @if (_affCode is null)
+        {
+            <p class="small text-muted mb-2">کد معرف بگیرید، لینک‌تان را به بقیه بدهید و از هر خرید ۳٪ کمیسیون بگیرید.</p>
+            <button class="btn btn-primary btn-sm" disabled="@_affBusy" @onclick="CreateAffiliateAsync">
+                @(_affBusy ? "..." : "دریافت کد معرف")
+            </button>
+        }
+        else
+        {
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="small text-muted">کد معرف شما</div>
+                    <div class="fw-bold fs-5" dir="ltr">@_affCode</div>
+                </div>
+                <div class="col-md-8">
+                    <div class="small text-muted">لینک اختصاصی</div>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" dir="ltr" value="@_affLink" readonly id="affLinkInput" />
+                        <button class="btn btn-outline-secondary" @onclick="CopyLink">کپی</button>
+                    </div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="small text-muted">کلیک</div>
+                    <div class="fw-bold">@_clicks.ToString("N0")</div>
+                </div>
+                <div class="col-4 col-md-2">
+                    <div class="small text-muted">سفارش</div>
+                    <div class="fw-bold">@_orders.ToString("N0")</div>
+                </div>
+                <div class="col-4 col-md-3">
+                    <div class="small text-muted">کمیسیون کسب‌شده (تومان)</div>
+                    <div class="fw-bold text-success">@_earned.ToString("N0")</div>
+                </div>
+            </div>
+        }
+        @if (_affMsg is not null)
+        {
+            <div class="small text-muted mt-2">@_affMsg</div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private User? _user;
+    private int _orders, _favorites;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uid = await GetUserIdAsync();
+
+        // ترتیبی — یک DbContext اسکوپ‌شده
+        _user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == uid);
+        _orders = await Db.Orders.CountAsync(o => o.UserId == uid);
+        _favorites = await Db.Favorites.CountAsync(f => f.UserId == uid);
+
+        var aff = await Db.Affiliates.AsNoTracking().FirstOrDefaultAsync(a => a.UserId == uid);
+        if (aff is not null)
+        {
+            _affCode = aff.Code;
+            _affLink = Nav.BaseUri.TrimEnd('/') + "/aff/" + aff.Code;
+            _clicks = aff.ClickCount;
+            _ordersAff = aff.OrderCount;
+            _earned = aff.Earned;
+        }
+
+        _loading = false;
+    }
+
+    private string? _affCode, _affLink, _affMsg;
+    private int _clicks, _ordersAff;
+    private long _earned;
+    private bool _affBusy;
+
+    private async Task CreateAffiliateAsync()
+    {
+        _affBusy = true;
+        var uid = await GetUserIdAsync();
+
+        var exists = await Db.Affiliates.AnyAsync(a => a.UserId == uid);
+        if (!exists)
+        {
+            var code = "AFF" + Guid.NewGuid().ToString("N")[..8].ToUpper();
+            Db.Affiliates.Add(new Affiliate { UserId = uid, Code = code, CommissionPercent = 3, CreatedAt = DateTime.UtcNow });
+            await Db.SaveChangesAsync();
+        }
+
+        var aff = await Db.Affiliates.AsNoTracking().FirstAsync(a => a.UserId == uid);
+        _affCode = aff.Code;
+        _affLink = Nav.BaseUri.TrimEnd('/') + "/aff/" + aff.Code;
+        _affBusy = false;
+        StateHasChanged();
+    }
+
+    private async Task CopyLink()
+    {
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _affLink);
+        _affMsg = "لینک کپی شد ✓";
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+}

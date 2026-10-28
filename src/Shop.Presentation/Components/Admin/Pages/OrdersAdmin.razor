@@ -1,0 +1,158 @@
+@page "/manage/orders"
+@layout AdminLayout
+@attribute [Authorize]
+@using Shop.Domain.Enums
+@inject IOrderService Orders
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-3">🧾 سفارش‌ها</h4>
+
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <select class="form-select" style="max-width:200px" value="@_status" @onchange="StatusFilterChanged">
+        <option value="">همه وضعیت‌ها</option>
+        <option value="AwaitingPayment">در انتظار پرداخت</option>
+        <option value="Paid">پرداخت شده</option>
+        <option value="Processing">در حال پردازش</option>
+        <option value="Shipped">ارسال شده</option>
+        <option value="Delivered">تحویل شده</option>
+        <option value="Canceled">لغو شده</option>
+    </select>
+    <input type="text" class="form-control" style="max-width:260px" placeholder="شماره سفارش..."
+           value="@_q" @oninput="QChanged" />
+    <button class="btn btn-outline-primary" @onclick="LoadAsync">اعمال</button>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_rows.Count == 0)
+{
+    <div class="alert alert-light border">سفارشی یافت نشد.</div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>شماره</th>
+                        <th>خریدار</th>
+                        <th>اقلام</th>
+                        <th>مبلغ</th>
+                        <th>تاریخ</th>
+                        <th>تغییر وضعیت</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var o in _rows)
+                    {
+                        <tr>
+                            <td class="fw-bold">@o.Number</td>
+                            <td class="small">@o.Buyer</td>
+                            <td>@o.ItemsCount.ToString().ToFarsiDigits()</td>
+                            <td>@o.Total.ToString("N0") تومان</td>
+                            <td class="small">@Fa(o.CreatedAt)</td>
+                            <td>
+                                <select class="form-select form-select-sm" style="max-width:170px"
+                                        value="@o.Status" @onchange="e => ChangeStatusAsync(o.Id, e)">
+                                    @foreach (var (val, label) in StatusList)
+                                    {
+                                        <option value="@val">@label</option>
+                                    }
+                                </select>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
+}
+
+@if (_message is not null)
+{
+    <div class="alert alert-success py-2 mt-3">@_message</div>
+}
+
+@code {
+    private string _status = "";
+    private string _q = "";
+    private bool _loading = true;
+    private int _page = 1, _totalPages = 1;
+    private string? _message;
+    private List<ORow> _rows = new();
+
+    private async Task GoPage(int p)
+    {
+        _page = p;
+        await LoadAsync();
+    }
+
+    private static readonly (string Val, string Label)[] StatusList =
+    {
+        ("AwaitingPayment", "در انتظار پرداخت"), ("Paid", "پرداخت شده"), ("Processing", "در حال پردازش"),
+        ("Shipped", "ارسال شده"), ("Delivered", "تحویل شده"), ("Canceled", "لغو شده")
+    };
+
+    private sealed record ORow(int Id, string Number, string Buyer, int ItemsCount, long Total, DateTime CreatedAt, string Status);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private void QChanged(ChangeEventArgs e) => _q = e.Value?.ToString() ?? "";
+
+    private async Task StatusFilterChanged(ChangeEventArgs e)
+    {
+        _status = e.Value?.ToString() ?? "";
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var query = Db.Orders.AsNoTracking();
+
+        if (!string.IsNullOrEmpty(_status) && Enum.TryParse<OrderStatus>(_status, out var st))
+            query = query.Where(o => o.Status == st);
+
+        if (!string.IsNullOrWhiteSpace(_q))
+            query = query.Where(o => o.OrderNumber.Contains(_q));
+
+        _rows = await query
+            .OrderByDescending(o => o.Id)
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(o => new ORow(
+                o.Id, o.OrderNumber,
+                (o.User.FirstName ?? "") + " " + (o.User.LastName ?? ""),
+                o.Items.Count, o.Total, o.CreatedAt,
+                o.Status.ToString()))
+            .ToListAsync();
+
+        var total = await query.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+
+        _loading = false;
+    }
+
+    // تغییر وضعیت از طریق سرویس — لغو، بازگشت موجودی/رزرو را هم مدیریت می‌کند
+    private async Task ChangeStatusAsync(int id, ChangeEventArgs e)
+    {
+        if (!Enum.TryParse<OrderStatus>(e.Value?.ToString(), out var st)) return;
+
+        var ok = await Orders.UpdateStatusAsync(id, st);
+        _message = ok ? $"وضعیت سفارش به «{StatusList.First(s => s.Val == st.ToString()).Label}» تغییر کرد ✓"
+                      : "تغییر وضعیت ناموفق بود.";
+        await LoadAsync();
+    }
+
+    private static string Fa(DateTime d)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+    }
+}

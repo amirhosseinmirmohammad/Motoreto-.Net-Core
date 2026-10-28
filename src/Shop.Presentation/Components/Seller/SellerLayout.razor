@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+@attribute [Authorize]
+
+<div class="container py-4" style="max-width:1100px">
+    <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+        <h4 class="mb-0"><i class="bi bi-shop text-primary"></i> پنل فروشندگان مارکت</h4>
+        <NavLink href="/" class="btn btn-sm btn-outline-secondary">بازگشت به فروشگاه</NavLink>
+    </div>
+
+    <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
+        <NavLink class="nav-link" href="/seller" Match="NavLinkMatch.All">🏪 فروشگاه من</NavLink>
+        <NavLink class="nav-link" href="/seller/register">📝 ثبت‌نام فروشگاه</NavLink>
+        <NavLink class="nav-link" href="/seller/offer">🏷️ آفر جدید</NavLink>
+        <NavLink class="nav-link" href="/seller/new-product">💡 پیشنهاد کالا</NavLink>
+    </ul>
+
+    @Body
+</div>

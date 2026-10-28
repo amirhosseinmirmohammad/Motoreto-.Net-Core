@@ -1,0 +1,80 @@
+@model BlogPostDto
+@{
+    ViewData["Title"] = Model.Title;
+    var comments = ViewBag.Comments as List<BlogCommentDto> ?? [];
+    var latest = ViewBag.Latest as List<BlogPostDto> ?? [];
+}
+<div class="container mt-4 mb-5">
+    <div class="row g-4">
+        <article class="col-12 col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <img src="@Model.CoverImage" class="w-100" alt="@Model.Title" />
+                <div class="p-4">
+                    <h1 class="fs-3 fw-bold">@Model.Title</h1>
+                    <div class="d-flex gap-3 text-muted small mb-3">
+                        <span><i class="bi bi-calendar3"></i> @Model.CreatedAt.ToPersianDate()</span>
+                        <span><i class="bi bi-eye"></i> @Model.ViewCount.ToString("N0").ToFarsiDigits() بازدید</span>
+                    </div>
+                    <p class="lead text-muted">@Model.ShortDescription</p>
+                    <div class="blog-body">@Html.Raw(Model.Body)</div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4 p-4 mt-3">
+                <h5 class="fw-bold mb-3">نظرات (@comments.Count.ToString().ToFarsiDigits())</h5>
+                @foreach (var comment in comments)
+                {
+                    <div class="comment-item py-3">
+                        <strong>@comment.FullName</strong>
+                        <p class="mb-1 mt-1">@comment.Text</p>
+                        <small class="text-muted">@comment.CreatedAt.ToPersianDate()</small>
+                    </div>
+                }
+                @if (comments.Count == 0)
+                {
+                    <p class="text-muted small">اولین نظر را شما ثبت کنید!</p>
+                }
+
+                <h6 class="fw-bold mt-4 mb-2">ثبت نظر جدید</h6>
+                <div class="row g-2">
+                    <div class="col-12 col-md-4">
+                        <input type="text" id="blogCmName" class="form-control" placeholder="نام شما" />
+                    </div>
+                    <div class="col-12">
+                        <textarea id="blogCmText" class="form-control" rows="3" placeholder="متن نظر..."></textarea>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary btn-sm" id="blogCmBtn" data-id="@Model.Id">ارسال نظر</button>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <aside class="col-12 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+                <h6 class="fw-bold mb-3">مقالات اخیر</h6>
+                @foreach (var post in latest)
+                {
+                    <a href="/blog/@post.Slug" class="d-flex gap-2 align-items-center text-decoration-none text-dark py-2 border-bottom">
+                        <img src="@post.CoverImage" width="56" height="56" class="rounded-3" alt="@post.Title" loading="lazy" />
+                        <div class="small fw-bold">@post.Title</div>
+                    </a>
+                }
+            </div>
+        </aside>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('blogCmBtn').addEventListener('click', function () {
+        var name = document.getElementById('blogCmName').value.trim();
+        var text = document.getElementById('blogCmText').value.trim();
+        if (!name || !text) { showToast('نام و متن نظر را وارد کنید.', 'danger'); return; }
+        ajaxPost('/api/blog/comments', { blogId: this.dataset.id, fullName: name, text: text }, function (res) {
+            showToast(res.message, res.success ? 'success' : 'warning');
+            if (res.success) { document.getElementById('blogCmText').value = ''; }
+        });
+    });
+</script>
+}

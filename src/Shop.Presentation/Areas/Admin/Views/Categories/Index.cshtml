@@ -1,0 +1,41 @@
+@model dynamic
+@{
+    ViewData["Title"] = "دسته‌بندی‌ها";
+}
+@functions {
+    private static string Fa(object? value) => Shop.Shared.PersianDateHelper.ToFarsiDigits(value?.ToString() ?? string.Empty);
+}
+@{
+    ViewData["Title"] = "دسته‌بندی‌ها";
+}
+<div class="toolbar">
+    <a href="/admin/categories/create" class="btn" style="margin-inline-start:auto">＋ دسته جدید</a>
+</div>
+<div class="table-wrap">
+    <table>
+        <thead><tr><th>نام</th><th>اسلاگ</th><th>والد</th><th>آیکون</th><th>ترتیب</th><th>تعداد محصول</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+        <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td style="font-weight:600">@(c.ParentId != null ? "— " : "")@c.Name</td>
+                    <td class="text-muted2" dir="ltr">@c.Slug</td>
+                    <td>@(c.ParentName ?? "—")</td>
+                    <td>@c.Icon</td>
+                    <td>@Fa(c.SortOrder)</td>
+                    <td>@Fa(c.ProductCount)</td>
+                    <td>@(c.IsActive ? Html.Raw("<span class='badge badge-green'>فعال</span>") : Html.Raw("<span class='badge badge-gray'>غیرفعال</span>"))</td>
+                    <td>
+                        <div style="display:flex;gap:4px;">
+                            <a href="/admin/categories/edit/@c.Id" class="btn btn-sm btn-light">ویرایش</a>
+                            <form method="post" action="/admin/categories/delete/@c.Id" data-confirm="دسته حذف شود؟">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-danger">حذف</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

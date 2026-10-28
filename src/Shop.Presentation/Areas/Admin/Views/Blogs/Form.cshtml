@@ -1,0 +1,41 @@
+@model BlogPostDto
+@{
+    ViewData["Title"] = Model.Id > 0 ? "ویرایش مقاله" : "مقاله جدید";
+    var isEdit = Model.Id > 0;
+}
+<div class="card" style="max-width: 800px;">
+    <form method="post" action="@(isEdit ? $"/admin/blogs/edit/{Model.Id}" : "/admin/blogs/create")">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" style="color:var(--red);font-size:12.5px;"></div>
+
+        <label>عنوان</label>
+        <input type="text" asp-for="Title" />
+
+        <div class="form-row">
+            <div>
+                <label>اسلاگ (خالی = خودکار)</label>
+                <input type="text" asp-for="Slug" dir="ltr" />
+            </div>
+            <div>
+                <label>تصویر کاور</label>
+                <input type="text" asp-for="CoverImage" dir="ltr" placeholder="/images/blog/..." />
+            </div>
+        </div>
+
+        <label>خلاصه</label>
+        <textarea asp-for="ShortDescription" rows="2"></textarea>
+
+        <label>متن کامل (HTML)</label>
+        <textarea asp-for="Body" rows="12"></textarea>
+
+        <div class="checkbox-row">
+            <input type="checkbox" asp-for="IsVisible" />
+            <label style="margin:0;color:var(--ink)">منتشر شود</label>
+        </div>
+
+        <div class="mt" style="display:flex;gap:8px;">
+            <button class="btn">ذخیره</button>
+            <a href="/admin/blogs" class="btn btn-light">انصراف</a>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,119 @@
+@using Microsoft.AspNetCore.Components.Forms
+@inject Shop.Presentation.Services.ImageUploadService Uploader
+
+@* ---------- ناحیه آپلود: drag & drop + کلیک + progress bar ---------- *@
+
+@if (_busy)
+{
+    <div class="upload-zone">
+        <div class="text-center py-3 px-3">
+            <i class="bi bi-cloud-arrow-up fs-3 text-primary"></i>
+            <div class="small fw-bold mt-1">@_phase</div>
+            <div class="progress mt-2" style="height:8px">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                     style="width:@(_percent)%">@(_percent)%</div>
+            </div>
+        </div>
+    </div>
+}
+else if (!string.IsNullOrEmpty(Value))
+{
+    @* حالت پیش‌نمایش — دکمه‌ها واقعی و قابل کلیک (بدون overlay) *@
+    <div class="upload-zone upload-filled">
+        <div class="text-center py-3 px-3">
+            @if (Value.StartsWith("http") || Value.StartsWith("/"))
+            {
+                <img src="@Value" class="upload-preview rounded-3 border" alt="preview" />
+            }
+            <div class="small text-success mt-2"><i class="bi bi-check-circle"></i> آپلود شد (WebP)</div>
+            <div class="small text-muted text-truncate px-2" dir="ltr">@Value</div>
+            <div class="d-flex gap-2 justify-content-center mt-2">
+                <label class="btn btn-sm btn-outline-primary mb-0">
+                    <InputFile OnChange="OnPick" class="d-none" accept="image/*" />
+                    <i class="bi bi-arrow-repeat"></i> تغییر تصویر
+                </label>
+                <button type="button" class="btn btn-sm btn-outline-danger" @onclick="Clear">
+                    <i class="bi bi-trash"></i> حذف تصویر
+                </button>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    @* حالت خالی — کل ناحیه هم کلیک می‌شود هم drop مستقیم فایل *@
+    <div class="upload-zone">
+        <InputFile OnChange="OnPick" accept="image/*" class="upload-input" />
+        <div class="text-center py-4 px-3">
+            <i class="bi bi-cloud-arrow-up fs-2 text-primary"></i>
+            <div class="small fw-bold mt-1">تصویر را اینجا رها کنید</div>
+            <div class="small text-muted">یا برای انتخاب کلیک کنید — JPG / PNG / WebP تا ۱۰MB</div>
+            <div class="small text-muted mt-1"><i class="bi bi-lightning-charge text-warning"></i> خودکار به WebP تبدیل و در فضای ابری ذخیره می‌شود</div>
+        </div>
+    </div>
+}
+
+@if (_err is not null)
+{
+    <div class="small text-danger mt-1"><i class="bi bi-exclamation-circle"></i> @_err</div>
+}
+
+@code {
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private bool _busy;
+    private int _percent;
+    private string _phase = "";
+    private string? _err;
+
+    private async Task OnPick(InputFileChangeEventArgs e)
+    {
+        _err = null;
+        if (e.FileCount == 0) return;
+
+        var file = e.File;
+        _busy = true;
+        _phase = "در حال دریافت فایل...";
+
+        try
+        {
+            // خواندن تکه‌تکه برای progress واقعی مراحل دریافت (۰ تا ۹۰٪)
+            var ms = new MemoryStream();
+            var buffer = new byte[64 * 1024];
+            long received = 0;
+
+            await using var rs = file.OpenReadStream(10 * 1024 * 1024);
+            int read;
+            while ((read = await rs.ReadAsync(buffer)) > 0)
+            {
+                await ms.WriteAsync(buffer.AsMemory(0, read));
+                received += read;
+                _percent = Math.Min(90, (int)(received * 90 / Math.Max(1, file.Size)));
+                StateHasChanged();
+            }
+
+            ms.Position = 0;
+            _phase = "تبدیل به WebP و بارگذاری در فضای ابری...";
+            _percent = 94;
+            StateHasChanged();
+
+            var url = await Uploader.SaveWebpAsync(ms);
+            _percent = 100;
+
+            await ValueChanged.InvokeAsync(url);
+        }
+        catch (Exception ex)
+        {
+            _err = ex.Message;
+        }
+
+        _busy = false;
+    }
+
+    private async Task Clear()
+    {
+        _err = null;
+        await ValueChanged.InvokeAsync(null);
+    }
+}

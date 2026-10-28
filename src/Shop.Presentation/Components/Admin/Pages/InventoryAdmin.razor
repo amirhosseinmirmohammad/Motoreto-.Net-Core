@@ -1,0 +1,210 @@
+@page "/manage/inventory"
+@layout AdminLayout
+@attribute [Authorize]
+@using Shop.Domain.Enums
+@inject IInventoryService Inventory
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+
+<h4 class="fw-bold mb-1">🏬 انبار</h4>
+<p class="text-muted small">هر تغییر موجودی از اینجا در کارت انبار (دفتر کل) ثبت می‌شود.</p>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+            <h6 class="fw-bold mb-3">ورود / اصلاح موجودی</h6>
+            @if (_msg is not null)
+            {
+                <div class="alert alert-success py-2 small">@_msg</div>
+            }
+            @if (_err is not null)
+            {
+                <div class="alert alert-danger py-2 small">@_err</div>
+            }
+            <div class="mb-2">
+                <label class="form-label small text-muted">کالا</label>
+                <select class="form-select" value="@_productId" @onchange="ProductChanged">
+                    <option value="0">— انتخاب کالا —</option>
+                    @foreach (var p in _products)
+                    {
+                        <option value="@p.Id">@p.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <label class="form-label small text-muted">تغییر (±)</label>
+                    <input type="number" class="form-control" value="@_delta" @oninput="e => _delta = int.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+                </div>
+                <div class="col-6">
+                    <label class="form-label small text-muted">نوع</label>
+                    <select class="form-select" value="@_type" @onchange="TypeChanged">
+                        <option value="Purchase">ورود کالا</option>
+                        <option value="Adjustment">اصلاح</option>
+                        <option value="Return">برگشت</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small text-muted">یادداشت</label>
+                <input type="text" class="form-control" value="@_note" @oninput="e => _note = e.Value?.ToString()" />
+            </div>
+            <div class="d-flex gap-2">
+                <button class="btn btn-primary flex-grow-1" disabled="@(_busy || _productId == 0 || _delta == 0)" @onclick="AdjustAsync">
+                    @(_busy ? "..." : "ثبت گردش")
+                </button>
+                <button class="btn btn-outline-secondary" disabled="@(_busy || _productId == 0)" @onclick="SetStockAsync" title="موجودی دقیق = مقدار وارد‌شده">
+                    ثبت موجودی دقیق
+                </button>
+            </div>
+            <div class="form-text small">«ثبت موجودی دقیق» اختلاف را به‌صورت اصلاح ثبت می‌کند.</div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card border-0 shadow-sm rounded-4 p-3">
+            <h6 class="fw-bold mb-2 px-2">آخرین گردش‌های انبار</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>کالا</th>
+                            <th>نوع</th>
+                            <th>تغییر</th>
+                            <th>بعد</th>
+                            <th>تاریخ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var m in _movements)
+                        {
+                            <tr>
+                                <td class="small" style="max-width:180px">@m.Product</td>
+                                <td><span class="badge bg-@TypeBadge(m.Type)">@TypeText(m.Type)</span></td>
+                                <td class="@(m.Delta >= 0 ? "text-success" : "text-danger") fw-bold">@(m.Delta >= 0 ? "+" : "")@m.Delta.ToString("N0")</td>
+                                <td>@m.StockAfter.ToString("N0")</td>
+                                <td class="small">@Fa(m.CreatedAt)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            @if (_movements.Count == 0)
+            {
+                <p class="text-muted text-center mb-0">گردشی ثبت نشده است.</p>
+            }
+        </div>
+    </div>
+</div>
+
+    <Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
+}
+
+@code {
+    private long _productId;
+    private int _delta;
+    private string _type = "Purchase";
+    private string _note = "";
+    private bool _busy;
+    private string? _msg, _err;
+    private int _page = 1, _totalPages = 1;
+
+    private async Task GoPage(int p)
+    {
+        _page = p;
+        await LoadMovementsAsync();
+    }
+
+    private List<PRow> _products = new();
+    private List<MRow> _movements = new();
+
+    private sealed record PRow(long Id, string Name);
+    private sealed record MRow(string Product, StockMovementType Type, int Delta, int StockAfter, DateTime CreatedAt);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _products = await Db.Products
+            .AsNoTracking()
+            .OrderBy(p => p.Name)
+            .Take(300)
+            .Select(p => new PRow(p.Id, p.Name))
+            .ToListAsync();
+
+        await LoadMovementsAsync();
+    }
+
+    private void ProductChanged(ChangeEventArgs e) => _productId = long.TryParse(e.Value?.ToString(), out var v) ? v : 0;
+    private void TypeChanged(ChangeEventArgs e) => _type = e.Value?.ToString() ?? "Purchase";
+
+    private async Task LoadMovementsAsync()
+    {
+        var query = Db.StockMovements.AsNoTracking();
+
+        var total = await query.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+
+        _movements = await query
+            .OrderByDescending(m => m.Id)
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(m => new MRow(m.Product.Name, m.Type, m.Delta, m.StockAfter, m.CreatedAt))
+            .ToListAsync();
+    }
+
+    private async Task AdjustAsync()
+    {
+        _busy = true; _msg = null; _err = null;
+        var (ok, message) = await Inventory.AdjustAsync(
+            _productId, _delta,
+            Enum.TryParse<StockMovementType>(_type, out var t) ? t : StockMovementType.Purchase,
+            string.IsNullOrWhiteSpace(_note) ? null : _note,
+            await GetUserIdAsync());
+
+        if (ok) { _msg = message; _delta = 0; _note = ""; }
+        else _err = message;
+
+        await LoadMovementsAsync();
+        _busy = false;
+    }
+
+    private async Task SetStockAsync()
+    {
+        _busy = true; _msg = null; _err = null;
+        var (ok, message) = await Inventory.SetStockAsync(_productId, Math.Max(0, _delta), await GetUserIdAsync());
+        if (ok) { _msg = message; _delta = 0; }
+        else _err = message;
+
+        await LoadMovementsAsync();
+        _busy = false;
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+
+    private static string TypeText(StockMovementType t) => t switch
+    {
+        StockMovementType.Purchase => "ورود",
+        StockMovementType.Sale => "فروش",
+        StockMovementType.Return => "برگشت",
+        _ => "اصلاح"
+    };
+
+    private static string TypeBadge(StockMovementType t) => t switch
+    {
+        StockMovementType.Purchase => "success",
+        StockMovementType.Sale => "danger",
+        StockMovementType.Return => "warning",
+        _ => "secondary"
+    };
+
+    private static string Fa(DateTime d)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+    }
+}

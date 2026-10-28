@@ -1,0 +1,28 @@
+@model List<ProductCardDto>
+@{
+    ViewData["Title"] = "علاقه‌مندی‌ها";
+}
+
+<div class="container mt-4 mb-5">
+    <h1 class="fs-4 fw-bold mb-4"><i class="bi bi-heart"></i> علاقه‌مندی‌ها</h1>
+
+    @if (Model.Count == 0)
+    {
+        <div class="text-center py-5 bg-white rounded-4">
+            <i class="bi bi-heartbreak fs-1 text-muted"></i>
+            <p class="mt-3 text-muted">لیست علاقه‌مندی‌های شما خالی است.</p>
+            <a href="/products" class="btn btn-primary btn-sm">مشاهده محصولات</a>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var product in Model)
+            {
+                <div class="col-6 col-md-4 col-lg-3">
+                    <partial name="_ProductCard" model="product" />
+                </div>
+            }
+        </div>
+    }
+</div>

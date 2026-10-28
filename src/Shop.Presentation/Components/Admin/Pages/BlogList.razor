@@ -1,0 +1,107 @@
+@page "/manage/blog"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <h4 class="fw-bold mb-0">📰 وبلاگ</h4>
+    <NavLink href="/manage/blog/new" class="btn btn-primary btn-sm">+ مقاله جدید</NavLink>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>کاور</th>
+                        <th>عنوان</th>
+                        <th>بازدید</th>
+                        <th>تاریخ</th>
+                        <th>وضعیت</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var b in _rows)
+                    {
+                        <tr>
+                            <td><img src="@b.Image" width="56" height="40" style="object-fit:cover;border-radius:8px" loading="lazy" /></td>
+                            <td class="fw-bold" style="max-width:260px">@b.Title</td>
+                            <td>@b.Views.ToString("N0")</td>
+                            <td class="small">@Fa(b.CreatedAt)</td>
+                            <td><span class="badge bg-@(b.Visible ? "success" : "secondary")">@(b.Visible ? "نمایش" : "پیش‌نویس")</span></td>
+                            <td class="text-end" style="white-space:nowrap">
+                                <NavLink href="@($"/manage/blog/edit/{b.Id}")" class="btn btn-sm btn-outline-primary">ویرایش</NavLink>
+                                <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(b.Id)">
+                                    @(b.Visible ? "پیش‌نویس" : "نمایش")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_rows.Count == 0)
+        {
+            <p class="text-muted text-center mb-0">مقاله‌ای ثبت نشده است.</p>
+        }
+    </div>
+
+    <Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private int _page = 1, _totalPages = 1;
+    private List<BRow> _rows = new();
+
+    private async Task GoPage(int p)
+    {
+        _page = p;
+        await LoadAsync();
+    }
+
+    private sealed record BRow(int Id, string Title, string Image, long Views, DateTime CreatedAt, bool Visible);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.Blogs
+            .AsNoTracking()
+            .OrderByDescending(b => b.Id)
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(b => new BRow(b.Id, b.Title, b.CoverImage, b.ViewCount, b.CreatedAt, b.IsVisible))
+            .ToListAsync();
+
+        var total = await Db.Blogs.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+
+        _loading = false;
+    }
+
+    private async Task ToggleAsync(int id)
+    {
+        _busy = true;
+        var b = await Db.Blogs.FirstAsync(x => x.Id == id);
+        b.IsVisible = !b.IsVisible;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private static string Fa(DateTime d)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+    }
+}

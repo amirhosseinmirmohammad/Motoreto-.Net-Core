@@ -1,0 +1,609 @@
+@page "/manage/products/new"
+@page "/manage/products/edit/{Id:long}"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+@inject Shop.Presentation.Services.ImageUploadService Uploader
+
+<h4 class="fw-bold mb-3">@(_edit ? "✏️ ویرایش محصول" : "📦 محصول جدید")</h4>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger py-2">@_error</div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <EditForm Model="_m" OnValidSubmit="SubmitAsync" class="row g-3">
+            <DataAnnotationsValidator />
+
+            <div class="col-md-6">
+                <label class="form-label small text-muted">نام محصول (فارسی) *</label>
+                <InputText @bind-Value="_m.Name" class="form-control" />
+                <ValidationMessage For="() => _m.Name" class="text-danger small" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">نام انگلیسی *</label>
+                <InputText @bind-Value="_m.EnglishName" class="form-control" dir="ltr" />
+                <ValidationMessage For="() => _m.EnglishName" class="text-danger small" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">دسته‌بندی‌ها * (چند انتخابی)</label>
+                <MultiSelect Options="_cats.Select(c => new MultiSelect.Opt(c.Id.ToString(), c.Label)).ToList()"
+                             Values="_catIds"
+                             ValuesChanged="SetCategories"
+                             Placeholder="جستجو و افزودن دسته..." />
+                <span class="text-danger small">@(_catIds.Count == 0 ? "حداقل یک دسته انتخاب کنید." : "")</span>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">برند</label>
+                <SearchableSelect Options="_brands.Select(b => new SearchableSelect.Opt(b.Id.ToString(), b.Name)).ToList()"
+                                  Value="_m.BrandId?.ToString()"
+                                  ValueChanged="v => _m.BrandId = int.TryParse(v, out var i) ? i : null"
+                                  Placeholder="جستجوی برند..." />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">قیمت (تومان) *</label>
+                <InputNumber @bind-Value="_m.UnitPrice" class="form-control" />
+                <ValidationMessage For="() => _m.UnitPrice" class="text-danger small" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">درصد تخفیف</label>
+                <input type="number" class="form-control" min="0" max="90" value="@_m.DiscountPercent"
+                       @oninput="e => _m.DiscountPercent = byte.TryParse(e.Value?.ToString(), out var v) ? v : (byte)0" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">موجودی</label>
+                <InputNumber @bind-Value="_m.Stock" class="form-control" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">کد محصول</label>
+                <InputText @bind-Value="_m.Code" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">اسلاگ (خالی = خودکار)</label>
+                <InputText @bind-Value="_m.Slug" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">تصویر اصلی</label>
+                <InputText @bind-Value="_m.MainImage" class="form-control mb-1" dir="ltr" placeholder="مسیر دستی (اختیاری) — آپلود خودکار WebP می‌شود" />
+                <UploadDropzone @bind-Value="_m.MainImage" />
+            </div>
+            <div class="col-12">
+                <label class="form-label small text-muted">توضیحات *</label>
+                <RichEditor @bind-Value="_m.Description" />
+                <ValidationMessage For="() => _m.Description" class="text-danger small" />
+            </div>
+
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <InputCheckbox @bind-Value="_m.IsActive" class="form-check-input" id="swActive" />
+                    <label class="form-check-label small" for="swActive">فعال (قابل نمایش در فروشگاه)</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <InputCheckbox @bind-Value="_m.IsAmazing" class="form-check-input" id="swAmazing" />
+                    <label class="form-check-label small" for="swAmazing">پیشنهاد شگفت‌انگیز</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="form-check form-switch">
+                    <InputCheckbox @bind-Value="_m.IsSpecial" class="form-check-input" id="swSpecial" />
+                    <label class="form-check-label small" for="swSpecial">کالای منتخب</label>
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label small text-muted fw-bold">ویژگی‌ها (مقادیر چندتایی با ویرگول — در فیلترها و مشخصات نمایش داده می‌شوند)</label>
+                @for (var i = 0; i < _rows.Count; i++)
+                {
+                    var idx = i;
+                    <div class="row g-2 mb-2 align-items-center">
+                        <div class="col-5">
+                            <InputText @bind-Value="_rows[idx].Name" class="form-control form-control-sm" placeholder="نام ویژگی" />
+                        </div>
+                        <div class="col-6">
+                            <InputText @bind-Value="_rows[idx].Value" class="form-control form-control-sm" placeholder="مقدار / مقادیر" />
+                        </div>
+                        <div class="col-1">
+                            <button type="button" class="btn btn-sm btn-outline-danger w-100" @onclick="() => _rows.RemoveAt(idx)">×</button>
+                        </div>
+                    </div>
+                }
+                <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="AddRow">+ افزودن ویژگی</button>
+            </div>
+
+            @if (_variantAttrs.Count > 0)
+            {
+                <div class="col-12">
+                    <div class="card border-0 bg-light rounded-4 p-3">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                            <h6 class="fw-bold mb-0"><i class="bi bi-boxes text-primary"></i> تنوع‌ها (موجودی و قیمت هر ترکیب)</h6>
+                            <button type="button" class="btn btn-sm btn-primary" @onclick="GenerateVariants">
+                                ساخت / به‌روزرسانی ترکیب‌ها
+                            </button>
+                        </div>
+                        <div class="small text-muted mb-2">
+                            ویژگی‌های نوع-واریانت این دسته:
+                            @foreach (var va in _variantAttrs)
+                            {
+                                <span class="badge bg-secondary-subtle text-dark ms-1">@va.Name: @string.Join("، ", va.Values)</span>
+                            }
+                        </div>
+
+                        @if (_variants.Count > 0)
+                        {
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered align-middle mb-0 bg-white">
+                                    <thead>
+                                        <tr>
+                                            <th>ترکیب</th>
+                                            <th style="width:120px">موجودی</th>
+                                            <th style="width:190px">قیمت (تومان — خالی = قیمت محصول)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for (var i = 0; i < _variants.Count; i++)
+                                        {
+                                            var idx = i;
+                                            <tr>
+                                                <td class="small fw-bold">@_variants[idx].Text</td>
+                                                <td>
+                                                    <InputNumber @bind-Value="_variants[idx].Stock" class="form-control form-control-sm" />
+                                                </td>
+                                                <td>
+                                                    <InputNumber @bind-Value="_variants[idx].Price" class="form-control form-control-sm" placeholder="قیمت محصول" />
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="small text-success mt-2">
+                                <i class="bi bi-info-circle"></i>
+                                جمع موجودی واریانت‌ها: @_variants.Sum(v => v.Stock).ToString("N0") — در ذخیره، موجودی کل محصول برابر همین جمع می‌شود.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="small text-muted">دکمه «ساخت ترکیب‌ها» را بزنید تا همه ترکیب‌ها ساخته شود.</div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <div class="col-12"><hr class="my-1" /><h6 class="fw-bold text-primary mb-0">🔍 سئو (اختیاری — خالی = خودکار)</h6></div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">عنوان متا (۵۰-۶۰ کاراکتر)</label>
+                <InputText @bind-Value="_m.MetaTitle" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">توضیح متا (۱۲۰-۱۶۰ کاراکتر)</label>
+                <InputText @bind-Value="_m.MetaDescription" class="form-control" />
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
+                    @(_busy ? "در حال ذخیره..." : "ذخیره محصول")
+                </button>
+                <NavLink href="/manage/products" class="btn btn-outline-secondary">انصراف</NavLink>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    [Parameter] public long? Id { get; set; }
+
+    private bool _edit => Id is not null;
+    private bool _loading = true, _busy;
+    private string? _error;
+
+    private AdminProductViewModel _m = new();
+    private List<AttrRow> _rows = [new()];
+    private List<string> _catIds = [];
+    private List<CatRow> _cats = new();
+    private List<BrandRow> _brands = new();
+    private List<VariantOption> _variantAttrs = [];
+    private List<VariantRow> _variants = [];
+    private bool _uploading;
+    private string? _uploadErr;
+
+    private async Task UploadMainAsync(InputFileChangeEventArgs e)
+    {
+        _uploadErr = null;
+        if (e.FileCount == 0) return;
+
+        _uploading = true;
+        try
+        {
+            _m.MainImage = await Uploader.SaveAsync(e.File);
+        }
+        catch (Exception ex)
+        {
+            _uploadErr = ex.Message;
+        }
+        _uploading = false;
+    }
+
+    private sealed record CatRow(int Id, string Name, string Parent)
+    {
+        public string Label => Parent.Length == 0 ? Name : $"{Parent} → {Name}";
+    }
+
+    private sealed record BrandRow(int Id, string Name);
+
+    private sealed class AttrRow
+    {
+        public string Name { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+
+    private sealed record AttrGroup(string Name, List<string> Values);
+
+    /// <summary>ویژگی نوع-واریانت (مثل رنگ/سایز) با مقادیر مجاز این محصول.</summary>
+    private sealed record VariantOption(string Name, List<string> Values);
+
+    /// <summary>یک SKU: ترکیب ویژگی‌ها + موجودی/قیمت مستقل.</summary>
+    private sealed class VariantRow
+    {
+        public string Text { get; set; } = "";
+        public string AttrJson { get; set; } = "";
+        public int Stock { get; set; }
+        public long? Price { get; set; }
+    }
+
+    /// <summary>AttributesJson محصول → دیکشنری نام ویژگی → مقادیر.</summary>
+    private static Dictionary<string, List<string>> ParseAttrsDict(string? json)
+    {
+        var result = new Dictionary<string, List<string>>();
+        if (string.IsNullOrWhiteSpace(json)) return result;
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            foreach (var el in doc.RootElement.EnumerateArray())
+            {
+                if (!el.TryGetProperty("name", out var n)) continue;
+                var name = n.GetString();
+                if (string.IsNullOrWhiteSpace(name)) continue;
+                var vals = new List<string>();
+                if (el.TryGetProperty("values", out var v) && v.ValueKind == System.Text.Json.JsonValueKind.Array)
+                    foreach (var x in v.EnumerateArray())
+                    {
+                        var s = x.GetString();
+                        if (!string.IsNullOrWhiteSpace(s)) vals.Add(s);
+                    }
+                result[name] = vals;
+            }
+        }
+        catch { }
+        return result;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cats = await Db.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive && c.ParentId != null)
+            .OrderBy(c => c.ParentId).ThenBy(c => c.SortOrder)
+            .Select(c => new CatRow(c.Id, c.Name, c.Parent != null ? c.Parent.Name : ""))
+            .ToListAsync();
+
+        _brands = await Db.Brands
+            .AsNoTracking()
+            .OrderBy(b => b.Name)
+            .Select(b => new BrandRow(b.Id, b.Name))
+            .ToListAsync();
+
+        if (_edit)
+        {
+            var p = await Db.Products.AsNoTracking().FirstOrDefaultAsync(x => x.Id == Id!.Value);
+
+            // محصول ناموجود → بازگشت به لیست (بدون خطا)
+            if (p is null)
+            {
+                Nav.NavigateTo("/manage/products");
+                return;
+            }
+
+            _m = new AdminProductViewModel
+            {
+                Id = p.Id,
+                Name = p.Name,
+                EnglishName = p.EnglishName,
+                Slug = p.Slug,
+                Code = p.Code,
+                UnitPrice = p.UnitPrice,
+                DiscountPercent = p.DiscountPercent,
+                Stock = p.Stock,
+                Description = p.Description,
+                CategoryId = p.CategoryId,
+                BrandId = p.BrandId,
+                MainImage = p.MainImage,
+                IsAmazing = p.IsAmazing,
+                IsSpecial = p.IsSpecial,
+                IsActive = p.IsActive
+            };
+
+            // دسته‌بندی‌های چندگانه (junction + دسته اصلی)
+            _catIds = await Db.ProductCategories
+                .AsNoTracking()
+                .Where(pc => pc.ProductId == p.Id)
+                .Select(pc => pc.CategoryId.ToString())
+                .ToListAsync();
+            if (!_catIds.Contains(p.CategoryId.ToString()))
+                _catIds.Insert(0, p.CategoryId.ToString());
+
+            await ReloadBrandsAsync();
+
+            // ---- واریانت‌ها: ویژگی‌های نوع-واریانتِ دسته + مقادیرِ خود محصول ----
+            var varNames = await Db.CategoryAttributes
+                .AsNoTracking()
+                .Where(a => a.CategoryId == p.CategoryId && a.IsVariantOption)
+                .OrderBy(a => a.SortOrder)
+                .Select(a => a.Name)
+                .ToListAsync();
+
+            var prodAttrs = ParseAttrsDict(p.AttributesJson);
+            _variantAttrs = varNames
+                .Select(n => new VariantOption(n, prodAttrs.TryGetValue(n, out var vals) ? vals : []))
+                .Where(v => v.Values.Count > 0)
+                .ToList();
+
+            var existingVariants = await Db.ProductVariants
+                .AsNoTracking()
+                .Where(v => v.ProductId == p.Id)
+                .OrderBy(v => v.Id)
+                .ToListAsync();
+
+            _variants = existingVariants.Select(v => new VariantRow
+            {
+                AttrJson = v.AttributesJson,
+                Text = v.AttributesText,
+                Stock = v.Stock,
+                Price = v.Price
+            }).ToList();
+
+            if (!string.IsNullOrWhiteSpace(p.AttributesJson))
+            {
+                try
+                {
+                    var groups = System.Text.Json.JsonSerializer.Deserialize<List<AttrGroup>>(
+                        p.AttributesJson,
+                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    _rows = groups?
+                        .Where(g => g.Values is { Count: > 0 })
+                        .Select(g => new AttrRow { Name = g.Name, Value = string.Join("، ", g.Values) })
+                        .ToList() ?? [new()];
+                }
+                catch
+                {
+                    _rows = [new()];
+                }
+            }
+        }
+
+        _loading = false;
+    }
+
+    private void AddRow() => _rows.Add(new AttrRow());
+
+    /// <summary>ساخت خودکار همه ترکیب‌های ویژگی‌های نوع-واریانت (ضرب دکارتی) با حفظ موجودی قبلی.</summary>
+    private void GenerateVariants()
+    {
+        var combos = new List<List<(string Name, string Value)>> { new() };
+
+        foreach (var attr in _variantAttrs)
+        {
+            var next = new List<List<(string, string)>>();
+            foreach (var combo in combos)
+                foreach (var val in attr.Values)
+                    next.Add(combo.Append((attr.Name, val)).ToList());
+            combos = next;
+        }
+
+        var existing = _variants.ToDictionary(v => v.Text, v => v);
+
+        _variants = combos.Select(combo =>
+        {
+            var text = string.Join(" / ", combo.Select(c => c.Value));
+            var json = System.Text.Json.JsonSerializer.Serialize(
+                combo.Select(c => new { name = c.Name, value = c.Value }).ToList());
+
+            existing.TryGetValue(text, out var old);
+
+            return new VariantRow
+            {
+                Text = text,
+                AttrJson = json,
+                Stock = old?.Stock ?? 0,
+                Price = old?.Price
+            };
+        }).ToList();
+    }
+
+    private async Task SetCategories(List<string> v)
+    {
+        _catIds = v;
+        await ReloadBrandsAsync();
+    }
+
+    /// <summary>برندها بر اساس دسته‌های انتخاب‌شده فیلتر می‌شوند (اگر نگاشت برند↔دسته تعریف شده باشد).</summary>
+    private async Task ReloadBrandsAsync()
+    {
+        var anyMapping = await Db.BrandCategories.AnyAsync();
+        var query = Db.Brands.AsNoTracking();
+
+        if (anyMapping && _catIds.Count > 0)
+        {
+            var ids = _catIds.Select(int.Parse).ToList();
+            query = query.Where(b => Db.BrandCategories.Any(bc => bc.BrandId == b.Id && ids.Contains(bc.CategoryId)));
+        }
+
+        _brands = await query
+            .OrderBy(b => b.Name)
+            .Select(b => new BrandRow(b.Id, b.Name))
+            .ToListAsync();
+
+        // برند فعلی اگر در لیست فیلترشده نیست، حفظ شود (ویرایش محصولات قدیمی)
+        if (_m.BrandId is not null && _brands.All(b => b.Id != _m.BrandId))
+        {
+            var current = await Db.Brands.AsNoTracking()
+                .Where(b => b.Id == _m.BrandId)
+                .Select(b => new BrandRow(b.Id, b.Name))
+                .FirstOrDefaultAsync();
+            if (current is not null) _brands.Insert(0, current);
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_catIds.Count == 0)
+        {
+            _error = "حداقل یک دسته‌بندی انتخاب کنید.";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+
+        try
+        {
+            var json = BuildJson(_rows);
+            var mainCat = int.Parse(_catIds[0]);
+            var wantedCats = _catIds.Select(int.Parse).Distinct().ToList();
+
+            _m.MetaTitle = string.IsNullOrWhiteSpace(_m.MetaTitle) ? null : _m.MetaTitle.Trim();
+            _m.MetaDescription = string.IsNullOrWhiteSpace(_m.MetaDescription) ? null : _m.MetaDescription.Trim();
+
+            if (!_edit)
+            {
+                var slug = !string.IsNullOrWhiteSpace(_m.Slug)
+                    ? _m.Slug.Trim()
+                    : _m.EnglishName.Trim().ToLower().Replace(' ', '-') + "-" + Random.Shared.Next(1000, 9999);
+
+                var product = new Product
+                {
+                    Name = _m.Name.Trim(),
+                    EnglishName = _m.EnglishName.Trim(),
+                    Slug = slug,
+                    Code = string.IsNullOrWhiteSpace(_m.Code) ? $"P-{DateTime.UtcNow:yyMMddHHmmss}" : _m.Code.Trim(),
+                    UnitPrice = _m.UnitPrice,
+                    DiscountPercent = _m.DiscountPercent,
+                    Stock = _m.Stock,
+                    Description = _m.Description,
+                    CategoryId = _m.CategoryId,
+                    BrandId = _m.BrandId,
+                    MainImage = string.IsNullOrWhiteSpace(_m.MainImage) ? "/images/products/real/1.webp" : _m.MainImage,
+                    AttributesJson = json,
+                    MetaTitle = _m.MetaTitle,
+                    MetaDescription = _m.MetaDescription,
+                    IsAmazing = _m.IsAmazing,
+                    IsSpecial = _m.IsSpecial,
+                    IsActive = _m.IsActive,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                Db.Products.Add(product);
+                await Db.SaveChangesAsync();
+
+                foreach (var cid in wantedCats)
+                    Db.ProductCategories.Add(new ProductCategory { ProductId = product.Id, CategoryId = cid });
+
+                // ذخیره واریانت‌ها + موجودی کل = مجموع واریانت‌ها
+                if (_variants.Count > 0)
+                {
+                    foreach (var v in _variants)
+                        Db.ProductVariants.Add(new ProductVariant
+                        {
+                            ProductId = product.Id,
+                            AttributesJson = v.AttrJson,
+                            Stock = Math.Max(0, v.Stock),
+                            Price = v.Price > 0 ? v.Price : null,
+                            IsActive = true,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    product.Stock = _variants.Sum(v => Math.Max(0, v.Stock));
+                }
+
+                await Db.SaveChangesAsync();
+            }
+            else
+            {
+                var p = await Db.Products.FirstAsync(x => x.Id == Id!.Value);
+
+                p.Name = _m.Name.Trim();
+                p.EnglishName = _m.EnglishName.Trim();
+                if (!string.IsNullOrWhiteSpace(_m.Slug)) p.Slug = _m.Slug.Trim();
+                p.Code = _m.Code?.Trim() ?? p.Code;
+                p.UnitPrice = _m.UnitPrice;
+                p.DiscountPercent = _m.DiscountPercent;
+                p.Stock = _m.Stock;
+                p.Description = _m.Description;
+                p.CategoryId = mainCat;
+                p.BrandId = _m.BrandId;
+                p.MainImage = string.IsNullOrWhiteSpace(_m.MainImage) ? p.MainImage : _m.MainImage;
+                p.AttributesJson = json;
+                p.MetaTitle = _m.MetaTitle;
+                p.MetaDescription = _m.MetaDescription;
+                p.IsAmazing = _m.IsAmazing;
+                p.IsSpecial = _m.IsSpecial;
+                p.IsActive = _m.IsActive;
+
+                // همگام‌سازی دسته‌های چندگانه
+                var existing = await Db.ProductCategories.Where(pc => pc.ProductId == p.Id).ToListAsync();
+                foreach (var row in existing.Where(r => !wantedCats.Contains(r.CategoryId)))
+                    Db.ProductCategories.Remove(row);
+                foreach (var cid in wantedCats.Where(cid => existing.All(r => r.CategoryId != cid)))
+                    Db.ProductCategories.Add(new ProductCategory { ProductId = p.Id, CategoryId = cid });
+
+                // همگام‌سازی واریانت‌ها + موجودی کل = مجموع واریانت‌ها
+                var oldVars = await Db.ProductVariants.Where(v => v.ProductId == p.Id).ToListAsync();
+                Db.ProductVariants.RemoveRange(oldVars);
+                foreach (var v in _variants)
+                    Db.ProductVariants.Add(new ProductVariant
+                    {
+                        ProductId = p.Id,
+                        AttributesJson = v.AttrJson,
+                        Stock = Math.Max(0, v.Stock),
+                        Price = v.Price > 0 ? v.Price : null,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                if (_variants.Count > 0)
+                    p.Stock = _variants.Sum(v => Math.Max(0, v.Stock));
+
+                await Db.SaveChangesAsync();
+            }
+
+            Nav.NavigateTo("/manage/products");
+        }
+        catch (Exception ex)
+        {
+            _error = "خطا در ذخیره‌سازی: " + ex.Message;
+            _busy = false;
+        }
+    }
+
+    private static string? BuildJson(List<AttrRow> rows)
+    {
+        var groups = rows
+            .Where(r => !string.IsNullOrWhiteSpace(r.Name) && !string.IsNullOrWhiteSpace(r.Value))
+            .Select(r => new
+            {
+                name = r.Name.Trim(),
+                values = r.Value.Split(new[] { ',', '،' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            })
+            .ToList();
+
+        return groups.Count == 0 ? null : System.Text.Json.JsonSerializer.Serialize(groups);
+    }
+}

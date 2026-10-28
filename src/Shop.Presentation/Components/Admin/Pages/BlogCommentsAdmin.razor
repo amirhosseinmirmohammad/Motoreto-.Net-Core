@@ -1,0 +1,116 @@
+@page "/manage/blogcomments"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-3">💬 نظرات وبلاگ</h4>
+
+<ul class="nav nav-pills gap-2 mb-3">
+    <button class="nav-link @(!_approved ? "active" : "")" @onclick="@(async () => await SwitchAsync(false))">در انتظار تأیید</button>
+    <button class="nav-link @(_approved ? "active" : "")" @onclick="@(async () => await SwitchAsync(true))">تأییدشده</button>
+</ul>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_rows.Count == 0)
+{
+    <div class="alert alert-light border">نظری در این وضعیت نیست.</div>
+}
+else
+{
+    @foreach (var c in _rows)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-2">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <div class="small">
+                        <b>@c.Name</b>
+                        <span class="text-muted">روی «@c.BlogTitle»</span>
+                        <span class="text-muted ms-2">@Fa(c.CreatedAt)</span>
+                    </div>
+                    <div class="mt-1">@c.Text</div>
+                </div>
+                <div class="d-flex gap-1">
+                    @if (!_approved)
+                    {
+                        <button class="btn btn-sm btn-success" disabled="@_busy" @onclick="() => DecideAsync(c.Id, true)">تأیید</button>
+                    }
+                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(c.Id)">حذف</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+    <Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
+}
+
+@code {
+    private bool _approved;
+    private bool _loading = true, _busy;
+    private int _page = 1, _totalPages = 1;
+    private List<BCRow> _rows = new();
+
+    private async Task GoPage(int p)
+    {
+        _page = p;
+        await LoadAsync();
+    }
+
+    private sealed record BCRow(long Id, string Name, string BlogTitle, string Text, DateTime CreatedAt);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task SwitchAsync(bool approved)
+    {
+        _approved = approved;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.BlogComments
+            .AsNoTracking()
+            .Where(c => c.IsApproved == _approved)
+            .OrderByDescending(c => c.Id)
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(c => new BCRow(c.Id, c.FullName, c.Blog.Title, c.Text, c.CreatedAt))
+            .ToListAsync();
+
+        var total = await Db.BlogComments.CountAsync(c => c.IsApproved == _approved);
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+
+        _loading = false;
+    }
+
+    private async Task DecideAsync(long id, bool approve)
+    {
+        _busy = true;
+        var c = await Db.BlogComments.FirstAsync(x => x.Id == id);
+        c.IsApproved = approve;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        _busy = true;
+        var c = await Db.BlogComments.FirstAsync(x => x.Id == id);
+        Db.BlogComments.Remove(c);
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private static string Fa(DateTime d)
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
+    }
+}

@@ -1,0 +1,162 @@
+@page "/panel/profile"
+@layout UserLayout
+@attribute [Authorize]
+@inject AuthenticationStateProvider AuthState
+@inject ApplicationDbContext Db
+
+<h5 class="fw-bold mb-3">👤 اطلاعات حساب</h5>
+
+@if (_saved)
+{
+    <div class="alert alert-success py-2">پروفایل با موفقیت به‌روزرسانی شد ✓</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-danger py-2">@_error</div>
+}
+
+<div class="card border-0 shadow-sm rounded-4 p-4">
+    <EditForm Model="_m" OnValidSubmit="SubmitAsync" class="row g-3">
+        <DataAnnotationsValidator />
+
+        <div class="col-md-6">
+            <label class="form-label small text-muted">نام *</label>
+            <InputText @bind-Value="_m.FirstName" class="form-control" />
+            <ValidationMessage For="() => _m.FirstName" class="text-danger small" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">نام خانوادگی *</label>
+            <InputText @bind-Value="_m.LastName" class="form-control" />
+            <ValidationMessage For="() => _m.LastName" class="text-danger small" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">موبایل</label>
+            <InputText @bind-Value="_m.Mobile" class="form-control" dir="ltr" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">استان</label>
+            <SearchableSelect Options="_states.Select(s => new SearchableSelect.Opt(s.Id.ToString(), s.Name)).ToList()"
+                              Value="_m.StateId?.ToString()"
+                              ValueChanged="StateChangedStr"
+                              Placeholder="جستجوی استان..." />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">شهر</label>
+            <SearchableSelect Options="_cities.Select(c => new SearchableSelect.Opt(c.Id.ToString(), c.Name)).ToList()"
+                              Value="_m.CityId?.ToString()"
+                              ValueChanged="v => _m.CityId = int.TryParse(v, out var id) ? id : null"
+                              Placeholder="جستجوی شهر..." />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">کد پستی</label>
+            <InputText @bind-Value="_m.PostalCode" class="form-control" dir="ltr" />
+        </div>
+        <div class="col-12">
+            <label class="form-label small text-muted">آدرس</label>
+            <InputTextArea @bind-Value="_m.AddressLine" class="form-control" rows="2" />
+        </div>
+
+        <div class="col-12">
+            <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
+                @(_busy ? "در حال ذخیره..." : "ذخیره تغییرات")
+            </button>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private ProfileViewModel _m = new();
+    private List<Row> _states = new();
+    private List<Row> _cities = new();
+    private bool _loading = true, _busy, _saved;
+    private string? _error;
+
+    private sealed record Row(int Id, string Name);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uid = await GetUserIdAsync();
+
+        _states = await Db.States
+            .AsNoTracking()
+            .OrderBy(s => s.Name)
+            .Select(s => new Row(s.Id, s.Name))
+            .ToListAsync();
+
+        var u = await Db.Users.AsNoTracking().FirstAsync(x => x.Id == uid);
+
+        _m = new ProfileViewModel
+        {
+            FirstName = u.FirstName,
+            LastName = u.LastName,
+            Mobile = u.Mobile,
+            StateId = u.StateId,
+            CityId = u.CityId,
+            AddressLine = u.AddressLine,
+            PostalCode = u.PostalCode
+        };
+
+        if (u.StateId is not null)
+            await LoadCitiesAsync(u.StateId.Value);
+
+        _loading = false;
+    }
+
+    // تغییر استان → بارگذاری شهرهای همان استان (بدون رفرش)
+    private async Task StateChangedStr(string? v)
+    {
+        _m.StateId = int.TryParse(v, out var id) ? id : null;
+        _m.CityId = null;
+        _cities.Clear();
+
+        if (_m.StateId is not null)
+            await LoadCitiesAsync(_m.StateId.Value);
+    }
+
+    private async Task LoadCitiesAsync(int stateId)
+    {
+        _cities = await Db.Cities
+            .AsNoTracking()
+            .Where(c => c.StateId == stateId)
+            .OrderBy(c => c.Name)
+            .Select(c => new Row(c.Id, c.Name))
+            .ToListAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _busy = true;
+        _saved = false;
+        _error = null;
+
+        try
+        {
+            var uid = await GetUserIdAsync();
+            var u = await Db.Users.FirstAsync(x => x.Id == uid);
+
+            u.FirstName = _m.FirstName.Trim();
+            u.LastName = _m.LastName.Trim();
+            u.Mobile = _m.Mobile;
+            u.StateId = _m.StateId;
+            u.CityId = _m.CityId;
+            u.AddressLine = _m.AddressLine;
+            u.PostalCode = _m.PostalCode;
+
+            await Db.SaveChangesAsync();
+            _saved = true;
+        }
+        catch (Exception ex)
+        {
+            _error = "خطا در ذخیره‌سازی: " + ex.Message;
+        }
+
+        _busy = false;
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+}

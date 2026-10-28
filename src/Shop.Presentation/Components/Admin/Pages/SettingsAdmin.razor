@@ -1,0 +1,194 @@
+@page "/manage/settings"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-3">⚙️ تنظیمات فروشگاه</h4>
+
+@if (_saved)
+{
+    <div class="alert alert-success py-2">تنظیمات ذخیره شد ✓</div>
+}
+@if (_err is not null)
+{
+    <div class="alert alert-danger py-2">@_err</div>
+}
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <EditForm Model="_s" OnValidSubmit="SaveAsync" class="row g-3">
+            <DataAnnotationsValidator />
+
+            <div class="col-12"><h6 class="fw-bold text-primary mb-0">هویت فروشگاه</h6></div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نام فروشگاه</label>
+                <InputText @bind-Value="_s.StoreName" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">شعار</label>
+                <InputText @bind-Value="_s.Tagline" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">رنگ اصلی (hex)</label>
+                <InputText @bind-Value="_s.PrimaryColor" class="form-control" dir="ltr" />
+            </div>
+
+            <div class="col-12"><hr class="my-1" /><h6 class="fw-bold text-primary mb-0">تماس</h6></div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">تلفن پشتیبانی</label>
+                <InputText @bind-Value="_s.SupportPhone" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">ایمیل</label>
+                <InputText @bind-Value="_s.Email" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">آدرس</label>
+                <InputText @bind-Value="_s.Address" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">اینستاگرام</label>
+                <InputText @bind-Value="_s.InstagramUrl" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">تلگرام</label>
+                <InputText @bind-Value="_s.TelegramUrl" class="form-control" dir="ltr" />
+            </div>
+
+            <div class="col-12"><hr class="my-1" /><h6 class="fw-bold text-primary mb-0">ارسال (تومان)</h6></div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">هزینه پست عادی</label>
+                <InputNumber @bind-Value="_s.ShippingPostCost" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">هزینه اکسپرس</label>
+                <InputNumber @bind-Value="_s.ShippingExpressCost" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">سقف ارسال رایگان (۰ = خاموش)</label>
+                <InputNumber @bind-Value="_s.FreeShippingThreshold" class="form-control" />
+            </div>
+
+            <div class="col-12"><hr class="my-1" /><h6 class="fw-bold text-primary mb-0">صفحات ثابت</h6></div>
+            <div class="col-12">
+                <label class="form-label small text-muted">متن صفحه درباره ما (HTML)</label>
+                <RichEditor @bind-Value="_aboutUs" MinHeight="100" />
+            </div>
+            <div class="col-12">
+                <label class="form-label small text-muted">متن صفحه تماس با ما (HTML)</label>
+                <RichEditor @bind-Value="_contactUs" MinHeight="100" />
+            </div>
+
+            <div class="col-12"><hr class="my-1" /><h6 class="fw-bold text-primary mb-0">رزرو و سبد خرید</h6></div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">مدت رزرو موجودی (دقیقه)</label>
+                <InputNumber @bind-Value="_s.ReservationMinutes" class="form-control" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">حداکثر تعداد هر کالا در سفارش</label>
+                <InputNumber @bind-Value="_s.MaxQuantityPerProduct" class="form-control" />
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
+                    @(_busy ? "در حال ذخیره..." : "ذخیره تنظیمات")
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private bool _loading = true, _busy, _saved;
+    private string? _err;
+
+    private sealed record S
+    {
+        public string StoreName { get; set; } = "";
+        public string? Tagline { get; set; }
+        public string PrimaryColor { get; set; } = "#ef4056";
+        public string SupportPhone { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string? Address { get; set; }
+        public string? InstagramUrl { get; set; }
+        public string? TelegramUrl { get; set; }
+        public long ShippingPostCost { get; set; }
+        public long ShippingExpressCost { get; set; }
+        public long FreeShippingThreshold { get; set; }
+        public int ReservationMinutes { get; set; }
+        public int MaxQuantityPerProduct { get; set; }
+    }
+
+    private S _s = new();
+    private string? _aboutUs;
+    private string? _contactUs;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var s = await Db.SiteSettings.AsNoTracking().OrderBy(x => x.Id).FirstAsync();
+
+        _s = new S
+        {
+            StoreName = s.StoreName,
+            Tagline = s.Tagline,
+            PrimaryColor = s.PrimaryColor,
+            SupportPhone = s.SupportPhone,
+            Email = s.Email,
+            Address = s.Address,
+            InstagramUrl = s.InstagramUrl,
+            TelegramUrl = s.TelegramUrl,
+            ShippingPostCost = s.ShippingPostCost,
+            ShippingExpressCost = s.ShippingExpressCost,
+            FreeShippingThreshold = s.FreeShippingThreshold,
+            ReservationMinutes = s.ReservationMinutes,
+            MaxQuantityPerProduct = s.MaxQuantityPerProduct
+        };
+
+        _aboutUs = s.AboutUs;
+        _contactUs = s.ContactUs;
+
+        _loading = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        _saved = false;
+        _err = null;
+
+        try
+        {
+            var s = await Db.SiteSettings.OrderBy(x => x.Id).FirstAsync();
+
+            s.StoreName = _s.StoreName.Trim();
+            s.Tagline = _s.Tagline;
+            s.PrimaryColor = _s.PrimaryColor.Trim();
+            s.SupportPhone = _s.SupportPhone.Trim();
+            s.Email = _s.Email.Trim();
+            s.Address = _s.Address;
+            s.InstagramUrl = _s.InstagramUrl;
+            s.TelegramUrl = _s.TelegramUrl;
+            s.ShippingPostCost = _s.ShippingPostCost;
+            s.ShippingExpressCost = _s.ShippingExpressCost;
+            s.FreeShippingThreshold = _s.FreeShippingThreshold;
+            s.ReservationMinutes = _s.ReservationMinutes;
+            s.MaxQuantityPerProduct = _s.MaxQuantityPerProduct;
+            s.AboutUs = _aboutUs;
+            s.ContactUs = _contactUs;
+
+            await Db.SaveChangesAsync();
+            _saved = true;
+        }
+        catch (Exception ex)
+        {
+            _err = "خطا در ذخیره‌سازی: " + ex.Message;
+        }
+
+        _busy = false;
+    }
+}

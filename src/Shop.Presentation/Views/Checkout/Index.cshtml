@@ -1,0 +1,260 @@
+@model CheckoutReservationDto
+@{
+    ViewData["Title"] = "تسویه حساب";
+    var settings = (SiteSettings)ViewBag.Settings;
+    var defaults = ViewBag.UserDefaults;
+}
+@section Styles {
+<style>
+    .countdown-lg .cd-box { font-size: 1.2rem; padding: .35rem .6rem; }
+    .ship-option { cursor: pointer; }
+    .ship-option input { display: none; }
+    .ship-option .card { transition: all .15s; }
+    .ship-option input:checked + .card { border-color: var(--brand); background: #fff5f6; }
+</style>
+}
+
+<div class="container mt-4 mb-5">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h1 class="fs-4 fw-bold mb-0"><i class="bi bi-credit-card"></i> تسویه حساب</h1>
+        @if (Model.ExpiresAtUtc is not null)
+        {
+            <div class="amazing-box px-3 py-2 rounded-4 d-inline-flex align-items-center gap-2">
+                <i class="bi bi-alarm text-white"></i>
+                <div class="countdown countdown-lg" data-expires="@Model.ExpiresAtUtc.Value.ToString("o")" id="checkoutCountdown">
+                    <span class="cd-box" id="cdMinutes">@(Model.ReservedMinutes.ToString().ToFarsiDigits())</span>:
+                    <span class="cd-box" id="cdSeconds">۰۰</span>
+                </div>
+                <small class="text-white-50">مهلت نگهداری موجودی</small>
+            </div>
+        }
+    </div>
+
+    @if (TempData["CheckoutError"] is string err)
+    {
+        <div class="alert alert-danger rounded-4"><i class="bi bi-exclamation-triangle me-1"></i> @err</div>
+    }
+
+    <form asp-action="Place" asp-controller="Checkout" method="post" id="checkoutForm">
+        @Html.AntiForgeryToken()
+        <div class="row g-3">
+            <div class="col-12 col-lg-8">
+                <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4 mb-3">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-geo-alt"></i> اطلاعات ارسال</h6>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small">نام و نام خانوادگی گیرنده</label>
+                            <input type="text" name="ReceiverName" class="form-control" value="@(defaults?.FirstName + " " + defaults?.LastName)" required />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small">شماره تماس</label>
+                            <input type="tel" name="Phone" class="form-control" value="@defaults?.Mobile" placeholder="۰۹۱۲۳۴۵۶۷۸۹" required />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small">استان</label>
+                            <select name="StateId" id="stateSelect" class="form-select" required data-search>
+                                @foreach (var state in (List<State>)ViewBag.States)
+                                {
+                                    <option value="@state.Id" selected="@(defaults != null && defaults.StateId == state.Id)">@state.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small">شهر</label>
+                            <select name="CityId" id="citySelect" class="form-select" required></select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small">آدرس کامل</label>
+                            <textarea name="Address" class="form-control" rows="2" required>@defaults?.AddressLine</textarea>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label small">کد پستی (اختیاری)</label>
+                            <input type="text" name="PostalCode" class="form-control" value="@defaults?.PostalCode" inputmode="numeric" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label small">توضیحات سفارش (اختیاری)</label>
+                            <textarea name="Note" class="form-control" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4 mb-3">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-truck"></i> روش ارسال</h6>
+                    <div class="row g-2">
+                        <label class="col-12 col-md-6 ship-option">
+                            <input type="radio" name="ShippingMethod" value="1" checked />
+                            <div class="card flex-row p-3 align-items-center gap-3">
+                                <i class="bi bi-postcard fs-3 text-primary"></i>
+                                <div class="flex-grow-1">
+                                    <strong class="d-block">پست پیشتاز</strong>
+                                    <small class="text-muted">۴ تا ۷ روز کاری</small>
+                                </div>
+                                <strong>@(settings.FreeShippingThreshold > 0 ? "رایگان بالای " + settings.FreeShippingThreshold.ToToman() : settings.ShippingPostCost.ToToman())</strong>
+                            </div>
+                        </label>
+                        <label class="col-12 col-md-6 ship-option">
+                            <input type="radio" name="ShippingMethod" value="2" />
+                            <div class="card flex-row p-3 align-items-center gap-3">
+                                <i class="bi bi-lightning fs-3 text-warning"></i>
+                                <div class="flex-grow-1">
+                                    <strong class="d-block">اکسپرس</strong>
+                                    <small class="text-muted">۲۴ تا ۴۸ ساعت</small>
+                                </div>
+                                <strong>@settings.ShippingExpressCost.ToToman()</strong>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-wallet2"></i> روش پرداخت</h6>
+                    <div class="row g-2">
+                        <label class="col-12 col-md-6 ship-option">
+                            <input type="radio" name="PaymentMethod" value="1" checked />
+                            <div class="card p-3 d-flex flex-row align-items-center gap-3">
+                                <i class="bi bi-credit-card-2-front fs-3 text-success"></i>
+                                <div>
+                                    <strong class="d-block">پرداخت اینترنتی</strong>
+                                    <small class="text-muted">با درگاه بانکی امن</small>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="col-12 col-md-6 ship-option">
+                            <input type="radio" name="PaymentMethod" value="2" />
+                            <div class="card p-3 d-flex flex-row align-items-center gap-3">
+                                <i class="bi bi-cash-coin fs-3 text-info"></i>
+                                <div>
+                                    <strong class="d-block">پرداخت در محل</strong>
+                                    <small class="text-muted">کد به کد هنگام تحویل</small>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-12 col-lg-4">
+                <div class="card border-0 shadow-sm rounded-4 p-3 sticky-top" style="top: 90px;">
+                    <h6 class="fw-bold mb-3">اقلام سفارش</h6>
+                    @foreach (var item in Model.Items)
+                    {
+                        <div class="d-flex gap-2 align-items-center py-2 border-bottom">
+                            <img src="@item.Image" width="48" height="48" class="rounded-3" alt="@item.Name" />
+                            <div class="flex-grow-1 small">
+                                <div class="text-truncate" style="max-width: 150px;">@item.Name</div>
+                                <span class="text-muted">@item.Quantity.ToString().ToFarsiDigits() عدد</span>
+                            </div>
+                            <strong class="small">@((item.FinalPrice * item.Quantity).ToToman())</strong>
+                        </div>
+                    }
+                    <div class="mt-3">
+                        <div class="input-group input-group-sm mb-3">
+                            <input type="text" id="discountCode" class="form-control" placeholder="کد تخفیف" />
+                            <button class="btn btn-outline-primary" type="button" id="checkDiscountBtn">بررسی</button>
+                        </div>
+                        <div id="discountResult" class="small mb-2"></div>
+
+                        <div class="d-flex justify-content-between py-1">
+                            <span class="text-muted">جمع کالاها</span>
+                            <span>@Model.Subtotal.ToToman()</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-1">
+                            <span class="text-muted">هزینه ارسال</span>
+                            <span id="shippingCost">@(Model.ShippingCost == 0 ? "رایگان" : Model.ShippingCost.ToToman())</span>
+                        </div>
+                        <div class="d-flex justify-content-between py-1 text-danger small" id="discountRow" style="display:none !important;">
+                            <span>تخفیف کد</span>
+                            <span id="discountAmount"></span>
+                        </div>
+                        <hr class="my-2" />
+                        <div class="d-flex justify-content-between fw-bold">
+                            <span>مبلغ قابل پرداخت</span>
+                            <span id="grandTotal">@Model.Total.ToToman()</span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100 py-2 mt-3">
+                            <i class="bi bi-lock-fill me-1"></i> پرداخت و ثبت سفارش
+                        </button>
+                        <a href="/cart" class="btn btn-link btn-sm w-100 mt-1 text-decoration-none text-muted">بازگشت به سبد خرید</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+<script>
+    // ---- شمارش معکوس رزرو ----
+    (function () {
+        var el = document.getElementById('checkoutCountdown');
+        if (!el) return;
+        var expires = new Date(el.dataset.expires).getTime();
+        var timer = setInterval(function () {
+            var diff = Math.max(0, expires - Date.now());
+            var m = Math.floor(diff / 60000), s = Math.floor((diff % 60000) / 1000);
+            document.getElementById('cdMinutes').textContent = String(m).padStart(2, '0');
+            document.getElementById('cdSeconds').textContent = String(s).padStart(2, '0');
+            if (diff <= 0) {
+                clearInterval(timer);
+                alert('مهلت رزرو موجودی به پایان رسید. صفحه دوباره بارگذاری می‌شود.');
+                location.href = '/cart';
+            }
+        }, 1000);
+    })();
+
+    // ---- استان/شهر ----
+    var citySelect = document.getElementById('citySelect');
+    var initialCity = @(defaults?.CityId ?? 0);
+    function loadCities(stateId, selectedId) {
+        fetch('/api/locations/cities/' + stateId)
+            .then(function (r) { return r.json(); })
+            .then(function (cities) {
+                citySelect.innerHTML = '';
+                cities.forEach(function (c) {
+                    var opt = new Option(c.name, c.id);
+                    if (selectedId && c.id === selectedId) opt.selected = true;
+                    citySelect.add(opt);
+                });
+            });
+    }
+    document.getElementById('stateSelect').addEventListener('change', function () { loadCities(this.value); });
+    loadCities(document.getElementById('stateSelect').value, initialCity);
+
+    // ---- کد تخفیف ----
+    var discountData = null;
+    var baseTotal = @Model.Total;
+    var baseSubtotal = @Model.Subtotal;
+
+    document.getElementById('checkDiscountBtn').addEventListener('click', function () {
+        var code = document.getElementById('discountCode').value.trim();
+        if (!code) return;
+        ajaxPost('/api/discount/check', { code: code }, function (res) {
+            var box = document.getElementById('discountResult');
+            box.innerHTML = res.success
+                ? '<span class="text-success"><i class="bi bi-check-circle"></i> ' + res.message + '</span>'
+                : '<span class="text-danger"><i class="bi bi-x-circle"></i> ' + res.message + '</span>';
+            updateTotals(res.success ? res.discountAmount : 0);
+        });
+    });
+
+    function updateTotals(discountAmount) {
+        var shipping = document.querySelector('input[name="ShippingMethod"]:checked').value === '2'
+            ? @(settings.ShippingExpressCost)
+            : (baseSubtotal >= @(settings.FreeShippingThreshold) && @(settings.FreeShippingThreshold) > 0 ? 0 : @(settings.ShippingPostCost));
+        document.getElementById('shippingCost').textContent = shipping === 0 ? 'رایگان' : formatToman(shipping);
+        var total = Math.max(0, baseSubtotal - discountAmount) + shipping;
+        document.getElementById('grandTotal').textContent = formatToman(total);
+        var row = document.getElementById('discountRow');
+        if (discountAmount > 0) {
+            row.style.display = 'flex';
+            document.getElementById('discountAmount').textContent = formatToman(discountAmount) + '−';
+        } else {
+            row.style.display = 'none';
+        }
+    }
+    document.querySelectorAll('input[name="ShippingMethod"]').forEach(function (r) {
+        r.addEventListener('change', function () { updateTotals(0); });
+    });
+</script>
+}

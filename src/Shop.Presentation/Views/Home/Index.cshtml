@@ -1,0 +1,234 @@
+@model HomeViewModel
+@{
+    ViewData["Title"] = "فروشگاه آنلاین";
+}
+@section Styles {
+<link rel="stylesheet" href="~/css/home.css" asp-append-version="true" />
+}
+
+@if (Model.Sliders.Count > 0)
+{
+    <section class="container mt-3">
+        <div id="mainSlider" class="carousel slide rounded-4 overflow-hidden" data-bs-ride="carousel">
+            <div class="carousel-indicators">
+                @for (var i = 0; i < Model.Sliders.Count; i++)
+                {
+                    <button type="button" data-bs-target="#mainSlider" data-bs-slide-to="@i" class="@(i == 0 ? "active" : "")"></button>
+                }
+            </div>
+            <div class="carousel-inner">
+                @foreach (var (slider, i) in Model.Sliders.Select((s, i) => (s, i)))
+                {
+                    <div class="carousel-item @(i == 0 ? "active" : "")" data-bs-interval="5000">
+                        <a href="@(slider.Link ?? "/products")">
+                            <img src="@slider.Image" class="d-block w-100 slider-img" alt="@slider.Title" />
+                        </a>
+                    </div>
+                }
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#mainSlider" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
+            <button class="carousel-control-next" type="button" data-bs-target="#mainSlider" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
+        </div>
+    </section>
+}
+
+@if (Model.AmazingProducts.Count > 0)
+{
+    <section class="container mt-4">
+        <div class="amazing-box rounded-4 p-3">
+            <div class="d-flex align-items-center justify-content-between mb-3 px-2">
+                <h2 class="amazing-title mb-0"><i class="bi bi-lightning-charge-fill"></i> پیشنهاد شگفت‌انگیز</h2>
+                @if (Model.AmazingEndsAt is not null)
+                {
+                <div class="countdown" data-expires="@Model.AmazingEndsAt.Value.ToString("o")" id="amazingCountdown">
+                    <span class="cd-box" data-cd="h" id="cdHours">۰۰</span>:
+                    <span class="cd-box" data-cd="m" id="cdMinutes">۰۰</span>:
+                    <span class="cd-box" data-cd="s" id="cdSeconds">۰۰</span>
+                </div>
+                }
+                <a href="/products?sort=discount" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+            </div>
+            <div class="row g-3 flex-nowrap overflow-auto scroll-row">
+                @foreach (var product in Model.AmazingProducts)
+                {
+                    <div class="col-6 col-md-4 col-lg-2" style="min-width: 180px;">
+                        <partial name="_ProductCard" model="product" />
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+<div class="container mt-4">
+    <div class="category-strip rounded-4 bg-white p-3">
+        <div class="row g-2 text-center">
+            @foreach (var cat in Model.Categories.Take(8))
+            {
+                <div class="col-3 col-md">
+                    <a href="/products?category=@cat.Slug" class="cat-strip-item">
+                        <i class="bi @(cat.Icon ?? "bi-tag")"></i>
+                        <span>@cat.Name</span>
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<section class="container mt-4">
+    <div class="section-head">
+        <h2 class="section-title"><i class="bi bi-stars text-warning"></i> منتخب ادیتور</h2>
+        <a href="/products?sort=bestseller" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+    </div>
+    <div class="row g-3">
+        @foreach (var product in Model.SpecialProducts)
+        {
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                <partial name="_ProductCard" model="product" />
+            </div>
+        }
+    </div>
+</section>
+
+<section class="container mt-4">
+    <div class="section-head">
+        <h2 class="section-title"><i class="bi bi-fire text-danger"></i> پرفروش‌ترین‌ها</h2>
+        <a href="/products?sort=bestseller" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+    </div>
+    <div class="row g-3">
+        @foreach (var product in Model.BestSellers)
+        {
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                <partial name="_ProductCard" model="product" />
+            </div>
+        }
+    </div>
+</section>
+
+<section class="container mt-4">
+    <div class="section-head">
+        <h2 class="section-title"><i class="bi bi-clock-history text-primary"></i> جدیدترین محصولات</h2>
+        <a href="/products" class="see-all">مشاهده همه <i class="bi bi-chevron-left"></i></a>
+    </div>
+    <div class="row g-3">
+        @foreach (var product in Model.NewestProducts)
+        {
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+                <partial name="_ProductCard" model="product" />
+            </div>
+        }
+    </div>
+</section>
+
+@if (Model.LatestPosts.Count > 0)
+{
+    <section class="container mt-4 mb-5">
+        <div class="section-head">
+            <h2 class="section-title"><i class="bi bi-journal-text text-success"></i> از وبلاگ</h2>
+            <a href="/blog" class="see-all">همه مقالات <i class="bi bi-chevron-left"></i></a>
+        </div>
+        <div class="row g-3">
+            @foreach (var post in Model.LatestPosts)
+            {
+                <div class="col-12 col-sm-6 col-lg-3">
+                    <a href="/blog/@post.Slug" class="blog-card">
+                        <img src="@post.CoverImage" alt="@post.Title" loading="lazy" class="blog-card-img" />
+                        <div class="blog-card-body">
+                            <h3 class="blog-card-title">@post.Title</h3>
+                            <p class="blog-card-desc">@post.ShortDescription</p>
+                            <small class="text-muted"><i class="bi bi-eye"></i> @post.ViewCount.ToString("N0").ToFarsiDigits() بازدید</small>
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    </section>
+}
+
+@* ================= سکشن‌های معرفی (سبک لندینگ) ================= *@
+
+<section class="landing-section bg-gradient-soft">
+    <div class="container">
+        <div class="landing-badge reveal">قبل و بعد</div>
+        <h2 class="landing-title reveal">همه‌چیز، با خیال <span class="text-brand">راحت</span></h2>
+        <p class="landing-sub reveal">خرید آنلاین بدون استرس — رزرو موجودی، پرداخت امن، ضمانت بازگشت و ارسال سریع.</p>
+
+        <div class="row g-4 justify-content-center mt-2">
+            <div class="col-12 col-md-5 reveal">
+                <div class="compare-card compare-bad">
+                    <div class="compare-tag">خرید حضوری سنتی</div>
+                    <ul>
+                        <li><i class="bi bi-x-circle"></i> رفت‌وآمد و اتلاف وقت در ترافیک</li>
+                        <li><i class="bi bi-x-circle"></i> مقایسه قیمت بین فروشگاه‌ها تقریباً غیرممکن</li>
+                        <li><i class="bi bi-x-circle"></i> بدون ضمانت بازگشت کالا</li>
+                        <li><i class="bi bi-x-circle"></i> پرداخت نقدی و بدون امتیاز</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="col-12 col-md-5 reveal">
+                <div class="compare-card compare-good">
+                    <div class="compare-tag">با مارکت</div>
+                    <ul>
+                        <li><i class="bi bi-check-circle-fill"></i> مقایسه قیمت چند فروشنده روی یک کالا</li>
+                        <li><i class="bi bi-check-circle-fill"></i> رزرو موجودی و پرداخت امن در چند ثانیه</li>
+                        <li><i class="bi bi-check-circle-fill"></i> ۷ روز ضمانت بازگشت بدون دلیل</li>
+                        <li><i class="bi bi-check-circle-fill"></i> امتیاز و کیف پول با هر خرید</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="landing-section">
+    <div class="container">
+        <div class="landing-badge reveal">باشگاه مشتریان</div>
+        <h2 class="landing-title reveal">خرید کن، <span class="text-brand">امتیاز بگیر</span></h2>
+        <p class="landing-sub reveal">با هر خرید امتیاز و شارژ کیف پول بگیر، دوستانت را معرفی کن و از مزایای باشگاه مشتریان بهره‌مند شو.</p>
+
+        <div class="row g-3 mt-3">
+            <div class="col-12 col-md-6 col-lg-3 reveal">
+                <div class="feature-card">
+                    <div class="feature-icon">👛</div>
+                    <h3>کیف پول</h3>
+                    <p>شارژ کن و بدون کارت بانکی، یک‌ضرب پرداخت کن.</p>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 reveal">
+                <div class="feature-card">
+                    <div class="feature-icon">⭐</div>
+                    <h3>امتیاز خرید</h3>
+                    <p>هر ۱۰ هزار تومان خرید = ۱ امتیاز باشگاه مشتریان.</p>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 reveal">
+                <div class="feature-card">
+                    <div class="feature-icon">🎁</div>
+                    <h3>معرفی دوستان</h3>
+                    <p>کد معرفی بده؛ بعد از اولین خرید دوستت، هر دو شارژ می‌گیرید.</p>
+                </div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3 reveal">
+                <div class="feature-card">
+                    <div class="feature-icon">🏪</div>
+                    <h3>فروشنده شو</h3>
+                    <p>فروشگاهت را ثبت کن، مدارک را بفرست و از مارکت‌پلیس بفروش.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="landing-section bg-gradient-soft">
+    <div class="container text-center">
+        <div class="landing-badge reveal">PWA</div>
+        <h2 class="landing-title reveal">مارکت، <span class="text-brand">توی جیبت</span></h2>
+        <p class="landing-sub reveal">بدون نصب! از همین مرورگر، فروشگاه را مثل اپلیکیشن روی گوشی نصب کن.</p>
+        <div class="d-flex justify-content-center mt-3 reveal">
+            <button class="btn btn-primary px-4 py-2" id="installPwaBtn" hidden>
+                <i class="bi bi-download me-1"></i> نصب اپلیکیشن
+            </button>
+        </div>
+    </div>
+</section>

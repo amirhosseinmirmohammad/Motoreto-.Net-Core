@@ -1,0 +1,160 @@
+@page "/manage/attributes"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-1">🎛️ ویژگی‌های دسته‌بندی‌ها</h4>
+<p class="text-muted small">ویژگی‌هایی که ادمین برای هر دسته تعریف می‌کند، در فرم محصول، فیلترهای صفحه محصولات و جدول مشخصات به‌صورت داینامیک ظاهر می‌شوند.</p>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm rounded-4 p-3">
+            <label class="form-label small text-muted fw-bold">دسته را انتخاب کنید</label>
+            <SearchableSelect Options="_cats.Select(c => new SearchableSelect.Opt(c.Id.ToString(), c.Label)).ToList()"
+                              Value="_catId.ToString()"
+                              ValueChanged="CategorySelected"
+                              Placeholder="جستجوی دسته..." />
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        @if (_catId == 0)
+        {
+            <div class="alert alert-light border">برای مدیریت ویژگی‌ها، ابتدا یک دسته انتخاب کنید.</div>
+        }
+        else
+        {
+            <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+                <h6 class="fw-bold mb-3">افزودن ویژگی جدید</h6>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control" placeholder="نام ویژگی (مثلاً حافظه داخلی)"
+                               value="@_newName" @oninput="NameChanged" />
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" checked="@_newFilter" @onchange="e => _newFilter = e.Value is true" id="f1" />
+                            <label class="form-check-label small" for="f1">نمایش در فیلترها</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" checked="@_newVariant" @onchange="e => _newVariant = e.Value is true" id="f2" />
+                            <label class="form-check-label small" for="f2">واریانت</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-primary w-100" disabled="@(_busy || string.IsNullOrWhiteSpace(_newName))" @onclick="AddAsync">افزودن</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                @if (_attrs.Count == 0)
+                {
+                    <p class="text-muted mb-0">برای این دسته هنوز ویژگی‌ای تعریف نشده است.</p>
+                }
+                else
+                {
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>ویژگی</th>
+                                <th>فیلتر</th>
+                                <th>واریانت</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var a in _attrs)
+                            {
+                                <tr>
+                                    <td class="fw-bold">@a.Name</td>
+                                    <td>@(a.ShowInFilter ? "✓" : "—")</td>
+                                    <td>@(a.IsVariantOption ? "✓" : "—")</td>
+                                    <td class="text-end">
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(a.Id)">حذف</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool _loading = true, _busy;
+    private int _catId;
+    private string _newName = "";
+    private bool _newFilter = true, _newVariant;
+
+    private List<CatRow> _cats = new();
+    private List<CategoryAttribute> _attrs = new();
+
+    private sealed record CatRow(int Id, string Name, string Parent)
+    {
+        public string Label => Parent.Length == 0 ? Name : $"{Parent} → {Name}";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cats = await Db.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.ParentId).ThenBy(c => c.SortOrder)
+            .Select(c => new CatRow(c.Id, c.Name, c.Parent != null ? c.Parent.Name : ""))
+            .ToListAsync();
+
+        _loading = false;
+    }
+
+    private void NameChanged(ChangeEventArgs e) => _newName = e.Value?.ToString() ?? "";
+
+    private async Task CategorySelected(string? v)
+    {
+        _catId = int.TryParse(v, out var id) ? id : 0;
+        await LoadAttrsAsync();
+    }
+
+    private async Task LoadAttrsAsync()
+    {
+        _attrs = await Db.CategoryAttributes
+            .AsNoTracking()
+            .Where(a => a.CategoryId == _catId)
+            .OrderBy(a => a.SortOrder)
+            .ToListAsync();
+    }
+
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newName)) return;
+        _busy = true;
+
+        Db.CategoryAttributes.Add(new CategoryAttribute
+        {
+            CategoryId = _catId,
+            Name = _newName.Trim(),
+            ShowInFilter = _newFilter,
+            IsVariantOption = _newVariant,
+            SortOrder = _attrs.Count + 1
+        });
+        await Db.SaveChangesAsync();
+
+        _newName = "";
+        _newFilter = true;
+        _newVariant = false;
+        await LoadAttrsAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        var attr = await Db.CategoryAttributes.FirstAsync(a => a.Id == id);
+        Db.CategoryAttributes.Remove(attr);
+        await Db.SaveChangesAsync();
+        await LoadAttrsAsync();
+    }
+}

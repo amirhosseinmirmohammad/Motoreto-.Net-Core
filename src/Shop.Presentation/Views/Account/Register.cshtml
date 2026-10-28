@@ -1,0 +1,55 @@
+@model RegisterViewModel
+@{
+    ViewData["Title"] = "ثبت‌نام";
+}
+@section Styles {
+<style>
+    .auth-box { max-width: 460px; margin: 3rem auto; }
+</style>
+}
+<div class="auth-box">
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <div class="text-center mb-4">
+            <i class="bi bi-person-plus display-5 text-success"></i>
+            <h1 class="fs-4 fw-bold mt-2">ساخت حساب کاربری</h1>
+        </div>
+
+        <form asp-action="Register" method="post">
+            <div asp-validation-summary="All" class="text-danger small mb-3"></div>
+
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label asp-for="FirstName" class="form-label small"></label>
+                    <input asp-for="FirstName" class="form-control" />
+                </div>
+                <div class="col-6 mb-3">
+                    <label asp-for="LastName" class="form-label small"></label>
+                    <input asp-for="LastName" class="form-control" />
+                </div>
+            </div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label small"></label>
+                <input asp-for="Email" class="form-control" dir="ltr" placeholder="you@example.com" />
+            </div>
+            <div class="mb-3">
+                <label asp-for="Mobile" class="form-label small"></label>
+                <input asp-for="Mobile" class="form-control" placeholder="۰۹۱۲۳۴۵۶۷۸۹" inputmode="numeric" />
+            </div>
+            <div class="row">
+                <div class="col-6 mb-3">
+                    <label asp-for="Password" class="form-label small"></label>
+                    <input asp-for="Password" class="form-control" dir="ltr" />
+                </div>
+                <div class="col-6 mb-3">
+                    <label asp-for="ConfirmPassword" class="form-label small"></label>
+                    <input asp-for="ConfirmPassword" class="form-control" dir="ltr" />
+                </div>
+            </div>
+            <button type="submit" class="btn btn-success w-100 py-2">ثبت‌نام</button>
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="/account/login" class="text-decoration-none small">قبلاً ثبت‌نام کرده‌اید؟ وارد شوید</a>
+        </div>
+    </div>
+</div>

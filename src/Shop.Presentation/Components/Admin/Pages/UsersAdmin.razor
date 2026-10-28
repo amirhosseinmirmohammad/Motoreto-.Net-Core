@@ -1,0 +1,132 @@
+@page "/manage/users"
+@layout AdminLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Identity
+@inject ApplicationDbContext Db
+@inject UserManager<User> UserManager
+
+<h4 class="fw-bold mb-3">👥 کاربران</h4>
+
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+    <input type="text" class="form-control" placeholder="جستجوی نام یا ایمیل..."
+           value="@_q" @oninput="QChanged" @onkeyup="SearchAsync" />
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>نام</th>
+                        <th>ایمیل</th>
+                        <th>موبایل</th>
+                        <th>سفارش‌ها</th>
+                        <th>کیف پول</th>
+                        <th>وضعیت</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var u in _rows)
+                    {
+                        <tr>
+                            <td class="fw-bold">@u.Name</td>
+                            <td class="small" dir="ltr">@u.Email</td>
+                            <td class="small" dir="ltr">@(u.Mobile ?? "—")</td>
+                            <td>@u.Orders.ToString("N0")</td>
+                            <td class="small">@u.Wallet.ToString("N0")</td>
+                            <td><span class="badge bg-@(u.Active ? "success" : "secondary")">@(u.Active ? "فعال" : "غیرفعال")</span></td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-secondary" disabled="@u.IsAdmin || _busy" @onclick="() => ToggleAsync(u.Id)" title="@((u.IsAdmin ? "ادمین قابل تغییر نیست" : ""))">
+                                    @(u.Active ? "غیرفعال" : "فعال")
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        @if (_rows.Count == 0)
+        {
+            <p class="text-muted text-center mb-0">کاربری یافت نشد.</p>
+        }
+    </div>
+
+    <Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
+}
+
+@code {
+    private string _q = "";
+    private bool _loading = true, _busy;
+    private int _page = 1, _totalPages = 1;
+    private List<URow> _rows = new();
+
+    private async Task GoPage(int p)
+    {
+        _page = p;
+        await LoadAsync();
+    }
+
+    private sealed record URow(Guid Id, string Name, string Email, string? Mobile, int Orders, long Wallet, bool Active, bool IsAdmin);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private void QChanged(ChangeEventArgs e) => _q = e.Value?.ToString() ?? "";
+
+    private async Task SearchAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var query = Db.Users.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(_q))
+            query = query.Where(u => u.Email.Contains(_q)
+                || (u.FirstName + " " + u.LastName).Contains(_q));
+
+        _rows = await query
+            .OrderByDescending(u => u.CreatedAt)
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(u => new URow(
+                u.Id,
+                (u.FirstName ?? "") + " " + (u.LastName ?? ""),
+                u.Email ?? "",
+                u.Mobile,
+                Db.Orders.Count(o => o.UserId == u.Id),
+                u.WalletBalance,
+                u.IsActive,
+                false))
+            .ToListAsync();
+
+        var total = await query.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+
+        // ادمین‌ها را مشخص کن (غیرفعال‌سازی ادمین ممکن نباشد)
+        var admins = await UserManager.GetUsersInRoleAsync("Administrator");
+        var adminIds = admins.Select(a => a.Id).ToList();
+
+        _rows = _rows.Select(u => u with { IsAdmin = adminIds.Contains(u.Id) }).ToList();
+        _loading = false;
+    }
+
+    private async Task ToggleAsync(Guid id)
+    {
+        _busy = true;
+        var u = await Db.Users.FirstAsync(x => x.Id == id);
+        u.IsActive = !u.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+}
