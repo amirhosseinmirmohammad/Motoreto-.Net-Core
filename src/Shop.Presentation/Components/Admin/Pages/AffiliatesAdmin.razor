@@ -52,12 +52,26 @@ else
                             <td>@a.Orders.ToString("N0")</td>
                             <td class="small">@a.Amount.ToString("N0") تومان</td>
                             <td class="fw-bold text-success">@a.Earned.ToString("N0") تومان</td>
-                            <td><span class="badge bg-@(a.Active ? "success" : "secondary")">@(a.Active ? "فعال" : "غیرفعال")</span></td>
+                            <td class="small">@a.PaidOut.ToString("N0") تومان</td>
+                            <td class="small fw-bold">@((a.Earned - a.PaidOut).ToString("N0")) تومان</td>
+                            <td>
+                                <span class="badge bg-@(a.Active ? "success" : "secondary")">@(a.Active ? "فعال" : "غیرفعال")</span>
+                                @if (a.PayoutRequested)
+                                {
+                                    <span class="badge bg-warning text-dark d-block mt-1">درخواست تسویه</span>
+                                }
+                            </td>
                             <td class="text-end" style="white-space:nowrap">
                                 <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="() => SaveCommissionAsync(a.Id)">ذخیره</button>
                                 <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(a.Id)">
                                     @(a.Active ? "غیرفعال" : "فعال")
                                 </button>
+                                @if (a.Earned > a.PaidOut)
+                                {
+                                    <button class="btn btn-sm btn-success" disabled="@_busy" @onclick="() => MarkPaidAsync(a.Id)" title="PaidOut = Earned؛ موجودی صفر می‌شود">
+                                        تسویه شد ✓
+                                    </button>
+                                }
                             </td>
                         </tr>
                     }

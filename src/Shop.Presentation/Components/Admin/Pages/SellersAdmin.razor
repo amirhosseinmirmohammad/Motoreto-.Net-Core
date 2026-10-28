@@ -1,7 +1,9 @@
 @page "/manage/sellers"
 @layout AdminLayout
 @attribute [Authorize]
+@using Shop.Domain.Enums
 @inject ISellerService Sellers
+@inject ApplicationDbContext Db
 
 <h4 class="fw-bold mb-1">🏪 فروشندگان مارکت‌پلیس</h4>
 <p class="text-muted small">درخواست‌های فروشندگی را بررسی و تأیید کنید؛ درصد کمیسیون روی هر فروش اعمال می‌شود.</p>
@@ -52,7 +54,13 @@ else
                 <div class="d-flex align-items-center gap-2">
                     @if (s.Status == SellerStatus.Approved)
                     {
-                        <span class="badge bg-dark">کمیسیون: @s.CommissionPercent٪</span>
+                        <input type="number" class="form-control form-control-sm" style="width:80px" min="1" max="50"
+                               value="@_commDraft[s.Id]" @oninput="e => _commDraft[s.Id] = int.TryParse(e.Value?.ToString(), out var v) ? v : _commDraft[s.Id]" />
+                        <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="() => SaveCommissionAsync(s.Id)">ذخیره کمیسیون</button>
+                        <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleActiveAsync(s.Id)">
+                            @(s.IsActive ? "غیرفعال" : "فعال")
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(s.Id)">حذف</button>
                     }
                     @if (s.Status == SellerStatus.PendingApproval)
                     {
@@ -108,7 +116,54 @@ else
         };
 
         _sellers = await Sellers.GetAllForAdminAsync(status);
+        _commDraft = _sellers.ToDictionary(s => s.Id, s => s.CommissionPercent);
         _loading = false;
+    }
+
+    // ---- CRUD کامل فروشنده (نسخه ۳) ----
+    private Dictionary<long, int> _commDraft = new();
+
+    private async Task SaveCommissionAsync(long id)
+    {
+        _busy = true;
+        await Db.Sellers.Where(s => s.Id == id)
+            .ExecuteUpdateAsync(u => u.SetProperty(s => s.CommissionPercent, Math.Clamp(_commDraft[id], 1, 50)));
+        _message = "کمیسیون به‌روزرسانی شد ✓";
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task ToggleActiveAsync(long id)
+    {
+        _busy = true;
+        var s = await Db.Sellers.FirstAsync(x => x.Id == id);
+        s.IsActive = !s.IsActive;
+        await Db.SaveChangesAsync();
+        _message = s.IsActive ? "فروشگاه فعال شد." : "فروشگاه غیرفعال شد — آفرهایش دیگر نمایش داده نمی‌شوند.";
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        _busy = true;
+        try
+        {
+            if (await Db.SellerOffers.AnyAsync(o => o.SellerId == id))
+            {
+                _message = "این فروشنده آفر ثبت کرده است — حذف امن ندارد؛ فروشگاه را غیرفعال کنید.";
+                return;
+            }
+
+            await Db.SellerCategories.Where(sc => sc.SellerId == id).ExecuteDeleteAsync();
+            await Db.Sellers.Where(s => s.Id == id).ExecuteDeleteAsync();
+            _message = "فروشنده حذف شد ✓";
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task ApproveAsync(long id)

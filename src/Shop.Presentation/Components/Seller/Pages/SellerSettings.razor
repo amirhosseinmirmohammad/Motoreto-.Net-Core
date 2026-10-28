@@ -1,0 +1,295 @@
+@page "/seller/settings"
+@layout SellerLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<h5 class="fw-bold mb-1">⚙️ تنظیمات فروشگاه</h5>
+<p class="text-muted small">اطلاعات تماس، روش ارسال و پرداخت فروشگاه را مدیریت کنید؛ این اطلاعات هنگام ثبت سفارش برای خریدار نمایش داده می‌شود.</p>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_noStore)
+{
+    <div class="alert alert-info">هنوز فروشگاهی ثبت نکرده‌اید.</div>
+    <NavLink href="/seller/register" class="btn btn-primary">ثبت‌نام فروشگاه</NavLink>
+}
+else
+{
+    @if (_saved)
+    {
+        <div class="alert alert-success py-2">تنظیمات فروشگاه با موفقیت ذخیره شد ✓</div>
+    }
+    @if (_error is not null)
+    {
+        <div class="alert alert-danger py-2">@_error</div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <EditForm Model="_m" OnValidSubmit="SubmitAsync" class="row g-3">
+            <DataAnnotationsValidator />
+
+            <div class="col-12"><h6 class="fw-bold mb-0">تماس و معرفی</h6><hr class="mt-2" /></div>
+            <div class="col-12">
+                <label class="form-label small text-muted">درباره فروشگاه</label>
+                <InputTextArea @bind-Value="_m.Description" class="form-control" rows="2" placeholder="معرفی کوتاه فروشگاه..." />
+                <ValidationMessage For="() => _m.Description" class="text-danger small" />
+            </div>
+            <div class="col-12">
+                <label class="form-label small text-muted">آدرس فروشگاه / انبار</label>
+                <InputText @bind-Value="_m.Address" class="form-control" />
+                <ValidationMessage For="() => _m.Address" class="text-danger small" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">تلفن فروشگاه</label>
+                <InputText @bind-Value="_m.Phone" class="form-control" dir="ltr" />
+                <ValidationMessage For="() => _m.Phone" class="text-danger small" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">ایمیل</label>
+                <InputText @bind-Value="_m.Email" class="form-control" dir="ltr" />
+                <ValidationMessage For="() => _m.Email" class="text-danger small" />
+            </div>
+
+            <div class="col-12"><h6 class="fw-bold mb-0">روش ارسال</h6><hr class="mt-2" /></div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">عنوان سرویس ارسال</label>
+                <InputText @bind-Value="_m.ShippingTitle" class="form-control" placeholder="مثلاً: پست پیشتاز" />
+                <ValidationMessage For="() => _m.ShippingTitle" class="text-danger small" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">حداقل روز تحویل</label>
+                <InputNumber @bind-Value="_m.DeliveryDays" class="form-control" min="1" />
+                <ValidationMessage For="() => _m.DeliveryDays" class="text-danger small" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">حداکثر روز تحویل</label>
+                <InputNumber @bind-Value="_m.DeliveryDaysMax" class="form-control" min="1" />
+                <ValidationMessage For="() => _m.DeliveryDaysMax" class="text-danger small" />
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label small text-muted">هزینه ارسال هر مرسوله</label>
+                <div class="input-group">
+                    <InputNumber @bind-Value="_m.ShippingCostOverride" class="form-control" min="0" step="1000" disabled="@_defaultShipCost" />
+                    <span class="input-group-text">تومان</span>
+                </div>
+                <div class="form-check form-switch mt-1">
+                    <InputCheckbox @bind-Value="_defaultShipCost" id="defShip" class="form-check-input" />
+                    <label class="form-check-label small text-muted" for="defShip">استفاده از تعرفه پیش‌فرض مارکت</label>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">حد ارسال رایگان (سبد بالاتر از این مبلغ)</label>
+                <div class="input-group">
+                    <InputNumber @bind-Value="_m.FreeShippingThresholdOverride" class="form-control" min="0" step="10000" disabled="@_defaultFreeThreshold" />
+                    <span class="input-group-text">تومان</span>
+                </div>
+                <div class="form-check form-switch mt-1">
+                    <InputCheckbox @bind-Value="_defaultFreeThreshold" id="defFree" class="form-check-input" />
+                    <label class="form-check-label small text-muted" for="defFree">استفاده از پیش‌فرض مارکت</label>
+                </div>
+            </div>
+
+            <div class="col-12"><h6 class="fw-bold mb-0">روش‌های پرداخت پذیرش‌شده</h6><hr class="mt-2" /></div>
+            <div class="col-12">
+                <div class="d-flex gap-4 flex-wrap">
+                    @foreach (var opt in PayOpts)
+                    {
+                        <label class="d-flex align-items-center gap-1">
+                            <input type="checkbox" class="form-check-input mt-0" checked="@_pay.Contains(opt.Code)" @onchange="e => TogglePay(opt.Code, e.Value is true)" />
+                            @opt.Label
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <div class="col-12"><h6 class="fw-bold mb-0">موقعیت فروشگاه (نقشه)</h6><hr class="mt-2" /></div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">عرض جغرافیایی (Latitude)</label>
+                <InputNumber @bind-Value="_m.Latitude" class="form-control" dir="ltr" step="0.000001" />
+                <ValidationMessage For="() => _m.Latitude" class="text-danger small" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">طول جغرافیایی (Longitude)</label>
+                <InputNumber @bind-Value="_m.Longitude" class="form-control" dir="ltr" step="0.000001" />
+                <ValidationMessage For="() => _m.Longitude" class="text-danger small" />
+            </div>
+            <div class="col-12 small text-muted">
+                برای پیدا کردن مختصات: در گوگل‌مپ روی محل فروشگاه راست‌کلیک کنید و دو عدد اول را کپی کنید.
+                @if (_m.Latitude is not null && _m.Longitude is not null)
+                {
+                    <a href="@GeoUrl" target="_blank" class="ms-2">نمایش روی نقشه ↗</a>
+                }
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
+                    @(_busy ? "در حال ذخیره..." : "ذخیره تغییرات")
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private bool _loading = true, _busy, _saved, _noStore;
+    private bool _defaultShipCost = true, _defaultFreeThreshold = true;
+    private string? _error;
+    private StoreSettingsModel _m = new();
+    private List<string> _pay = [];
+
+    private static readonly (string Code, string Label)[] PayOpts =
+    [
+        ("online", "پرداخت آنلاین (درگاه)"),
+        ("cash", "کارت‌به‌کارت / حضوری"),
+        ("cod", "پرداخت در محل")
+    ];
+
+    private string GeoUrl => $"https://www.google.com/maps?q={_m.Latitude},{_m.Longitude}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uid = await GetUserIdAsync();
+        var s = await Db.Sellers.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.OwnerUserId == uid);
+        if (s is null)
+        {
+            _noStore = true;
+            _loading = false;
+            return;
+        }
+
+        _m = new StoreSettingsModel
+        {
+            Description = s.Description,
+            Address = s.Address,
+            Phone = s.Phone,
+            Email = s.Email,
+            ShippingTitle = s.ShippingTitle,
+            DeliveryDays = s.DeliveryDays,
+            DeliveryDaysMax = s.DeliveryDaysMax,
+            ShippingCostOverride = s.ShippingCostOverride,
+            FreeShippingThresholdOverride = s.FreeShippingThresholdOverride,
+            Latitude = s.Latitude,
+            Longitude = s.Longitude
+        };
+        _defaultShipCost = s.ShippingCostOverride is null;
+        _defaultFreeThreshold = s.FreeShippingThresholdOverride is null;
+        _pay = (s.PaymentMethods ?? "online")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        _loading = false;
+    }
+
+    private void TogglePay(string code, bool on)
+    {
+        if (on && !_pay.Contains(code)) _pay.Add(code);
+        else if (!on) _pay.Remove(code);
+    }
+
+    private async Task SubmitAsync()
+    {
+        _saved = false;
+        _error = null;
+
+        if (_m.DeliveryDaysMax < _m.DeliveryDays)
+        {
+            _error = "حداکثر روز تحویل نمی‌تواند کمتر از حداقل باشد.";
+            return;
+        }
+        if (_pay.Count == 0)
+        {
+            _error = "حداقل یک روش پرداخت انتخاب کنید.";
+            return;
+        }
+        if (!_defaultShipCost && _m.ShippingCostOverride is null)
+        {
+            _error = "هزینه ارسال را وارد کنید یا گزینه «تعرفه پیش‌فرض مارکت» را فعال بگذارید.";
+            return;
+        }
+        if (!_defaultFreeThreshold && _m.FreeShippingThresholdOverride is null)
+        {
+            _error = "حد ارسال رایگان را وارد کنید یا گزینه «پیش‌فرض مارکت» را فعال بگذارید.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var uid = await GetUserIdAsync();
+            var s = await Db.Sellers.FirstAsync(x => x.OwnerUserId == uid);
+
+            s.Description = string.IsNullOrWhiteSpace(_m.Description) ? null : _m.Description.Trim();
+            s.Address = string.IsNullOrWhiteSpace(_m.Address) ? null : _m.Address.Trim();
+            s.Phone = string.IsNullOrWhiteSpace(_m.Phone) ? null : _m.Phone.Trim();
+            s.Email = string.IsNullOrWhiteSpace(_m.Email) ? null : _m.Email.Trim();
+            s.ShippingTitle = string.IsNullOrWhiteSpace(_m.ShippingTitle) ? null : _m.ShippingTitle.Trim();
+            s.DeliveryDays = _m.DeliveryDays;
+            s.DeliveryDaysMax = _m.DeliveryDaysMax;
+            s.ShippingCostOverride = _defaultShipCost ? null : _m.ShippingCostOverride;
+            s.FreeShippingThresholdOverride = _defaultFreeThreshold ? null : _m.FreeShippingThresholdOverride;
+            s.PaymentMethods = string.Join(",", _pay);
+            s.Latitude = _m.Latitude;
+            s.Longitude = _m.Longitude;
+
+            await Db.SaveChangesAsync();
+            _saved = true;
+        }
+        catch (Exception ex)
+        {
+            _error = "خطا در ذخیره‌سازی: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+
+    private sealed class StoreSettingsModel
+    {
+        [System.ComponentModel.DataAnnotations.StringLength(1000)]
+        public string? Description { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(500)]
+        public string? Address { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(20)]
+        public string? Phone { get; set; }
+
+        [System.ComponentModel.DataAnnotations.EmailAddress, System.ComponentModel.DataAnnotations.StringLength(150)]
+        public string? Email { get; set; }
+
+        [System.ComponentModel.DataAnnotations.StringLength(80)]
+        public string? ShippingTitle { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(1, 30)]
+        public int DeliveryDays { get; set; } = 2;
+
+        [System.ComponentModel.DataAnnotations.Range(1, 60)]
+        public int DeliveryDaysMax { get; set; } = 4;
+
+        [System.ComponentModel.DataAnnotations.Range(0, 100_000_000)]
+        public long? ShippingCostOverride { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(0, 1_000_000_000)]
+        public long? FreeShippingThresholdOverride { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(-90, 90)]
+        public double? Latitude { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Range(-180, 180)]
+        public double? Longitude { get; set; }
+    }
+}

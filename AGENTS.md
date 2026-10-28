@@ -1,7 +1,7 @@
 # AGENTS.md — State پروژه مارکت (فروشگاه اینترنتی)
 
 > ⚠️ **قانون برای هر ایجنت:** بعد از هر تغییر، این فایل را به‌روز کن (بخش «آخرین تغییرات» و «کارهای باقی‌مانده»).
-> آخرین به‌روزرسانی: 2026-10-28 (نسخه ۲)
+> آخرین به‌روزرسانی: 2026-10-29 (نسخه ۴)
 
 ---
 
@@ -48,14 +48,38 @@ D:\Projects\Motoreto\stop-server.bat
 - **Seed کاتالوگ:** `seed-catalog.sql` (در ریشه) — ۶۰ محصول یکتا با نام/اسلاگ/برند/قیمت تومانی/ویژگی/واریانت(۱۵۴ SKU)/چنددسته(۱۸)/شگفت‌انگیز(۶). اجرای مجدد idempotent تقریبی (آپدیت‌ها).
 
 ## ۶) کارهای باقی‌مانده (به ترتیب اولویت)
-1. **فروشنده:** ادیت اطلاعات/ارسال/پرداخت فروشگاه (فیلدهای `ShippingTitle,DeliveryDays,ShippingCostOverride,FreeShippingThresholdOverride,PaymentMethods,Latitude,Longitude` آماده‌اند — UI ادیت در پنل فروشنده بساز) — مایگری ستون‌ها اعمال شد.
-2. **Sort پیشرفته بقیه لیست‌ها** (الگو: ProductsList — sort select + OrderBy شرطی).
+1. **CRUD باقی‌مانده (نسخه ۴ — ممیزی کامل انجام شد):**
+   - GatewaysAdmin: ادیت درگاه موجود (merchant/secret/fee/sandbox) — الان فقط toggle/حذف/افزودن
+   - MessagesAdmin: «علامت‌گذاری به‌عنوان نخوانده» (mark-read هست، برعکسش نیست)
+   - CategoryAttributes: ادیت ویژگی (نام/فیلتر/واریانت/ترتیب)
+   - SellerPropose: لیست «پیشنهادهای من» فروشنده — نیاز به ستون مالکیت روی Product (مایگریشن: ProposedBySellerId)
+   - تب «اتصال فروشگاه» feed در پنل فروشنده (فاز ۲ فید) + webhook سفارش + CPC
+2. **Sort بقیه لیست‌های ادمین** — انجام‌شده: Products، Orders، Users، Comments، BlogComments، Payments. باقی: Brands، Blog، Inventory، Messages، Discounts
 3. **انتخاب واریانت در Blazor ProductList cards** (الان فقط صفحه جزئیات MVC).
 4. **حذف /admin قدیمی** (MVC) بعد از اطمینان.
 5. **deploy** (docker-compose در ریشه هست — postgres+redis؛ سرویس app اضافه شود).
 6. صفحه محصول: گالری/نظرات تکمیلی.
+7. **git init + commit** — هنوز انجام نشده!
 
-## ۶.۵) آخرین تغییرات (نسخه ۲)
+## ۶.۵) آخرین تغییرات (نسخه ۴)
+- **ممیزی کامل CRUD هر ۲۲ صفحه ادمین + پنل فروشنده + پنل کاربر انجام شد** (هدف: ادمین همه‌کاره، فروشنده/کاربر محدود به دامنه خود). موارد پیاده‌شده:
+  - **پنل فروشنده:** ویرایش آفر (`/seller/offer?id=` — فرم prefill می‌شود، کالا قفل) + حذف آفر (سبد/رزروهای متصل پاک می‌شوند) — سرویس: `GetOfferForEditAsync`/`DeleteOfferAsync` + دکمه‌ها در جدول `/seller`
+  - **UsersAdmin:** ساخت کاربر (UserManager) + ویرایش (نام/موبایل) + شارژ/برداشت کیف پول (WalletTransaction با نوع AdminCharge) + حذف (گارد: سفارش دارد→بلاک؛ ادمین→بلاک)
+  - **CategoriesAdmin:** ویرایش (نام/والد/ترتیب/آیکون) + حذف (گارد فرزند/کالا؛ پاک‌سازی junctions + attributes)
+  - **DiscountsAdmin:** ویرایش کامل (درصد/سقف مبلغ/حداقل سبد/سقف استفاده/انقضا) + حذف
+  - **PaymentsAdmin:** از فقط-خواندنی به کامل — فیلتر وضعیت + جستجوی شماره سفارش + Pager + تغییر دستی وضعیت (CompletedAt ست می‌شود) + حذف
+  - **SellersAdmin:** ویرایش کمیسیون بعد از تأیید + فعال/غیرفعال + حذف (گارد: آفر دارد→بلاک)
+  - **FeedsAdmin:** ویرایش (نام/URL/فاصله sync) + حذف (کالاها قطع نسبت + غیرفعال)
+  - **BlogList:** حذف مقاله (+کامنت‌هایش) | **ProductsList:** حذف (گارد: سفارش/دفتر انبار→بلاک؛ وگرنه پاک‌سازی کامل وابستگی‌ها)
+  - **OrdersAdmin:** حذف سفارش (فقط AwaitingPayment/Canceled؛ payments+items) | حذف و «لغو تأیید» از هم جدا شدند در هر دو صفحه نظرات + دکمه لغو تأیید
+  - **AffiliatesAdmin:** باگ «دکمه تسویه نبود» ✅ + ستون‌های جاافتاده پرداخت‌شده/موجودی + بج «درخواست تسویه»
+  - **پنل کاربر:** صفحه جدید `/panel/comments` «نظرات من» — ویرایش (مجدداً در انتظار تأیید می‌شود) + حذف
+- **Sort جدید:** OrdersAdmin (قدیمی/مبلغ) و UsersAdmin (نام/سفارش/کیف‌پول) + نظرات (امتیاز) — الگوی ProductsList
+
+## ۶.۵-قدیم) آخرین تغییرات (نسخه ۳)
+- **تنظیمات فروشگاه در پنل فروشنده ✅** — `/seller/settings`: تماس/معرفی (Description, Address, Phone, Email)، ارسال (ShippingTitle, DeliveryDays, DeliveryDaysMax)، هزینه ارسال و حد ارسال رایگان با سوییچ «پیش‌فرض مارکت» (null = پیش‌فرض)، روش‌های پرداخت (چک‌باکس online/cash/cod → csv)، Lat/Lng با لینک پیش‌نمایش گوگل‌مپ. + لینک در منوی `SellerLayout` و کارت «فروشگاه من» در `/seller`
+- **FeedSyncJob ✅** — `Shop.Presentation/Services/FeedSyncJob.cs` (BackgroundService، الگوی ReservationCleanupJob): هر ۵ دقیقه فیدهای موعددار (IsActive + SyncIntervalMinutes) را با `FeedImportService` همگام می‌کند؛ در Program.cs ثبت شد
+- **بخش فید (تروب) در نسخه قبلی انجام شده بود و این فایل قدیمی مانده بود:** entity `ShopFeed` + مایگریشن `ShopFeeds` + `Product.SourceFeedId` + `FeedImportService` (upsert با کلید feed+external_id، غیرفعال‌سازی غایب‌ها) + ادمین `/manage/feeds` (افزودن/سینک دستی/فعال-غیرفعال)
 - **افیلیت کامل:** entity `Affiliate` (+ مایگریشن `SellerStoreInfoAndAffiliate`)، endpoint `/aff/{code}` (کلیک+کوکی ۳۰روزه) در Program.cs، اتریبیوشن در CheckoutController (کمیسیون% → Earned)، تب افیلیت در `/panel` (ساخت کد + لینک + آمار)، ادمین `/manage/affiliates` (کمیسیون/فعال-غیرفعال)
 - **Seller:** فیلدهای `PaymentMethods` (csv: online,cash,cod)، `Latitude`، `Longitude` اضافه شد (مایگریشن)
 - **فیلتر /products با junction دسته‌ها** ✅ — محصول چنددسته‌ای در همه دسته‌هایش دیده می‌شود
@@ -79,7 +103,7 @@ D:\Projects\Motoreto\stop-server.bat
 - **سود مارکت:** کمیسیون همکار (پیش‌فرض ۳٪، ادمین ۱-۳۰٪) از کمیسیون ۵٪ فروشنده کسر می‌شود؛ self-referral بلاک
 - **تبلیغ در لندینگ CPL:** فرم مستقل HTML (بدون لاگین) برای کانال‌ها/بلاگرها
 
-## ۶.۸-فید) اتصال فروشگاه‌ها به سبک تروب (Feed-based) — طرح کامل، شروع نشده
+## ۶.۸-فید) اتصال فروشگاه‌ها به سبک تروب (Feed-based) — فاز ۱ (بک‌اند + ادمین + sync) انجام شد
 مدل: فروشگاه‌های بیرونی به‌جای ثبت دستی محصول، **feed URL** می‌دهند (JSON/XML با title,price,stock,image,category,external_id) → ما import/sync دوره‌ای می‌کنیم → کالاهایشان با برچسب منبع در مارکت لیست می‌شود → سفارش‌ها به فروشگاه اطلاع داده می‌شود (webhook/ایمیل) → درآمد ما: کمیسیون فروش یا CPC.
 - **Entity جدید `ShopFeed`:** Id, SellerId? (یا ShopName+Email برای فروشگاه بدون حساب), FeedUrl, Token (برای webhook بازگشت), SyncIntervalMinutes, Status(Active/Blocked), LastSyncAt, LastSyncError, ProductCount
 - **ستون روی Product:** `source_feed_id` (null = کالای مارکت — در فرم ادمین قفل شود)
@@ -87,22 +111,24 @@ D:\Projects\Motoreto\stop-server.bat
 - **Sync:** دکمه «همگام‌سازی» در ادمین + BackgroundJob دوره‌ای (الگوی ReservationCleanupJob)
 - **ورک‌فلو:** فروشگاه در `/seller/register` ثبت‌نام می‌کند → در پنلش تب «اتصال فروشگاه» feed URL می‌دهد → ادمین در `/manage/feeds` تأیید می‌کند → sync
 - **بعداً:** webhook سفارش + مدل CPC (شمارش کلیک روی کالاهای feed)
-- ❗ این بخش **شروع نشده** — اولین قدم: entity + migration + ImportService
+- ✅ **انجام‌شده:** entity `ShopFeed` + مایگریشن `ShopFeeds` + `Product.SourceFeedId` + `FeedImportService` (`Shop.Presentation/Services`) + ادمین `/manage/feeds` + `FeedSyncJob` دوره‌ای (هر ۵ دقیقه)
+- ⬜ **باقی‌مانده:** تب «اتصال فروشگاه» در پنل فروشنده (فروشنده خودش feed URL بدهد و ادمین فقط تأیید کند) + webhook اطلاع سفارش + مدل CPC (شمارش کلیک روی کالاهای feed)
 
 ## ۶.۷) کارهای باقی‌مانده (قدیمی — جزئیات بیشتر)
 1. **فیلتر /products با junction دسته‌ها** — الان فقط `p.CategoryId`؛ باید `ids.Contains(p.CategoryId) || p.ProductCategories/جunction.Any(...)` شود (ProductService خط ~162).
 2. **سیستم افیلیت** — درخواست شده، شروع نشده: entity `Affiliate`(UserId,Code,Commission,Balance,Earned,Clicks)، ستون `orders.affiliate_code`، endpoint `/aff/{code}` + کوکی ۳۰ روزه، اتریبیوشن هنگام ثبت سفارش، پنل ادمین + تب در پنل کاربر.
 3. **Sort پیشرفته لیست‌ها** — فقط محصولات sort ندارد؛ dropdown (جدیدترین/ارزان/گران/پرفروش) + تعمیم به بقیه لیست‌ها. Pager در ۱۰ لیست هست.
-4. **روش پرداخت/ارسال هر فروشنده** — Seller فیلدها هست (`ShippingTitle,DeliveryDays,ShippingCostOverride,FreeShippingThresholdOverride,TaxPercent,ServiceFee,PaymentMethods,Latitude,Longitude` — PaymentMethods/Lat/Lng تازه اضافه شد، ستون‌ها در مایگریشن بعدی باید بیایند!) + UI ادیت در پنل فروشنده.
+4. **روش پرداخت/ارسال هر فروشنده** — ✅ انجام شد (نسخه ۳): ستون‌ها مایگریت شده‌اند + UI ادیت در `/seller/settings` (تماس/ارسال/هزینه‌ها/پرداخت/Lat-Lng).
 5. **حذف /admin قدیمی** (MVC) بعد از اطمینان.
 6. **git init + commit + deploy** — هنوز انجام نشده!
 7. صفحه محصول: گالری/نظرات تکمیلی، مقایسه: sort/search خود ویو.
 
 ## ۷) مایگریشن‌ها (به ترتیب)
-`AddBrandsAndCategoryAttributes` → `MultiCategoryAndSellerCategories` → `ProductSeoFields` → (بعدی: ستون‌های PaymentMethods/Latitude/Longitude روی sellers + جدول affiliates)
+`Initial` → `MarketplaceAndWarehouse` → `LoyaltyAndOtp` → `CorsAndLoyaltyFields` → `AddBrandsAndCategoryAttributes` → `MultiCategoryAndSellerCategories` → `BrandCategoryJunction` → `ProductSeoFields` → `SellerStoreInfoAndAffiliate` → `AffiliateCpaCpl` → `ShopFeeds` → `SellerStoreFields` — همه اعمال شده‌اند؛ مایگریشن معوقی وجود ندارد.
 
 ## ۸) نکته‌های توسعه
 - کامپوننت‌های Blazor: `@inject ApplicationDbContext Db` مستقیم ok (sequential).
+- **اتریبیوت‌های DataAnnotations در بلاک `@code` فایل‌های razor باید با نام کامل نوشته شوند** (`[System.ComponentModel.DataAnnotations.StringLength(80)]` و `Range`) — چون `Range` با `System.Range` تداخل می‌گیرد و using هم در دسترس نیست (الگوی Seller.cs).
 - `[Inject]` property در .razor مشکل‌ساز بوده → همیشه از دایرکتیو `@inject` استفاده کن.
 - در مارکاپ Razor هرگز `?? ''` ننویس (empty char literal) → متد هندلر بساز.
 - `InputNumber` از byte پشتیبانی نمی‌کند → input معمولی + TryParse.

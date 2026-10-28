@@ -98,6 +98,20 @@ public class OrderService(
 
         var subtotal = reservations.Sum(r => r.UnitPrice * r.Quantity);
 
+        // گروه‌بندی مرسوله‌ها: کالاهای مارکت + هر فروشنده یک مرسوله مستقل (تعرفه/سقف اختصاصی از /seller/settings)
+        var sellerIds = reservations.Where(r => r.SellerId != null).Select(r => r.SellerId!.Value).Distinct().ToList();
+        var sellerCfg = await db.Sellers.AsNoTracking()
+            .Where(s => sellerIds.Contains(s.Id))
+            .Select(s => new { s.Id, s.ShippingCostOverride, s.FreeShippingThresholdOverride, s.PaymentMethods })
+            .ToDictionaryAsync(x => x.Id, ct);
+
+        var groups = reservations
+            .GroupBy(r => r.SellerId)
+            .Select(g => new ShipmentGroup(g.Sum(x => x.UnitPrice * x.Quantity),
+                g.Key is null ? null : sellerCfg[g.Key.Value].ShippingCostOverride,
+                g.Key is null ? null : sellerCfg[g.Key.Value].FreeShippingThresholdOverride))
+            .ToList();
+
         // کد تخفیف (در سشن/فرم ارسال می‌شود)
         long discountAmount = 0;
         if (!string.IsNullOrWhiteSpace(model.DiscountCode))
@@ -109,18 +123,35 @@ public class OrderService(
         }
 
         var shippingMethod = (ShippingMethod)model.ShippingMethod;
-        var shippingCost = shippingMethod switch
+        long shippingCost;
+        if (shippingMethod == ShippingMethod.Express)
         {
-            ShippingMethod.Express => config.ShippingExpressCost,
-            _ => subtotal >= config.FreeShippingThreshold && config.FreeShippingThreshold > 0
-                ? 0
-                : config.ShippingPostCost
-        };
+            // اکسپرس: تعرفه مارکت × تعداد مرسوله‌ها (هر فروشنده مرسوله مستقل)
+            shippingCost = config.ShippingExpressCost * Math.Max(1, groups.Count);
+        }
+        else
+        {
+            shippingCost = groups.Sum(g => MarketplaceShipping.PostCost(
+                g.Subtotal, g.CostOverride, g.FreeOverride, config.ShippingPostCost, config.FreeShippingThreshold));
+        }
 
         // مالیات بر ارزش افزوده (درصد قابل تنظیم از پنل ادمین)
         var taxAmount = subtotal * config.TaxPercent / 100;
         var total = Math.Max(0, subtotal - discountAmount) + shippingCost + taxAmount;
         var paymentMethod = (PaymentMethod)model.PaymentMethod;
+
+        // روش پرداخت باید از سوی همه فروشندگانِ سبد پذیرفته شده باشد (فیلد PaymentMethods از /seller/settings)
+        var pmCode = paymentMethod == PaymentMethod.Online ? "online" : "cod";
+        foreach (var sid in sellerIds)
+        {
+            var accepted = (sellerCfg[sid].PaymentMethods ?? "online").Split(',');
+            if (!accepted.Contains(pmCode))
+                return new PlaceOrderResult
+                {
+                    Success = false,
+                    Message = "یکی از فروشندگانِ سبد، روش پرداخت انتخابی را نمی‌پذیرد. لطفاً روش دیگری انتخاب کنید."
+                };
+        }
 
         return await Transactional.RunAsync(db, async token =>
         {

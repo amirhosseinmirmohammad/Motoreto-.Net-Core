@@ -23,6 +23,11 @@
     </div>
 </div>
 
+@if (_message is not null)
+{
+    <div class="alert alert-warning py-2">@_message</div>
+}
+
 @if (_loading)
 {
     <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
@@ -68,6 +73,7 @@ else
                                 <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(p.Id)">
                                     @(p.Active ? "غیرفعال" : "فعال")
                                 </button>
+                                <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(p.Id)">حذف</button>
                             </td>
                         </tr>
                     }
@@ -86,6 +92,7 @@ else
 @code {
     private string _q = "";
     private string _sort = "new";
+    private string? _message;
     private bool _loading = true, _busy;
     private int _page = 1, _totalPages = 1;
     private List<PRow> _rows = new();
@@ -152,5 +159,40 @@ else
         await Db.SaveChangesAsync();
         await LoadAsync();
         _busy = false;
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        _busy = true;
+        try
+        {
+            // گارد: کالای دارای سابقه سفارش یا دفتر انبار حذف امن ندارد
+            if (await Db.OrderItems.AnyAsync(oi => oi.ProductId == id)
+                || await Db.StockMovements.AnyAsync(sm => sm.ProductId == id))
+            {
+                _message = "این کالا سابقه سفارش/انبار دارد و حذف امن ندارد — آن را غیرفعال کنید.";
+                return;
+            }
+
+            var offerIds = await Db.SellerOffers.Where(o => o.ProductId == id).Select(o => o.Id).ToListAsync();
+            await Db.CartItems.Where(ci => ci.ProductId == id || (ci.OfferId != null && offerIds.Contains(ci.OfferId.Value))).ExecuteDeleteAsync();
+            await Db.StockReservations.Where(sr => sr.ProductId == id || (sr.OfferId != null && offerIds.Contains(sr.OfferId.Value))).ExecuteDeleteAsync();
+            await Db.SellerOffers.Where(o => o.ProductId == id).ExecuteDeleteAsync();
+            await Db.ProductVariants.Where(v => v.ProductId == id).ExecuteDeleteAsync();
+            await Db.ProductImages.Where(i => i.ProductId == id).ExecuteDeleteAsync();
+            await Db.Comments.Where(c => c.ProductId == id).ExecuteDeleteAsync();
+            await Db.Favorites.Where(f => f.ProductId == id).ExecuteDeleteAsync();
+            await Db.ProductCategories.Where(pc => pc.ProductId == id).ExecuteDeleteAsync();
+            await Db.PriceHistories.Where(ph => ph.ProductId == id).ExecuteDeleteAsync();
+
+            var p = await Db.Products.FirstAsync(x => x.Id == id);
+            Db.Products.Remove(p);
+            await Db.SaveChangesAsync();
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 }

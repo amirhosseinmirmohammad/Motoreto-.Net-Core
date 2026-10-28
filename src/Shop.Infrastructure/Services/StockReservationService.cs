@@ -179,9 +179,24 @@ public class StockReservationService(
             }
 
             var subtotal = reserved.Sum(r => r.FinalPrice * r.Quantity);
-            var shipping = subtotal >= config.FreeShippingThreshold && config.FreeShippingThreshold > 0
-                ? 0
-                : config.ShippingPostCost;
+
+            // ارسال چندفروشنده‌ای: هر فروشنده/مارکت یک مرسوله مستقل با تعرفه اختصاصی خودش
+            var offerIds = reserved.Where(r => r.OfferId != null).Select(r => r.OfferId!.Value).Distinct().ToList();
+            var offerSellers = await db.SellerOffers.AsNoTracking()
+                .Where(o => offerIds.Contains(o.Id))
+                .Select(o => new { o.Id, o.SellerId, o.Seller.ShippingCostOverride, o.Seller.FreeShippingThresholdOverride })
+                .ToDictionaryAsync(x => x.Id, ct);
+
+            var groups = reserved
+                .GroupBy(r => r.OfferId is null ? 0L : offerSellers[r.OfferId.Value].SellerId)
+                .Select(g =>
+                {
+                    if (g.Key == 0) return new ShipmentGroup(g.Sum(x => x.FinalPrice * x.Quantity), null, null);
+                    var info = offerSellers[g.First().OfferId!.Value];
+                    return new ShipmentGroup(g.Sum(x => x.FinalPrice * x.Quantity), info.ShippingCostOverride, info.FreeShippingThresholdOverride);
+                }).ToList();
+
+            var shipping = groups.Sum(g => MarketplaceShipping.PostCost(g.Subtotal, g.CostOverride, g.FreeOverride, config.ShippingPostCost, config.FreeShippingThreshold));
 
             return new CheckoutReservationDto
             {
@@ -212,7 +227,10 @@ public class StockReservationService(
                 r.Product.MainImage,
                 FinalPrice = r.Product.DiscountPercent > 0
                     ? r.Product.UnitPrice - r.Product.UnitPrice * r.Product.DiscountPercent / 100
-                    : r.Product.UnitPrice
+                    : r.Product.UnitPrice,
+                SellerKey = r.Offer != null ? (long?)r.Offer.SellerId : null,
+                CostOverride = r.Offer != null ? r.Offer.Seller.ShippingCostOverride : null,
+                FreeOverride = r.Offer != null ? r.Offer.Seller.FreeShippingThresholdOverride : null
             })
             .ToListAsync(ct);
 
@@ -220,9 +238,16 @@ public class StockReservationService(
 
         var config = await settings.GetAsync(ct);
         var subtotal = reservations.Sum(r => r.FinalPrice * r.Quantity);
-        var shipping = subtotal >= config.FreeShippingThreshold && config.FreeShippingThreshold > 0
-            ? 0
-            : config.ShippingPostCost;
+
+        // ارسال چندفروشنده‌ای: هر فروشنده/مارکت یک مرسوله مستقل با تعرفه اختصاصی خودش
+        var shipping = reservations
+            .GroupBy(r => r.SellerKey)
+            .Sum(g => MarketplaceShipping.PostCost(
+                g.Sum(x => x.FinalPrice * x.Quantity),
+                g.First().CostOverride,
+                g.First().FreeOverride,
+                config.ShippingPostCost,
+                config.FreeShippingThreshold));
 
         return new CheckoutReservationDto
         {

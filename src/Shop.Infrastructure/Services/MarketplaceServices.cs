@@ -184,6 +184,40 @@ public class SellerService(ApplicationDbContext db) : ISellerService
         return (true, offer.IsActive ? "پیشنهاد فعال شد." : "پیشنهاد غیرفعال شد.");
     }
 
+    public async Task<SellerOfferInput?> GetOfferForEditAsync(Guid userId, long offerId, CancellationToken ct = default)
+    {
+        var offer = await db.SellerOffers.AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == offerId && o.Seller.OwnerUserId == userId, ct);
+        if (offer is null) return null;
+
+        return new SellerOfferInput
+        {
+            ProductId = offer.ProductId,
+            Price = offer.Price,
+            DiscountPercent = offer.DiscountPercent,
+            Stock = Math.Max(0, offer.Stock - offer.ReservedCount),
+            Warranty = offer.Warranty,
+            DeliveryDays = offer.DeliveryDays
+        };
+    }
+
+    public async Task<(bool Success, string Message)> DeleteOfferAsync(Guid userId, long offerId, CancellationToken ct = default)
+    {
+        var offer = await db.SellerOffers
+            .Include(o => o.Seller)
+            .FirstOrDefaultAsync(o => o.Id == offerId && o.Seller.OwnerUserId == userId, ct);
+
+        if (offer is null) return (false, "پیشنهاد یافت نشد.");
+
+        // پاک‌سازی آیتم‌های سبد و رزروهای موجودی متصل به این آفر
+        await db.CartItems.Where(ci => ci.OfferId == offer.Id).ExecuteDeleteAsync(ct);
+        await db.StockReservations.Where(sr => sr.OfferId == offer.Id).ExecuteDeleteAsync(ct);
+
+        db.SellerOffers.Remove(offer);
+        await db.SaveChangesAsync(ct);
+        return (true, "پیشنهاد فروش حذف شد.");
+    }
+
     public async Task<(bool Success, string Message, long ProductId)> ProposeProductAsync(Guid userId, AdminProductViewModel model, CancellationToken ct = default)
     {
         var seller = await db.Sellers.FirstOrDefaultAsync(s => s.OwnerUserId == userId, ct);

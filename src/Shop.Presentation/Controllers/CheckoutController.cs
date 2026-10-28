@@ -77,6 +77,22 @@ public class CheckoutController(
         ViewBag.Settings = config;
         ViewBag.UserDefaults = user;
 
+        // روش‌های پرداخت پذیرش‌شده توسط همه فروشندگان سبد + تعداد مرسوله‌ها (ارسال چندفروشنده‌ای)
+        var uid = CurrentUserId();
+        var now = DateTime.UtcNow;
+        var resQ = db.StockReservations.AsNoTracking()
+            .Where(r => r.UserId == uid && r.Status == Shop.Domain.ReservationStatus.Active && r.ExpiresAt > now);
+
+        var sellerIds = await resQ.Where(r => r.Offer != null).Select(r => r.Offer!.SellerId).Distinct().ToListAsync(ct);
+        var hasMarketItems = await resQ.AnyAsync(r => r.Offer == null, ct);
+        var sellerPms = await db.Sellers.AsNoTracking()
+            .Where(s => sellerIds.Contains(s.Id))
+            .Select(s => s.PaymentMethods).ToListAsync(ct);
+
+        ViewBag.AcceptOnline = sellerPms.All(pm => (pm ?? "online").Split(',').Contains("online"));
+        ViewBag.AcceptCod = sellerPms.All(pm => (pm ?? "online").Split(',').Contains("cod"));
+        ViewBag.ShipmentCount = sellerIds.Count + (hasMarketItems ? 1 : 0);
+
         return View(active);
     }
 

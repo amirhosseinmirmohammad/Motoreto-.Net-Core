@@ -7,9 +7,99 @@
 
 <h4 class="fw-bold mb-3">👥 کاربران</h4>
 
+@if (_pageError is not null)
+{
+    <div class="alert alert-danger py-2">@_pageError</div>
+}
+
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <button class="btn btn-primary btn-sm" @onclick="() => _showCreate = !_showCreate">+ کاربر جدید</button>
+</div>
+
+@if (_showCreate)
+{
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+        <h6 class="fw-bold mb-3">➕ ایجاد کاربر جدید</h6>
+        @if (_createError is not null)
+        {
+            <div class="alert alert-danger py-2">@_createError</div>
+        }
+        <EditForm Model="_cm" OnValidSubmit="CreateAsync" class="row g-3">
+            <DataAnnotationsValidator />
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نام *</label>
+                <InputText @bind-Value="_cm.FirstName" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نام خانوادگی *</label>
+                <InputText @bind-Value="_cm.LastName" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">موبایل</label>
+                <InputText @bind-Value="_cm.Mobile" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">ایمیل *</label>
+                <InputText @bind-Value="_cm.Email" class="form-control" dir="ltr" />
+                <ValidationMessage For="() => _cm.Email" class="text-danger small" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">رمز عبور * (حداقل ۶ کاراکتر)</label>
+                <InputText type="password" @bind-Value="_cm.Password" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary px-4" disabled="@_busy">@(_busy ? "در حال ثبت..." : "ایجاد کاربر")</button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@if (_editId is not null)
+{
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+        <h6 class="fw-bold mb-3">✏️ ویرایش کاربر</h6>
+        @if (_editError is not null)
+        {
+            <div class="alert alert-danger py-2">@_editError</div>
+        }
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نام</label>
+                <InputText @bind-Value="_em.FirstName" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نام خانوادگی</label>
+                <InputText @bind-Value="_em.LastName" class="form-control" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">موبایل</label>
+                <InputText @bind-Value="_em.Mobile" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">موجودی کیف پول (تومان)</label>
+                <input type="number" class="form-control" dir="ltr" value="@_walletInput" @oninput="WalletChanged" />
+                <div class="form-text small text-muted">مثبت = شارژ، منفی = برداشت (AdminCharge)</div>
+            </div>
+            <div class="col-md-8 d-flex align-items-end gap-2">
+                <button class="btn btn-primary" disabled="@_busy" @onclick="SaveEditAsync">ذخیره</button>
+                <button class="btn btn-outline-secondary" @onclick="() => _editId = null">انصراف</button>
+            </div>
+        </div>
+    </div>
+}
+
 <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
-    <input type="text" class="form-control" placeholder="جستجوی نام یا ایمیل..."
-           value="@_q" @oninput="QChanged" @onkeyup="SearchAsync" />
+    <div class="d-flex gap-2 flex-wrap">
+        <input type="text" class="form-control" placeholder="جستجوی نام یا ایمیل..."
+               value="@_q" @oninput="QChanged" @onkeyup="SearchAsync" style="max-width:340px" />
+        <select class="form-select" style="max-width:200px" value="@_sort" @onchange="SortChanged">
+            <option value="new">جدیدترین</option>
+            <option value="old">قدیمی‌ترین</option>
+            <option value="name">نام (الفبا)</option>
+            <option value="orders">بیشترین سفارش</option>
+            <option value="wallet">بیشترین کیف پول</option>
+        </select>
+    </div>
 </div>
 
 @if (_loading)
@@ -42,10 +132,12 @@ else
                             <td>@u.Orders.ToString("N0")</td>
                             <td class="small">@u.Wallet.ToString("N0")</td>
                             <td><span class="badge bg-@(u.Active ? "success" : "secondary")">@(u.Active ? "فعال" : "غیرفعال")</span></td>
-                            <td class="text-end">
+                            <td class="text-end" style="white-space:nowrap">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(u.Id)">ویرایش</button>
                                 <button class="btn btn-sm btn-outline-secondary" disabled="@u.IsAdmin || _busy" @onclick="() => ToggleAsync(u.Id)" title="@((u.IsAdmin ? "ادمین قابل تغییر نیست" : ""))">
                                     @(u.Active ? "غیرفعال" : "فعال")
                                 </button>
+                                <button class="btn btn-sm btn-outline-danger" disabled="@u.IsAdmin || _busy" @onclick="() => DeleteAsync(u.Id)" title="@((u.IsAdmin ? "ادمین قابل حذف نیست" : ""))">حذف</button>
                             </td>
                         </tr>
                     }
@@ -63,9 +155,159 @@ else
 
 @code {
     private string _q = "";
+    private string _sort = "new";
     private bool _loading = true, _busy;
+    private bool _showCreate;
     private int _page = 1, _totalPages = 1;
     private List<URow> _rows = new();
+    private string? _pageError, _createError, _editError;
+
+    private CreateModel _cm = new();
+    private EditModel _em = new();
+    private Guid? _editId;
+    private string _walletInput = "0";
+
+    private sealed class CreateModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "ایمیل الزامی است.")]
+        [System.ComponentModel.DataAnnotations.EmailAddress(ErrorMessage = "ایمیل نامعتبر است.")]
+        public string Email { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "رمز عبور الزامی است.")]
+        [System.ComponentModel.DataAnnotations.StringLength(100, MinimumLength = 6, ErrorMessage = "رمز عبور حداقل ۶ کاراکتر.")]
+        public string Password { get; set; } = "";
+
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+        public string? Mobile { get; set; }
+    }
+
+    private sealed class EditModel
+    {
+        public string FirstName { get; set; } = "";
+        public string LastName { get; set; } = "";
+        public string? Mobile { get; set; }
+    }
+
+    private void WalletChanged(ChangeEventArgs e) => _walletInput = e.Value?.ToString() ?? "";
+
+    private async Task CreateAsync()
+    {
+        _busy = true;
+        _createError = null;
+        try
+        {
+            var user = new User
+            {
+                UserName = _cm.Email.Trim(),
+                Email = _cm.Email.Trim(),
+                FirstName = _cm.FirstName.Trim(),
+                LastName = _cm.LastName.Trim(),
+                Mobile = string.IsNullOrWhiteSpace(_cm.Mobile) ? null : _cm.Mobile.Trim(),
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            };
+            var result = await UserManager.CreateAsync(user, _cm.Password);
+            if (result.Succeeded)
+            {
+                _cm = new CreateModel();
+                _showCreate = false;
+                await LoadAsync();
+            }
+            else
+            {
+                _createError = string.Join(" ", result.Errors.Select(e => e.Description));
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task StartEditAsync(Guid id)
+    {
+        _pageError = _editError = null;
+        var u = await Db.Users.AsNoTracking().FirstAsync(x => x.Id == id);
+        _editId = id;
+        _em = new EditModel { FirstName = u.FirstName, LastName = u.LastName, Mobile = u.Mobile };
+        _walletInput = "0";
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editId is null) return;
+        _busy = true;
+        _editError = null;
+        try
+        {
+            var u = await Db.Users.FirstAsync(x => x.Id == _editId.Value);
+            u.FirstName = _em.FirstName.Trim();
+            u.LastName = _em.LastName.Trim();
+            u.Mobile = string.IsNullOrWhiteSpace(_em.Mobile) ? null : _em.Mobile.Trim();
+
+            // شارژ/برداشت کیف پول به‌صورت تراکنش دفتری
+            if (long.TryParse(_walletInput?.Replace(",", ""), out var delta) && delta != 0)
+            {
+                u.WalletBalance += delta;
+                Db.WalletTransactions.Add(new WalletTransaction
+                {
+                    UserId = u.Id,
+                    Amount = Math.Abs(delta),
+                    Type = WalletTransactionType.AdminCharge,
+                    BalanceAfter = u.WalletBalance,
+                    Description = delta > 0 ? "شارژ دستی توسط ادمین" : "برداشت دستی توسط ادمین",
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            await Db.SaveChangesAsync();
+            _editId = null;
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(Guid id)
+    {
+        _pageError = null;
+        _busy = true;
+        try
+        {
+            var u = await Db.Users.FirstAsync(x => x.Id == id);
+
+            if (await Db.Orders.AnyAsync(o => o.UserId == id))
+            {
+                _pageError = "این کاربر سابقه سفارش دارد و حذف امن ندارد — آن را غیرفعال کنید.";
+                return;
+            }
+
+            // پاک‌سازی وابستگی‌ها، سپس حذف کاربر (لینک‌های Identity هم توسط UserManager حذف می‌شوند)
+            var cartIds = await Db.Carts.Where(c => c.UserId == id).Select(c => c.Id).ToListAsync();
+            await Db.CartItems.Where(ci => cartIds.Contains(ci.CartId)).ExecuteDeleteAsync();
+            await Db.Carts.Where(c => c.UserId == id).ExecuteDeleteAsync();
+            await Db.Comments.Where(c => c.UserId == id).ExecuteDeleteAsync();
+            await Db.WalletTransactions.Where(w => w.UserId == id).ExecuteDeleteAsync();
+            await Db.AffiliateLeads.Where(a => a.Affiliate.UserId == id).ExecuteDeleteAsync();
+            await Db.Affiliates.Where(a => a.UserId == id).ExecuteDeleteAsync();
+            await Db.Favorites.Where(f => f.UserId == id).ExecuteDeleteAsync();
+
+            await UserManager.DeleteAsync(u);
+            if (_editId == id) _editId = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _pageError = "حذف کاربر ناموفق بود: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     private async Task GoPage(int p)
     {
@@ -78,6 +320,12 @@ else
     protected override Task OnInitializedAsync() => LoadAsync();
 
     private void QChanged(ChangeEventArgs e) => _q = e.Value?.ToString() ?? "";
+
+    private async Task SortChanged(ChangeEventArgs e)
+    {
+        _sort = e.Value?.ToString() ?? "new";
+        await SearchAsync();
+    }
 
     private async Task SearchAsync()
     {
@@ -93,8 +341,14 @@ else
             query = query.Where(u => u.Email.Contains(_q)
                 || (u.FirstName + " " + u.LastName).Contains(_q));
 
+        // sort بر اساس انتخاب کاربر
+        if (_sort == "old") query = query.OrderBy(u => u.CreatedAt);
+        else if (_sort == "name") query = query.OrderBy(u => u.FirstName).ThenBy(u => u.LastName);
+        else if (_sort == "orders") query = query.OrderByDescending(u => Db.Orders.Count(o => o.UserId == u.Id));
+        else if (_sort == "wallet") query = query.OrderByDescending(u => u.WalletBalance);
+        else query = query.OrderByDescending(u => u.CreatedAt);
+
         _rows = await query
-            .OrderByDescending(u => u.CreatedAt)
             .Skip((_page - 1) * 20)
             .Take(20)
             .Select(u => new URow(

@@ -17,6 +17,12 @@
         <option value="Delivered">تحویل شده</option>
         <option value="Canceled">لغو شده</option>
     </select>
+    <select class="form-select" style="max-width:200px" value="@_sort" @onchange="SortChanged">
+        <option value="new">جدیدترین</option>
+        <option value="old">قدیمی‌ترین</option>
+        <option value="exp">مبلغ بالا</option>
+        <option value="cheap">مبلغ پایین</option>
+    </select>
     <input type="text" class="form-control" style="max-width:260px" placeholder="شماره سفارش..."
            value="@_q" @oninput="QChanged" />
     <button class="btn btn-outline-primary" @onclick="LoadAsync">اعمال</button>
@@ -43,6 +49,7 @@ else
                         <th>مبلغ</th>
                         <th>تاریخ</th>
                         <th>تغییر وضعیت</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -63,6 +70,12 @@ else
                                     }
                                 </select>
                             </td>
+                            <td class="text-end">
+                                @if (o.Status is "AwaitingPayment" or "Canceled")
+                                {
+                                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteOrderAsync(o.Id)">حذف</button>
+                                }
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -81,7 +94,8 @@ else
 @code {
     private string _status = "";
     private string _q = "";
-    private bool _loading = true;
+    private string _sort = "new";
+    private bool _loading = true, _busy;
     private int _page = 1, _totalPages = 1;
     private string? _message;
     private List<ORow> _rows = new();
@@ -111,6 +125,13 @@ else
         await LoadAsync();
     }
 
+    private async Task SortChanged(ChangeEventArgs e)
+    {
+        _sort = e.Value?.ToString() ?? "new";
+        _page = 1;
+        await LoadAsync();
+    }
+
     private async Task LoadAsync()
     {
         var query = Db.Orders.AsNoTracking();
@@ -121,8 +142,13 @@ else
         if (!string.IsNullOrWhiteSpace(_q))
             query = query.Where(o => o.OrderNumber.Contains(_q));
 
+        // sort بر اساس انتخاب کاربر
+        if (_sort == "old") query = query.OrderBy(o => o.Id);
+        else if (_sort == "exp") query = query.OrderByDescending(o => o.Total);
+        else if (_sort == "cheap") query = query.OrderBy(o => o.Total);
+        else query = query.OrderByDescending(o => o.Id);
+
         _rows = await query
-            .OrderByDescending(o => o.Id)
             .Skip((_page - 1) * 20)
             .Take(20)
             .Select(o => new ORow(
@@ -148,6 +174,31 @@ else
         _message = ok ? $"وضعیت سفارش به «{StatusList.First(s => s.Val == st.ToString()).Label}» تغییر کرد ✓"
                       : "تغییر وضعیت ناموفق بود.";
         await LoadAsync();
+    }
+
+    // حذف کامل سفارش — فقط سفارش لغوشده/در انتظار پرداخت (سفارش پرداخت‌شده سابقه مالی دارد)
+    private async Task DeleteOrderAsync(int id)
+    {
+        var o = await Db.Orders.AsNoTracking().FirstAsync(x => x.Id == id);
+        if (o.Status is not (OrderStatus.AwaitingPayment or OrderStatus.Canceled))
+        {
+            _message = "فقط سفارش «در انتظار پرداخت» یا «لغو شده» قابل حذف است.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Db.Payments.Where(p => p.OrderId == id).ExecuteDeleteAsync();
+            await Db.OrderItems.Where(i => i.OrderId == id).ExecuteDeleteAsync();
+            await Db.Orders.Where(x => x.Id == id).ExecuteDeleteAsync();
+            _message = "سفارش حذف شد ✓";
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private static string Fa(DateTime d)

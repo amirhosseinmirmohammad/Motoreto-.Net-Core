@@ -6,7 +6,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 
-<h5 class="fw-bold mb-1">🏷️ ثبت آفر جدید</h5>
+<h5 class="fw-bold mb-1">🏷️ @(_edit ? "ویرایش آفر" : "ثبت آفر جدید")</h5>
 <p class="text-muted small">قیمت و موجودی خود را برای یکی از کالاهای فروشگاه تعیین کنید. ارزان‌ترین آفر، در صفحه کالا نمایش داده می‌شود.</p>
 
 @if (_error is not null)
@@ -20,11 +20,19 @@
 
         <div class="col-12">
             <label class="form-label small text-muted">کالا *</label>
-            <SearchableSelect Options="_products.Select(p => new SearchableSelect.Opt(p.Id.ToString(), p.Name)).ToList()"
-                              Value="_in.ProductId.ToString()"
-                              ValueChanged="v => _in.ProductId = long.TryParse(v, out var l) ? l : 0"
-                              Placeholder="جستجوی کالا..." />
-            <ValidationMessage For="() => _in.ProductId" class="text-danger small" />
+            @if (_edit)
+            {
+                <input type="text" class="form-control" value="@_editProductName" disabled />
+                <div class="form-text small text-muted">در حالت ویرایش، کالا قابل تغییر نیست.</div>
+            }
+            else
+            {
+                <SearchableSelect Options="_products.Select(p => new SearchableSelect.Opt(p.Id.ToString(), p.Name)).ToList()"
+                                  Value="_in.ProductId.ToString()"
+                                  ValueChanged="v => _in.ProductId = long.TryParse(v, out var l) ? l : 0"
+                                  Placeholder="جستجوی کالا..." />
+                <ValidationMessage For="() => _in.ProductId" class="text-danger small" />
+            }
         </div>
         <div class="col-md-6">
             <label class="form-label small text-muted">قیمت (تومان) *</label>
@@ -52,7 +60,7 @@
 
         <div class="col-12">
             <button type="submit" class="btn btn-primary w-100 py-2" disabled="@_busy">
-                @(_busy ? "در حال ثبت..." : "ثبت آفر")
+                @(_busy ? "در حال ذخیره..." : "ذخیره تغییرات")
             </button>
         </div>
     </EditForm>
@@ -62,6 +70,9 @@
     private SellerOfferInput _in = new();
     private List<ProdRow> _products = new();
     private bool _busy;
+    private bool _edit;
+    private long _editOfferId;
+    private string _editProductName = "";
     private string? _error;
 
     private sealed record ProdRow(long Id, string Name);
@@ -70,6 +81,25 @@
     {
         var uid = await GetUserIdAsync();
         var seller = await Sellers.GetByUserAsync(uid);
+
+        // حالت ویرایش: /seller/offer?id=123
+        var q = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri(Nav.Uri).Query);
+        if (q.TryGetValue("id", out var v) && long.TryParse(v.ToString(), out var editId))
+        {
+            var input = await Sellers.GetOfferForEditAsync(uid, editId);
+            if (input is not null)
+            {
+                _edit = true;
+                _editOfferId = editId;
+                _in = input;
+                _editProductName = await Db.Products.AsNoTracking()
+                    .Where(p => p.Id == _in.ProductId)
+                    .Select(p => p.Name)
+                    .FirstOrDefaultAsync() ?? "کالای حذف‌شده";
+            }
+        }
+
+        if (_edit) return; // در حالت ویرایش لیست کالاها لازم نیست
 
         var catIds = seller is null
             ? new List<int>()

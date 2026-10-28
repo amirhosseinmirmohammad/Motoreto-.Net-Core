@@ -21,6 +21,7 @@ else
             <div class="card border-0 shadow-sm rounded-4 p-3 h-100">
                 <div class="small text-muted">فروشگاه</div>
                 <div class="fw-bold">@_seller.StoreName</div>
+                <NavLink href="/seller/settings" class="small">ویرایش اطلاعات و ارسال ⚙️</NavLink>
             </div>
         </div>
         <div class="col-md-4">
@@ -77,10 +78,12 @@ else
                                 <td>@o.Available.ToString("N0")</td>
                                 <td>@o.DeliveryDays روز</td>
                                 <td><span class="badge bg-@(o.IsActive ? "success" : "secondary")">@(o.IsActive ? "فعال" : "غیرفعال")</span></td>
-                                <td class="text-end">
+                                <td class="text-end" style="white-space:nowrap">
+                                    <NavLink href="@($"/seller/offer?id={o.OfferId}")" class="btn btn-sm btn-outline-primary">ویرایش</NavLink>
                                     <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(o.OfferId)">
                                         تغییر وضعیت
                                     </button>
+                                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(o.OfferId)">حذف</button>
                                 </td>
                             </tr>
                         }
@@ -112,6 +115,16 @@ else
         _busy = true;
         var uid = await GetUserIdAsync();
         var (_, msg) = await Sellers.ToggleOfferAsync(uid, offerId);
+        _message = msg;
+        _offers = await Sellers.GetMyOffersAsync(uid);
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(long offerId)
+    {
+        _busy = true;
+        var uid = await GetUserIdAsync();
+        var (_, msg) = await Sellers.DeleteOfferAsync(uid, offerId);
         _message = msg;
         _offers = await Sellers.GetMyOffersAsync(uid);
         _busy = false;

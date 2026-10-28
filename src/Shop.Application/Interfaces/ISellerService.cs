@@ -31,6 +31,12 @@ public interface ISellerService
 
     Task<(bool Success, string Message)> ToggleOfferAsync(Guid userId, long offerId, CancellationToken ct = default);
 
+    /// <summary>گرفتن آفر خود فروشنده برای ویرایش (پیش‌پر کردن فرم).</summary>
+    Task<SellerOfferInput?> GetOfferForEditAsync(Guid userId, long offerId, CancellationToken ct = default);
+
+    /// <summary>حذف کامل آفر خود فروشنده — آیتم‌های سبد و رزروهای متصل هم پاک می‌شوند.</summary>
+    Task<(bool Success, string Message)> DeleteOfferAsync(Guid userId, long offerId, CancellationToken ct = default);
+
     /// <summary>پیشنهاد کالای جدید توسط فروشنده (تا تأیید ادمین غیرفعال است).</summary>
     Task<(bool Success, string Message, long ProductId)> ProposeProductAsync(Guid userId, AdminProductViewModel model, CancellationToken ct = default);
 

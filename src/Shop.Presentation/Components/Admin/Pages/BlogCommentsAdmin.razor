@@ -5,10 +5,16 @@
 
 <h4 class="fw-bold mb-3">💬 نظرات وبلاگ</h4>
 
-<ul class="nav nav-pills gap-2 mb-3">
-    <button class="nav-link @(!_approved ? "active" : "")" @onclick="@(async () => await SwitchAsync(false))">در انتظار تأیید</button>
-    <button class="nav-link @(_approved ? "active" : "")" @onclick="@(async () => await SwitchAsync(true))">تأییدشده</button>
-</ul>
+<div class="d-flex gap-3 align-items-center flex-wrap mb-3">
+    <ul class="nav nav-pills gap-2 mb-0">
+        <button class="nav-link @(!_approved ? "active" : "")" @onclick="@(async () => await SwitchAsync(false))">در انتظار تأیید</button>
+        <button class="nav-link @(_approved ? "active" : "")" @onclick="@(async () => await SwitchAsync(true))">تأییدشده</button>
+    </ul>
+    <select class="form-select" style="max-width:200px" value="@_sort" @onchange="SortChanged">
+        <option value="new">جدیدترین</option>
+        <option value="old">قدیمی‌ترین</option>
+    </select>
+</div>
 
 @if (_loading)
 {
@@ -37,6 +43,10 @@ else
                     {
                         <button class="btn btn-sm btn-success" disabled="@_busy" @onclick="() => DecideAsync(c.Id, true)">تأیید</button>
                     }
+                    else
+                    {
+                        <button class="btn btn-sm btn-outline-warning" disabled="@_busy" @onclick="() => DecideAsync(c.Id, false)">لغو تأیید</button>
+                    }
                     <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(c.Id)">حذف</button>
                 </div>
             </div>
@@ -49,6 +59,7 @@ else
 
 @code {
     private bool _approved;
+    private string _sort = "new";
     private bool _loading = true, _busy;
     private int _page = 1, _totalPages = 1;
     private List<BCRow> _rows = new();
@@ -70,12 +81,24 @@ else
         await LoadAsync();
     }
 
+    private async Task SortChanged(ChangeEventArgs e)
+    {
+        _sort = e.Value?.ToString() ?? "new";
+        _page = 1;
+        await LoadAsync();
+    }
+
     private async Task LoadAsync()
     {
-        _rows = await Db.BlogComments
+        var query = Db.BlogComments
             .AsNoTracking()
-            .Where(c => c.IsApproved == _approved)
-            .OrderByDescending(c => c.Id)
+            .Where(c => c.IsApproved == _approved);
+
+        // sort بر اساس انتخاب کاربر
+        if (_sort == "old") query = query.OrderBy(c => c.Id);
+        else query = query.OrderByDescending(c => c.Id);
+
+        _rows = await query
             .Skip((_page - 1) * 20)
             .Take(20)
             .Select(c => new BCRow(c.Id, c.FullName, c.Blog.Title, c.Text, c.CreatedAt))

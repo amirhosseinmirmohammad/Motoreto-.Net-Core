@@ -45,6 +45,45 @@
                 @(_busy ? "..." : "ایجاد کد")
             </button>
         </div>
+
+        @if (_editId is not null)
+        {
+            <div class="card border-0 shadow-sm rounded-4 p-4 mt-3">
+                <h6 class="fw-bold mb-3">✏️ ویرایش کد @(_editCode)</h6>
+                <div class="mb-2">
+                    <label class="form-label small text-muted">عنوان</label>
+                    <input type="text" class="form-control" value="@_eTitle" @oninput="e => _eTitle = e.Value?.ToString() ?? string.Empty" />
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label small text-muted">درصد</label>
+                        <input type="number" class="form-control" min="1" max="100" value="@_ePercent" @oninput="e => _ePercent = byte.TryParse(e.Value?.ToString(), out var v) ? v : (byte)10" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted">سقف مبلغ تخفیف (۰ = بی‌نهایت)</label>
+                        <input type="number" class="form-control" min="0" value="@_eMax" @oninput="e => _eMax = long.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+                    </div>
+                </div>
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <label class="form-label small text-muted">حداقل سفارش (تومان)</label>
+                        <input type="number" class="form-control" min="0" value="@_eMin" @oninput="e => _eMin = long.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small text-muted">سقف استفاده (۰ = بی‌نهایت)</label>
+                        <input type="number" class="form-control" min="0" value="@_eLimit" @oninput="e => _eLimit = int.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label small text-muted">انقضا</label>
+                    <input type="date" class="form-control" value="@_eExpire" @oninput="e => _eExpire = e.Value?.ToString() ?? string.Empty" />
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary flex-fill" disabled="@_busy" @onclick="SaveEditAsync">ذخیره</button>
+                    <button class="btn btn-outline-secondary" @onclick="() => _editId = null">انصراف</button>
+                </div>
+            </div>
+        }
     </div>
 
     <div class="col-lg-8">
@@ -70,10 +109,12 @@
                                 <td>@d.Used.ToString("N0") @(d.Limit is null ? "" : $"/ {d.Limit:N0}")</td>
                                 <td class="small">@(d.Expire is null ? "—" : Fa(d.Expire.Value))</td>
                                 <td><span class="badge bg-@(d.Active ? "success" : "secondary")">@(d.Active ? "فعال" : "غیرفعال")</span></td>
-                                <td class="text-end">
+                                <td class="text-end" style="white-space:nowrap">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(d.Id)">ویرایش</button>
                                     <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(d.Id)">
                                         @(d.Active ? "غیرفعال" : "فعال")
                                     </button>
+                                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(d.Id)">حذف</button>
                                 </td>
                             </tr>
                         }
@@ -173,6 +214,76 @@
         await Db.SaveChangesAsync();
         await LoadAsync();
         _busy = false;
+    }
+
+    // ---- ویرایش/حذف ----
+    private int? _editId;
+    private string _editCode = "";
+    private string _eTitle = "", _eExpire = "";
+    private byte _ePercent = 10;
+    private long _eMax, _eMin;
+    private int _eLimit;
+
+    private async Task StartEditAsync(int id)
+    {
+        _err = null;
+        var d = await Db.Discounts.AsNoTracking().FirstAsync(x => x.Id == id);
+        _editId = id;
+        _editCode = d.Code;
+        _eTitle = d.Title;
+        _ePercent = d.Percent;
+        _eMax = d.MaxAmount ?? 0;
+        _eMin = d.MinOrderAmount;
+        _eLimit = d.UsageLimit ?? 0;
+        _eExpire = d.ExpireAt?.ToString("yyyy-MM-dd") ?? "";
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editId is null) return;
+        _busy = true;
+        _err = null;
+        try
+        {
+            var d = await Db.Discounts.FirstAsync(x => x.Id == _editId.Value);
+            d.Title = string.IsNullOrWhiteSpace(_eTitle) ? d.Code : _eTitle.Trim();
+            d.Percent = Math.Clamp(_ePercent, (byte)1, (byte)100);
+            d.MaxAmount = _eMax > 0 ? _eMax : null;
+            d.MinOrderAmount = _eMin;
+            d.UsageLimit = _eLimit > 0 ? _eLimit : null;
+            d.ExpireAt = DateTime.TryParse(_eExpire, out var dt) ? dt : null;
+            await Db.SaveChangesAsync();
+            _editId = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _err = "خطا: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        _busy = true;
+        _err = null;
+        try
+        {
+            await Db.Discounts.Where(x => x.Id == id).ExecuteDeleteAsync();
+            if (_editId == id) _editId = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _err = "حذف ناموفق: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private static string Fa(DateTime d)

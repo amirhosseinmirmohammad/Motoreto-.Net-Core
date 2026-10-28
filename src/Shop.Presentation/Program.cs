@@ -60,6 +60,7 @@ try
     builder.Services.AddSingleton<Shop.Presentation.Services.ObjectStorageService>();
     builder.Services.AddScoped<Shop.Presentation.Services.ImageUploadService>();
     builder.Services.AddHttpClient<Shop.Presentation.Services.FeedImportService>();
+    builder.Services.AddHostedService<Shop.Presentation.Services.FeedSyncJob>();
     builder.Services.AddScoped<Shop.Application.Interfaces.ISmsService, Shop.Presentation.Services.KavenegarSmsService>();
 
     // ---------- Identity ----------

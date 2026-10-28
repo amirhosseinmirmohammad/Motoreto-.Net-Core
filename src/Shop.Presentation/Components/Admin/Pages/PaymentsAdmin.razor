@@ -6,12 +6,27 @@
 
 <h4 class="fw-bold mb-3">💳 تراکنش‌های پرداخت</h4>
 
+<div class="d-flex gap-2 mb-3 flex-wrap">
+    <select class="form-select" style="max-width:200px" value="@_status" @onchange="StatusChanged">
+        <option value="">همه وضعیت‌ها</option>
+        <option value="Pending">در انتظار</option>
+        <option value="Success">پرداخت شده</option>
+        <option value="Failed">ناموفق</option>
+    </select>
+    <input type="text" class="form-control" style="max-width:260px" placeholder="شماره سفارش..."
+           value="@_q" @oninput="QChanged" @onkeyup="SearchAsync" />
+</div>
+
 @if (_loading)
 {
     <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
 }
 else
 {
+    @if (_message is not null)
+    {
+        <div class="alert alert-success py-2">@_message</div>
+    }
     <div class="card border-0 shadow-sm rounded-4 p-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle">
@@ -23,6 +38,7 @@ else
                         <th>شناسه پیگیری</th>
                         <th>وضعیت</th>
                         <th>تاریخ</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -33,8 +49,18 @@ else
                             <td>@p.Amount.ToString("N0") تومان</td>
                             <td class="small" dir="ltr">@p.Gateway</td>
                             <td class="small" dir="ltr">@(p.RefId ?? "—")</td>
-                            <td><span class="badge bg-@Badge(p.Status)">@Text(p.Status)</span></td>
+                            <td>
+                                <select class="form-select form-select-sm" style="max-width:150px"
+                                        value="@p.Status.ToString()" @onchange="e => ChangeStatusAsync(p.Id, e)">
+                                    <option value="Pending">در انتظار</option>
+                                    <option value="Success">پرداخت شده</option>
+                                    <option value="Failed">ناموفق</option>
+                                </select>
+                            </td>
                             <td class="small">@Fa(p.CreatedAt)</td>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(p.Id)">حذف</button>
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -45,41 +71,95 @@ else
             <p class="text-muted text-center mb-0">تراکنشی ثبت نشده است.</p>
         }
     </div>
+
+    <Pager Page="_page" TotalPages="_totalPages" PageChanged="GoPage" />
 }
 
 @code {
-    private bool _loading = true;
+    private string _status = "";
+    private string _q = "";
+    private bool _loading = true, _busy;
+    private string? _message;
+    private int _page = 1, _totalPages = 1;
     private List<PRow> _rows = new();
 
-    private sealed record PRow(string OrderNumber, long Amount, string Gateway, string? RefId, PaymentStatus Status, DateTime CreatedAt);
+    private sealed record PRow(long Id, string OrderNumber, long Amount, string Gateway, string? RefId, PaymentStatus Status, DateTime CreatedAt);
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task GoPage(int p)
     {
-        _rows = await Db.Payments
-            .AsNoTracking()
+        _page = p;
+        await LoadAsync();
+    }
+
+    private void QChanged(ChangeEventArgs e) => _q = e.Value?.ToString() ?? "";
+
+    private async Task SearchAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task StatusChanged(ChangeEventArgs e)
+    {
+        _status = e.Value?.ToString() ?? "";
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var query = Db.Payments.AsNoTracking();
+
+        if (!string.IsNullOrEmpty(_status) && Enum.TryParse<PaymentStatus>(_status, out var st))
+            query = query.Where(p => p.Status == st);
+
+        if (!string.IsNullOrWhiteSpace(_q))
+            query = query.Where(p => p.Order.OrderNumber.Contains(_q));
+
+        var total = await query.CountAsync();
+        _totalPages = Math.Max(1, (int)Math.Ceiling(total / 20.0));
+        if (_page > _totalPages) _page = _totalPages;
+
+        _rows = await query
             .OrderByDescending(p => p.Id)
-            .Take(40)
-            .Select(p => new PRow(p.Order.OrderNumber, p.Amount, p.Gateway, p.RefId, p.Status, p.CreatedAt))
+            .Skip((_page - 1) * 20)
+            .Take(20)
+            .Select(p => new PRow(p.Id, p.Order.OrderNumber, p.Amount, p.Gateway, p.RefId, p.Status, p.CreatedAt))
             .ToListAsync();
 
         _loading = false;
     }
 
-    private static string Text(PaymentStatus s) => s switch
+    /// <summary>تغییر دستی وضعیت تراکنش توسط ادمین (مثلاً تأیید حضوری/پیگیری درگاه).</summary>
+    private async Task ChangeStatusAsync(long id, ChangeEventArgs e)
     {
-        PaymentStatus.Pending => "در انتظار",
-        PaymentStatus.Success => "پرداخت شده",
-        PaymentStatus.Failed => "ناموفق",
-        _ => s.ToString()
-    };
+        if (!Enum.TryParse<PaymentStatus>(e.Value?.ToString(), out var st)) return;
 
-    private static string Badge(PaymentStatus s) => s switch
+        _busy = true;
+        var p = await Db.Payments.FirstAsync(x => x.Id == id);
+        p.Status = st;
+        p.CompletedAt = st == PaymentStatus.Success ? DateTime.UtcNow : null;
+        await Db.SaveChangesAsync();
+        _message = "وضعیت تراکنش به‌روزرسانی شد ✓";
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(long id)
     {
-        PaymentStatus.Pending => "warning text-dark",
-        PaymentStatus.Success => "success",
-        PaymentStatus.Failed => "danger",
-        _ => "secondary"
-    };
+        _busy = true;
+        try
+        {
+            await Db.Payments.Where(x => x.Id == id).ExecuteDeleteAsync();
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
 
     private static string Fa(DateTime d)
     {

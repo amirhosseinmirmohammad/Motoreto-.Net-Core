@@ -31,6 +31,31 @@
     </div>
 </div>
 
+@if (_editId is not null)
+{
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h6 class="fw-bold mb-3">✏️ ویرایش فروشگاه متصل</h6>
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label small text-muted">نام فروشگاه</label>
+                <input type="text" class="form-control" value="@_eName" @oninput="e => _eName = e.Value?.ToString()" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">آدرس Feed</label>
+                <input type="text" class="form-control" dir="ltr" value="@_eUrl" @oninput="e => _eUrl = e.Value?.ToString()" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">فاصله Sync (دقیقه)</label>
+                <input type="number" class="form-control" min="0" value="@_eInterval" @oninput="e => _eInterval = int.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+            </div>
+            <div class="col-md-3 d-flex align-items-end gap-2">
+                <button class="btn btn-primary" disabled="@_busy" @onclick="SaveEditAsync">ذخیره</button>
+                <button class="btn btn-outline-secondary" @onclick="() => _editId = null">انصراف</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_loading)
 {
     <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
@@ -57,12 +82,14 @@ else
                     </div>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(f.Id)">ویرایش</button>
                     <button class="btn btn-sm btn-success" disabled="@_busy" @onclick="() => SyncAsync(f.Id)">
                         <i class="bi bi-arrow-repeat"></i> همگام‌سازی
                     </button>
                     <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(f.Id)">
                         @(f.Active ? "غیرفعال" : "فعال")
                     </button>
+                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(f.Id)">حذف</button>
                 </div>
             </div>
             @if (_msgFor.TryGetValue(f.Id, out var msg))
@@ -127,5 +154,56 @@ else
         await Db.SaveChangesAsync();
         await LoadAsync();
         _busy = false;
+    }
+
+    // ---- ویرایش/حذف ----
+    private int? _editId;
+    private string _eName = "", _eUrl = "";
+    private int _eInterval;
+
+    private async Task StartEditAsync(int id)
+    {
+        var f = await Db.ShopFeeds.AsNoTracking().FirstAsync(x => x.Id == id);
+        _editId = id;
+        _eName = f.ShopName;
+        _eUrl = f.FeedUrl;
+        _eInterval = f.SyncIntervalMinutes;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editId is null) return;
+        _busy = true;
+        try
+        {
+            var f = await Db.ShopFeeds.FirstAsync(x => x.Id == _editId.Value);
+            f.ShopName = _eName.Trim();
+            f.FeedUrl = _eUrl.Trim();
+            f.SyncIntervalMinutes = Math.Max(0, _eInterval);
+            await Db.SaveChangesAsync();
+            _editId = null;
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        _busy = true;
+        try
+        {
+            // کالاهای import‌شده این فید غیرفعال و قطع نسبت می‌شوند (سابقه سفارش حفظ می‌شود)
+            await Db.Products.Where(p => p.SourceFeedId == id).ExecuteUpdateAsync(s => s.SetProperty(p => p.SourceFeedId, (int?)null).SetProperty(p => p.IsActive, false));
+            await Db.ShopFeeds.Where(f => f.Id == id).ExecuteDeleteAsync();
+            if (_editId == id) _editId = null;
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 }

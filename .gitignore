@@ -292,3 +292,7 @@ FakesAssemblies/
 
 # Visual Studio 6 workspace options file
 *.opt
+
+# runtime logs
+server*.log
+src/Shop.Presentation/Logs/

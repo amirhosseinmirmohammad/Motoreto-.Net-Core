@@ -42,6 +42,7 @@ else
                                 <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(b.Id)">
                                     @(b.Visible ? "پیش‌نویس" : "نمایش")
                                 </button>
+                                <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(b.Id)">حذف</button>
                             </td>
                         </tr>
                     }
@@ -97,6 +98,21 @@ else
         await Db.SaveChangesAsync();
         await LoadAsync();
         _busy = false;
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        _busy = true;
+        try
+        {
+            await Db.BlogComments.Where(c => c.BlogId == id).ExecuteDeleteAsync();
+            await Db.Blogs.Where(b => b.Id == id).ExecuteDeleteAsync();
+            await LoadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private static string Fa(DateTime d)

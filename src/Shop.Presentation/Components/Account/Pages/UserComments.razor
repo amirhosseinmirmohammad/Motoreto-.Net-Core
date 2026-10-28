@@ -1,0 +1,187 @@
+@page "/panel/comments"
+@layout UserLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+
+<h5 class="fw-bold mb-3">💬 نظرات من</h5>
+
+@if (_saved)
+{
+    <div class="alert alert-success py-2">نظر شما به‌روزرسانی شد و مجدداً در انتظار تأیید است ✓</div>
+}
+@if (_error is not null)
+{
+    <div class="alert alert-danger py-2">@_error</div>
+}
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_rows.Count == 0)
+{
+    <div class="alert alert-light border">هنوز نظری ثبت نکرده‌اید.</div>
+}
+else
+{
+    @foreach (var c in _rows)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-2">
+            @if (_editId == c.Id)
+            {
+                <EditForm Model="_em" OnValidSubmit="SaveEditAsync" class="row g-2">
+                    <DataAnnotationsValidator />
+                    <div class="col-12 small text-muted">ویرایش نظر روی «@c.Product»</div>
+                    <div class="col-md-3">
+                        <label class="form-label small text-muted">امتیاز</label>
+                        <select class="form-select" value="@_em.Rating.ToString()" @onchange="e => _em.Rating = byte.TryParse(e.Value?.ToString(), out var r) ? r : (byte)5">
+                            <option value="5">★★★★★</option>
+                            <option value="4">★★★★</option>
+                            <option value="3">★★★</option>
+                            <option value="2">★★</option>
+                            <option value="1">★</option>
+                        </select>
+                    </div>
+                    <div class="col-md-9">
+                        <label class="form-label small text-muted">متن نظر</label>
+                        <InputTextArea @bind-Value="_em.Text" class="form-control" rows="2" />
+                        <ValidationMessage For="() => _em.Text" class="text-danger small" />
+                    </div>
+                    <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-sm btn-primary" disabled="@_busy">ذخیره</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="() => _editId = null">انصراف</button>
+                    </div>
+                </EditForm>
+            }
+            else
+            {
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <div class="small">
+                            <span class="text-warning">@Stars(c.Rating)</span>
+                            <span class="text-muted">روی «@c.Product»</span>
+                            <span class="text-muted ms-2">@c.Date.ToString("yyyy/MM/dd")</span>
+                            @if (c.Approved)
+                            {
+                                <span class="badge bg-success ms-1">تأییدشده</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark ms-1">در انتظار تأیید</span>
+                            }
+                        </div>
+                        <div class="mt-1">@c.Text</div>
+                    </div>
+                    <div class="d-flex gap-1">
+                        @if (!c.Approved)
+                        {
+                            <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="() => StartEditAsync(c.Id)">ویرایش</button>
+                        }
+                        <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(c.Id)">حذف</button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool _loading = true, _busy, _saved;
+    private string? _error;
+    private List<CRow> _rows = new();
+
+    private long? _editId;
+    private EditModel _em = new();
+
+    private sealed class EditModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "متن نظر الزامی است.")]
+        [System.ComponentModel.DataAnnotations.StringLength(2000)]
+        public string Text { get; set; } = "";
+        public byte Rating { get; set; } = 5;
+    }
+
+    private sealed record CRow(long Id, string Product, string Text, byte Rating, DateTime Date, bool Approved);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var uid = await GetUserIdAsync();
+        _rows = await Db.Comments.AsNoTracking()
+            .Where(c => c.UserId == uid)
+            .OrderByDescending(c => c.Id)
+            .Select(c => new CRow(c.Id, c.Product.Name, c.Text, c.Rating, c.CreatedAt, c.IsApproved))
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private void StartEditAsync(long id)
+    {
+        _error = null;
+        _saved = false;
+        var c = _rows.First(x => x.Id == id);
+        _editId = id;
+        _em = new EditModel { Text = c.Text, Rating = c.Rating };
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editId is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            var c = await Db.Comments.FirstAsync(x => x.Id == _editId.Value);
+            c.Text = _em.Text.Trim();
+            c.Rating = Math.Clamp(_em.Rating, (byte)1, (byte)5);
+            c.IsApproved = false; // بعد از ویرایش مجدداً نیاز به تأیید دارد
+            await Db.SaveChangesAsync();
+            _editId = null;
+            _saved = true;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = "خطا: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var uid = await GetUserIdAsync();
+            await Db.Comments.Where(c => c.Id == id && c.UserId == uid).ExecuteDeleteAsync();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = "حذف ناموفق: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task<Guid> GetUserIdAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var v = auth.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return Guid.TryParse(v, out var id) ? id : Guid.Empty;
+    }
+
+    private static string Stars(byte r) => r switch
+    {
+        5 => "★★★★★", 4 => "★★★★", 3 => "★★★", 2 => "★★", 1 => "★",
+        _ => "—"
+    };
+}

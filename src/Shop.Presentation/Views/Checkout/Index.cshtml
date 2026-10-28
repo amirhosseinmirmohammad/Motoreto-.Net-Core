@@ -3,6 +3,9 @@
     ViewData["Title"] = "تسویه حساب";
     var settings = (SiteSettings)ViewBag.Settings;
     var defaults = ViewBag.UserDefaults;
+    bool acceptOnline = ViewBag.AcceptOnline ?? true;
+    bool acceptCod = ViewBag.AcceptCod ?? true;
+    int shipmentCount = ViewBag.ShipmentCount ?? 1;
 }
 @section Styles {
 <style>
@@ -80,6 +83,12 @@
 
                 <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4 mb-3">
                     <h6 class="fw-bold mb-3"><i class="bi bi-truck"></i> روش ارسال</h6>
+                    @if (shipmentCount > 1)
+                    {
+                        <div class="alert alert-info py-2 small">
+                            <i class="bi bi-boxes"></i> سبد شما شامل <b>@(((long)shipmentCount).ToToman()) مرسوله مستقل</b> است؛ هر فروشنده با تعرفه و سقف ارسال رایگان اختصاصی خودش محاسبه می‌شود.
+                        </div>
+                    }
                     <div class="row g-2">
                         <label class="col-12 col-md-6 ship-option">
                             <input type="radio" name="ShippingMethod" value="1" checked />
@@ -98,9 +107,9 @@
                                 <i class="bi bi-lightning fs-3 text-warning"></i>
                                 <div class="flex-grow-1">
                                     <strong class="d-block">اکسپرس</strong>
-                                    <small class="text-muted">۲۴ تا ۴۸ ساعت</small>
+                                    <small class="text-muted">۲۴ تا ۴۸ ساعت @(shipmentCount > 1 ? "• " + ((long)shipmentCount).ToToman() + " مرسوله" : "")</small>
                                 </div>
-                                <strong>@settings.ShippingExpressCost.ToToman()</strong>
+                                <strong>@((settings.ShippingExpressCost * (long)shipmentCount).ToToman())</strong>
                             </div>
                         </label>
                     </div>
@@ -109,23 +118,23 @@
                 <div class="card border-0 shadow-sm rounded-4 p-3 p-md-4">
                     <h6 class="fw-bold mb-3"><i class="bi bi-wallet2"></i> روش پرداخت</h6>
                     <div class="row g-2">
-                        <label class="col-12 col-md-6 ship-option">
-                            <input type="radio" name="PaymentMethod" value="1" checked />
+                        <label class="col-12 col-md-6 ship-option" style="@(acceptOnline ? "" : "opacity:.5;pointer-events:none")">
+                            <input type="radio" name="PaymentMethod" value="1" checked="@(acceptOnline)" disabled="@(!acceptOnline)" />
                             <div class="card p-3 d-flex flex-row align-items-center gap-3">
                                 <i class="bi bi-credit-card-2-front fs-3 text-success"></i>
                                 <div>
                                     <strong class="d-block">پرداخت اینترنتی</strong>
-                                    <small class="text-muted">با درگاه بانکی امن</small>
+                                    <small class="text-muted">@(acceptOnline ? "با درگاه بانکی امن" : "یکی از فروشندگان سبد این روش را نمی‌پذیرد")</small>
                                 </div>
                             </div>
                         </label>
-                        <label class="col-12 col-md-6 ship-option">
-                            <input type="radio" name="PaymentMethod" value="2" />
+                        <label class="col-12 col-md-6 ship-option" style="@(acceptCod ? "" : "opacity:.5;pointer-events:none")">
+                            <input type="radio" name="PaymentMethod" value="2" checked="@(acceptCod && !acceptOnline)" disabled="@(!acceptCod)" />
                             <div class="card p-3 d-flex flex-row align-items-center gap-3">
                                 <i class="bi bi-cash-coin fs-3 text-info"></i>
                                 <div>
                                     <strong class="d-block">پرداخت در محل</strong>
-                                    <small class="text-muted">کد به کد هنگام تحویل</small>
+                                    <small class="text-muted">@(acceptCod ? "کد به کد هنگام تحویل" : "یکی از فروشندگان سبد این روش را نمی‌پذیرد")</small>
                                 </div>
                             </div>
                         </label>
@@ -240,7 +249,7 @@
 
     function updateTotals(discountAmount) {
         var shipping = document.querySelector('input[name="ShippingMethod"]:checked').value === '2'
-            ? @(settings.ShippingExpressCost)
+            ? @(settings.ShippingExpressCost) * @shipmentCount
             : (baseSubtotal >= @(settings.FreeShippingThreshold) && @(settings.FreeShippingThreshold) > 0 ? 0 : @(settings.ShippingPostCost));
         document.getElementById('shippingCost').textContent = shipping === 0 ? 'رایگان' : formatToman(shipping);
         var total = Math.max(0, baseSubtotal - discountAmount) + shipping;
