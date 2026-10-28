@@ -1,44 +1,130 @@
-<a href="/p/@Product.Slug" class="product-card text-decoration-none text-dark d-block bg-white rounded-3 p-2 h-100">
-    <div class="position-relative">
-        <img src="@Product.Image" class="w-100 rounded-3" style="aspect-ratio:1;object-fit:cover" alt="@Product.Name" loading="lazy" />
-        @if (Product.DiscountPercent > 0)
-        {
-            <span class="position-absolute top-0 start-0 badge bg-danger">@Product.DiscountPercent٪</span>
-        }
-    </div>
-    <div class="small fw-bold mt-2 text-truncate" title="@Product.Name">@Product.Name</div>
-    <div class="text-muted text-truncate" style="font-size:.7rem">@Product.EnglishName</div>
-    @if (!string.IsNullOrEmpty(Product.BrandName))
-    {
-        <div class="text-muted text-truncate" style="font-size:.66rem"><i class="bi bi-bookmark-star me-1"></i>@Product.BrandName</div>
-    }
-    <div class="d-flex align-items-center gap-1 mt-1" style="font-size:.72rem">
-        <i class="bi bi-star-fill text-warning"></i>
-        <span>@Product.AverageRating.ToString("0.0")</span>
-        <span class="text-muted">(@Product.CommentCount)</span>
-    </div>
-    @if (Product.Stock > 0)
-    {
-        <div class="d-flex justify-content-between align-items-end mt-1">
-            <div>
-                @if (Product.DiscountPercent > 0)
-                {
-                    <del class="text-muted d-block" style="font-size:.68rem">@Product.UnitPrice.ToToman()</del>
-                }
-                <strong class="text-danger">@Product.FinalPrice.ToToman()</strong>
-            </div>
-            @if (Product.OfferCount > 0)
+@inject IJSRuntime JS
+
+<div class="product-card bg-white rounded-3 p-2 h-100 d-flex flex-column">
+    <a href="/p/@Product.Slug" class="text-decoration-none text-dark d-block">
+        <div class="position-relative">
+            <img src="@Product.Image" class="w-100 rounded-3" style="aspect-ratio:1;object-fit:cover" alt="@Product.Name" loading="lazy" />
+            @if (Product.DiscountPercent > 0)
             {
-                <span class="badge bg-light text-dark border" style="font-size:.6rem">@Product.OfferCount فروشنده</span>
+                <span class="position-absolute top-0 start-0 badge bg-danger">@Product.DiscountPercent٪</span>
             }
         </div>
+        <div class="small fw-bold mt-2 text-truncate" title="@Product.Name">@Product.Name</div>
+        <div class="text-muted text-truncate" style="font-size:.7rem">@Product.EnglishName</div>
+        @if (!string.IsNullOrEmpty(Product.BrandName))
+        {
+            <div class="text-muted text-truncate" style="font-size:.66rem"><i class="bi bi-bookmark-star me-1"></i>@Product.BrandName</div>
+        }
+        <div class="d-flex align-items-center gap-1 mt-1" style="font-size:.72rem">
+            <i class="bi bi-star-fill text-warning"></i>
+            <span>@Product.AverageRating.ToString("0.0")</span>
+            <span class="text-muted">(@Product.CommentCount)</span>
+        </div>
+    </a>
+
+    @* ---------- انتخاب واریانت (مثل دیجی‌کالا: رنگ/حافظه روی کارت) ---------- *@
+    @if (Variants is { Count: > 0 })
+    {
+        var selected = Variants.FirstOrDefault(v => v.Id == _selectedVariantId) ?? Variants[0];
+        <div class="d-flex flex-wrap gap-1 mt-2">
+            @foreach (var v in Variants.Take(4))
+            {
+                var vid = v.Id;
+                <button type="button" @key="vid"
+                        class="btn btn-sm py-0 px-2 rounded-pill @(vid == _selectedVariantId ? "btn-primary" : "btn-outline-secondary")"
+                        style="font-size:.66rem" @onclick="() => SelectVariant(vid)">
+                    @v.Label
+                </button>
+            }
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-1">
+            <strong class="text-danger" style="font-size:.85rem">@selected.FinalPrice.ToToman()</strong>
+            <span class="text-muted" style="font-size:.64rem">@(selected.Stock > 0 ? "موجود" : "ناموجود")</span>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary w-100 mt-1 rounded-pill"
+                disabled="@(_cartBusy || selected.Stock == 0)" @onclick="@(async () => await AddToCartAsync(selected))">
+            @if (_cartBusy)
+            {
+                <span class="spinner-border spinner-border-sm"></span>
+            }
+            else if (_added)
+            {
+                <span><i class="bi bi-check2"></i> اضافه شد</span>
+            }
+            else
+            {
+                <span><i class="bi bi-cart-plus me-1"></i> افزودن به سبد</span>
+            }
+        </button>
+        @if (_cartMsg is not null)
+        {
+            <div class="small text-danger mt-1">@_cartMsg</div>
+        }
+    }
+    else if (Product.Stock > 0)
+    {
+        <a href="/p/@Product.Slug" class="text-decoration-none">
+            <div class="d-flex justify-content-between align-items-end mt-1">
+                <div>
+                    @if (Product.DiscountPercent > 0)
+                    {
+                        <del class="text-muted d-block" style="font-size:.68rem">@Product.UnitPrice.ToToman()</del>
+                    }
+                    <strong class="text-danger">@Product.FinalPrice.ToToman()</strong>
+                </div>
+                @if (Product.OfferCount > 0)
+                {
+                    <span class="badge bg-light text-dark border" style="font-size:.6rem">@Product.OfferCount فروشنده</span>
+                }
+            </div>
+        </a>
     }
     else
     {
         <div class="text-muted small mt-2">ناموجود</div>
     }
-</a>
+</div>
 
 @code {
     [Parameter, EditorRequired] public ProductCardDto Product { get; set; } = default!;
+
+    /// <summary>واریانت‌های موجود کالا (اختیاری — از ProductList پاس داده می‌شود).</summary>
+    [Parameter] public List<CardVariant>? Variants { get; set; }
+
+    private long? _selectedVariantId;
+    private bool _cartBusy, _added;
+    private string? _cartMsg;
+
+    /// <summary>یک واریانت برای نمایش روی کارت.</summary>
+    public sealed record CardVariant(long Id, string Label, long Price, long FinalPrice, int Stock);
+
+    private void SelectVariant(long id)
+    {
+        _selectedVariantId = id;
+        _added = false;
+        _cartMsg = null;
+    }
+
+    private async Task AddToCartAsync(CardVariant v)
+    {
+        if (v.Stock == 0) return;
+        _cartBusy = true;
+        _cartMsg = null;
+        try
+        {
+            var res = await JS.InvokeAsync<CartApiResult>("shopAddToCart", Product.Id, v.Id, 1);
+            if (res.Success) _added = true;
+            else _cartMsg = res.Message ?? "خطا در افزودن به سبد";
+        }
+        catch
+        {
+            _cartMsg = "خطا در افزودن به سبد — دوباره تلاش کنید.";
+        }
+        finally
+        {
+            _cartBusy = false;
+        }
+    }
+
+    private sealed record CartApiResult(bool Success, string? Message);
 }

@@ -2,6 +2,10 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="utf-8" />
+    @{
+        var xsrfToken = Context.RequestServices.GetRequiredService<Microsoft.AspNetCore.Antiforgery.IAntiforgery>().GetAndStoreTokens(Context).RequestToken;
+    }
+    <meta name="csrf-token" content="@xsrfToken" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#ef4056" />
     <title>@ViewData["Title"] - فروشگاه شاپ</title>

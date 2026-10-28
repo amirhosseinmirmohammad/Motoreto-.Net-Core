@@ -7,8 +7,23 @@
     // ---------- توکن Antiforgery ----------
     function antiforgeryToken() {
         var hidden = document.querySelector('input[name="__RequestVerificationToken"]');
-        return hidden ? hidden.value : '';
+        if (hidden) return hidden.value;
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
     }
+
+    // افزودن به سبد از کارت‌های Blazor — Promise برمی‌گرداند
+    window.shopAddToCart = function (productId, variantId, quantity) {
+        return fetch('/api/cart/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'RequestVerificationToken': antiforgeryToken(),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({ productId: productId, variantId: variantId || null, quantity: quantity || 1 })
+        }).then(function (r) { return r.json(); });
+    };
 
     window.ajaxPost = function (url, data, onDone, onFail) {
         fetch(url, {

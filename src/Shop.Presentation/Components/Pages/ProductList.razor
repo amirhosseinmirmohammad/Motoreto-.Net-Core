@@ -4,6 +4,7 @@
 @inject ICategoryService CategoryService
 @inject IJSRuntime JS
 @inject NavigationManager Nav
+@inject ApplicationDbContext Db
 @implements IDisposable
 
 <PageTitle>@(_activeName is null ? "فروشگاه | لیست محصولات" : $"خرید {_activeName}")</PageTitle>
@@ -224,7 +225,7 @@
                     @foreach (var p in _items)
                     {
                         <div class="col">
-                            <ProductCard Product="p" />
+                            <ProductCard Product="p" Variants="_variantsByProduct.GetValueOrDefault(p.Id)" />
                         </div>
                     }
 
@@ -338,6 +339,7 @@
         _totalCount = result.TotalCount;
         _nextPage = 2;
         _hasMore = result.HasNext;
+        await LoadVariantsAsync();
         _initialLoading = false;
 
         // Facets: برند + ویژگی‌ها با تعداد — روی نتیجه بدون فیلتر برند/ویژگی
@@ -485,12 +487,53 @@
             _items.AddRange(result.Items);
             _nextPage++;
             _hasMore = result.HasNext;
+            await LoadVariantsAsync();
         }
         finally
         {
             _loadingMore = false;
             StateHasChanged();
         }
+    }
+
+    private Dictionary<long, List<ProductCard.CardVariant>> _variantsByProduct = new();
+
+    /// <summary>واریانت‌های موجود کالاهای لیست — یک کوئری برای همه (برای انتخابگر روی کارت).</summary>
+    private async Task LoadVariantsAsync()
+    {
+        var ids = _items.Select(p => p.Id).ToList();
+        if (ids.Count == 0) return;
+
+        var rows = await Db.ProductVariants.AsNoTracking()
+            .Where(v => ids.Contains(v.ProductId) && v.Stock > 0)
+            .Select(v => new { v.ProductId, v.Id, v.AttributesJson, v.Price, v.DiscountPercent, v.Stock })
+            .ToListAsync();
+
+        _variantsByProduct = rows
+            .GroupBy(v => v.ProductId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(v => new ProductCard.CardVariant(
+                    v.Id,
+                    VariantLabel(v.AttributesJson),
+                    v.Price ?? 0,
+                    (v.Price ?? 0) - (v.Price ?? 0) * v.DiscountPercent / 100,
+                    v.Stock)).ToList());
+    }
+
+    /// <summary>برچسب واریانت از AttributesJson — مقادیر با « / » جدا می‌شوند (مثل: قرمز / ۱۲۸ گیگ).</summary>
+    private static string VariantLabel(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return "استاندارد";
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var vals = doc.RootElement.EnumerateArray()
+                .Select(e => e.GetProperty("value").GetString() ?? "")
+                .Where(s => s.Length > 0).ToList();
+            return vals.Count > 0 ? string.Join(" / ", vals) : "استاندارد";
+        }
+        catch { return "استاندارد"; }
     }
 
     private static string? FindName(List<CategoryNodeDto> nodes, string? slug)
