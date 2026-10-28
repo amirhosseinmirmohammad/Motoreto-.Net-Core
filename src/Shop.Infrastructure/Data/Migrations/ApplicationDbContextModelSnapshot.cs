@@ -709,9 +709,21 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_urgent");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("latitude");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("double precision")
+                        .HasColumnName("longitude");
+
                     b.Property<string>("MainImage")
                         .HasColumnType("text")
                         .HasColumnName("main_image");
+
+                    b.Property<string>("Neighborhood")
+                        .HasColumnType("text")
+                        .HasColumnName("neighborhood");
 
                     b.Property<DateTime?>("PaidAt")
                         .HasColumnType("timestamp with time zone")

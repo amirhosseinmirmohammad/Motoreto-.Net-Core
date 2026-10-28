@@ -3,7 +3,78 @@
 -- قابل اجرای مجدد (idempotent)
 -- ============================================================
 
--- ---------- دسته‌ها ----------
+-- ---------- دسته‌های تکمیلی (نسخه ۲) ----------
+INSERT INTO classified_categories (name, slug, icon, sort_order, is_active)
+SELECT v.name, v.slug, v.icon, v.ord, true
+FROM (VALUES
+    ('سرگرمی و فراغت', 'entertainment', 'bi-dice5', 10),
+    ('اجتماعی', 'social', 'bi-people', 11),
+    ('تجهیزات صنعتی', 'industrial', 'bi-gear-wide-connected', 12),
+    ('ابزار و مواد', 'tools', 'bi-wrench', 13),
+    ('مواد غذایی', 'food', 'bi-basket', 14),
+    ('اجاره خودرو', 'car-rental', 'bi-key', 15)
+) AS v(name, slug, icon, ord)
+WHERE NOT EXISTS (SELECT 1 FROM classified_categories c WHERE c.slug = v.slug);
+
+-- ویژگی‌های سرگرمی
+INSERT INTO classified_attributes (category_id, name, type, options, is_required, sort_order)
+SELECT c.id, v.name, v.type, v.options, v.req, v.ord
+FROM classified_categories c
+JOIN (VALUES
+    ('نوع', 'select', 'کتاب و مجله,بلیط,اسباب‌بازی,سازنده موسیقی,ورزش و سرگرمی,سایر', true, 1),
+    ('وضعیت', 'select', 'نو,در حد نو,کارکرده', true, 2)
+) AS v(name, type, options, req, ord) ON c.slug = 'entertainment'
+WHERE NOT EXISTS (SELECT 1 FROM classified_attributes a WHERE a.category_id = c.id AND a.name = v.name);
+
+-- ویژگی‌های اجتماعی
+INSERT INTO classified_attributes (category_id, name, type, options, is_required, sort_order)
+SELECT c.id, v.name, v.type, v.options, v.req, v.ord
+FROM classified_categories c
+JOIN (VALUES
+    ('نوع', 'select', 'گمشده و یافته‌شده,گروه و انجمن,پیام عمومی,نیاز به کمک', true, 1)
+) AS v(name, type, options, req, ord) ON c.slug = 'social'
+WHERE NOT EXISTS (SELECT 1 FROM classified_attributes a WHERE a.category_id = c.id AND a.name = v.name);
+
+-- ویژگی‌های صنعتی
+INSERT INTO classified_attributes (category_id, name, type, options, is_required, sort_order)
+SELECT c.id, v.name, v.type, v.options, v.req, v.ord
+FROM classified_categories c
+JOIN (VALUES
+    ('نوع', 'select', 'تولیدی و صنعتی,اداری و دفتری,کشاورزی و دامداری,ساختمانی و تاسیسات', true, 1),
+    ('وضعیت', 'select', 'نو,کارکرده', false, 2)
+) AS v(name, type, options, req, ord) ON c.slug = 'industrial'
+WHERE NOT EXISTS (SELECT 1 FROM classified_attributes a WHERE a.category_id = c.id AND a.name = v.name);
+
+-- ویژگی‌های ابزار و مواد
+INSERT INTO classified_attributes (category_id, name, type, options, is_required, sort_order)
+SELECT c.id, v.name, v.type, v.options, v.req, v.ord
+FROM classified_categories c
+JOIN (VALUES
+    ('نوع', 'select', 'ابزار برقی,ابزار دستی,مواد اولیه,تجهیزات کارگاهی', true, 1),
+    ('وضعیت', 'select', 'نو,کارکرده', false, 2)
+) AS v(name, type, options, req, ord) ON c.slug = 'tools'
+WHERE NOT EXISTS (SELECT 1 FROM classified_attributes a WHERE a.category_id = c.id AND a.name = v.name);
+
+-- ویژگی‌های مواد غذایی
+INSERT INTO classified_attributes (category_id, name, type, options, is_required, sort_order)
+SELECT c.id, v.name, v.type, v.options, v.req, v.ord
+FROM classified_categories c
+JOIN (VALUES
+    ('نوع', 'select', 'خواربار,صنایع غذایی,رستوران و کترینگ,تنقلات', true, 1)
+) AS v(name, type, options, req, ord) ON c.slug = 'food'
+WHERE NOT EXISTS (SELECT 1 FROM classified_attributes a WHERE a.category_id = c.id AND a.name = v.name);
+
+-- ویژگی‌های اجاره خودرو
+INSERT INTO classified_attributes (category_id, name, type, options, is_required, sort_order)
+SELECT c.id, v.name, v.type, v.options, v.req, v.ord
+FROM classified_categories c
+JOIN (VALUES
+    ('نوع خودرو', 'select', 'سواری,وانت,ون و مینی‌بوس,اجرت‌السفر', true, 1),
+    ('مدل (سال)', 'number', NULL, true, 2),
+    ('راننده همراه', 'bool', NULL, false, 3)
+) AS v(name, type, options, req, ord) ON c.slug = 'car-rental'
+WHERE NOT EXISTS (SELECT 1 FROM classified_attributes a WHERE a.category_id = c.id AND a.name = v.name);
+
 INSERT INTO classified_categories (name, slug, icon, sort_order, is_active)
 SELECT v.name, v.slug, v.icon, v.ord, true
 FROM (VALUES

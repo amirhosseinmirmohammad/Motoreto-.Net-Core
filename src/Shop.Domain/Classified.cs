@@ -77,6 +77,12 @@ public class ClassifiedAd
     public int CityId { get; set; }
     public virtual City City { get; set; } = default!;
 
+    /// <summary>محله / منطقه آگهی (مثل دیوار: سعادت‌آباد، پونک و...).</summary>
+    public string? Neighborhood { get; set; }
+    /// <summary>موقعیت جغرافیایی اختیاری — برای نمایش روی نقشه.</summary>
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+
     public Guid UserId { get; set; }
     public virtual User User { get; set; } = default!;
 

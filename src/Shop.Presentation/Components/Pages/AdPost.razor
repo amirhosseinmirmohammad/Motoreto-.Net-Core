@@ -47,6 +47,18 @@ else
                     }
                 </select>
             </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">محله / منطقه (اختیاری)</label>
+                <InputText @bind-Value="_m.Neighborhood" class="form-control" placeholder="مثلاً: سعادت‌آباد" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">عرض جغرافیایی (اختیاری)</label>
+                <InputNumber @bind-Value="_m.Latitude" class="form-control" dir="ltr" step="0.000001" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">طول جغرافیایی (اختیاری)</label>
+                <InputNumber @bind-Value="_m.Longitude" class="form-control" dir="ltr" step="0.000001" />
+            </div>
 
             <div class="col-12">
                 <label class="form-label small text-muted">عنوان آگهی *</label>
@@ -173,6 +185,9 @@ else
 
         public int CityId { get; set; }
         public string? MainImage { get; set; }
+        public string? Neighborhood { get; set; }
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
     }
 
     private PostModel _m = new();
@@ -297,6 +312,9 @@ else
                 CityId = _m.CityId,
                 UserId = uid,
                 Phone = _m.Phone.Trim(),
+                Neighborhood = string.IsNullOrWhiteSpace(_m.Neighborhood) ? null : _m.Neighborhood.Trim(),
+                Latitude = _m.Latitude,
+                Longitude = _m.Longitude,
                 MainImage = string.IsNullOrWhiteSpace(_m.MainImage) ? null : _m.MainImage,
                 ImagesJson = string.Join(",", new[] { _g1, _g2, _g3 }.Where(u => !string.IsNullOrWhiteSpace(u))),
                 AttributesJson = attrsJson,
