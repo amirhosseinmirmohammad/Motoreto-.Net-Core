@@ -32,6 +32,12 @@
     </div>
 
     <div class="col-lg-8">
+        <div class="d-flex gap-2 mb-3">
+            <select class="form-select" style="max-width:200px" value="@_sort" @onchange="SortChanged">
+                <option value="name">نام (الفبا)</option>
+                <option value="new">جدیدترین</option>
+            </select>
+        </div>
         @if (_loading)
         {
             <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
@@ -88,6 +94,13 @@
     private string? _err, _msg;
 
     private List<Brand> _rows = new();
+    private string _sort = "name";
+
+    private async Task SortChanged(ChangeEventArgs e)
+    {
+        _sort = e.Value?.ToString() ?? "name";
+        await LoadAsync();
+    }
     private List<CatRow> _cats = new();
     private Dictionary<int, BrandDraft> _draft = new();
 
@@ -114,7 +127,9 @@
 
     private async Task LoadAsync()
     {
-        _rows = await Db.Brands.AsNoTracking().OrderBy(b => b.Name).ToListAsync();
+        var query = Db.Brands.AsNoTracking();
+        query = _sort == "new" ? query.OrderByDescending(b => b.Id) : query.OrderBy(b => b.Name);
+        _rows = await query.ToListAsync();
 
         var mappings = await Db.BrandCategories.AsNoTracking().ToListAsync();
 
