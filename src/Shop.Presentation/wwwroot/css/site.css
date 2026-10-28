@@ -633,3 +633,37 @@ a { color: var(--brand); }
 @media(min-width:769px){.bottom-nav{display:none !important}}
 /* فضای خالی پایین صفحه برای پنهان نشدن محتوا در موبایل */
 @media(max-width:768px){body{padding-bottom:72px}}
+
+/* ============================================================
+   Dark Mode — data-bs-theme="dark" (Bootstrap 5.3) + overrides
+   ============================================================ */
+[data-bs-theme="dark"] body {
+    background: #121417;
+    color: #e4e6eb;
+}
+[data-bs-theme="dark"] .bg-white,
+[data-bs-theme="dark"] .card.bg-white,
+[data-bs-theme="dark"] .product-card,
+[data-bs-theme="dark"] .filter-panel {
+    background-color: #1c1f23 !important;
+    color: #e4e6eb;
+}
+[data-bs-theme="dark"] .text-dark { color: #e4e6eb !important; }
+[data-bs-theme="dark"] .text-muted { color: #9aa0a6 !important; }
+[data-bs-theme="dark"] .border, [data-bs-theme="dark"] .border-bottom, [data-bs-theme="dark"] .border-top {
+    border-color: #2c3034 !important;
+}
+[data-bs-theme="dark"] .bg-light { background-color: #24272b !important; }
+[data-bs-theme="dark"] .btn-outline-secondary { color: #cfd2d6; border-color: #4a4f55; }
+[data-bs-theme="dark"] .btn-outline-secondary:hover { background: #2c3034; }
+[data-bs-theme="dark"] .badge.bg-light { background: #2c3034 !important; color: #e4e6eb; }
+[data-bs-theme="dark"] .dropdown-menu { background: #1c1f23; border-color: #2c3034; }
+[data-bs-theme="dark"] .dropdown-item { color: #e4e6eb; }
+[data-bs-theme="dark"] .dropdown-item:hover { background: #2c3034; }
+[data-bs-theme="dark"] .form-control, [data-bs-theme="dark"] .form-select {
+    background: #1c1f23; color: #e4e6eb; border-color: #3a3f45;
+}
+[data-bs-theme="dark"] .form-control::placeholder { color: #6c757d; }
+[data-bs-theme="dark"] .alert-light { background: #1c1f23; color: #e4e6eb; }
+[data-bs-theme="dark"] .table { color: #e4e6eb; }
+[data-bs-theme="dark"] .table-hover tbody tr:hover { color: #fff; }

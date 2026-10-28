@@ -42,6 +42,11 @@
             <div class="header-actions d-flex align-items-center gap-2">
                 @if (User.Identity?.IsAuthenticated == true)
                 {
+                    @* Dark mode toggle *@
+                    <button class="btn btn-icon" id="themeToggle" aria-label="حالت شب" title="حالت روشن/شب">
+                        <i class="bi bi-moon-stars fs-5" id="themeIcon"></i>
+                    </button>
+
                     @* زنگوله اعلان‌ها *@
                     <div class="dropdown position-relative">
                         <button class="btn btn-icon position-relative" data-bs-toggle="dropdown" id="notifBell" aria-label="اعلان‌ها">

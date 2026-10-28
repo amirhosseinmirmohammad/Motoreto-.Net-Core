@@ -277,6 +277,27 @@
         });
     }
 
+    // ---------- Dark mode ----------
+    (function () {
+        var html = document.documentElement;
+        var saved = localStorage.getItem('theme');
+        if (saved) html.setAttribute('data-bs-theme', saved);
+        function refresh() {
+            var dark = html.getAttribute('data-bs-theme') === 'dark';
+            var ic = document.getElementById('themeIcon');
+            if (ic) ic.className = dark ? 'bi bi-sun fs-5' : 'bi bi-moon-stars fs-5';
+        }
+        refresh();
+        var t = document.getElementById('themeToggle');
+        if (t) t.addEventListener('click', function () {
+            var dark = html.getAttribute('data-bs-theme') === 'dark';
+            var next = dark ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', next);
+            localStorage.setItem('theme', next);
+            refresh();
+        });
+    })();
+
     // ---------- PWA + اعلان بروزرسانی نسخه ----------
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
@@ -406,6 +427,17 @@
         for (var i = 0; i < raw.length; i++) arr[i] = raw.charCodeAt(i);
         return arr;
     }
+    window.initUserHub = function (dotnetRef) {
+        if (!window.signalR) return;
+        var c = new signalR.HubConnectionBuilder().withUrl('/hubs/app').withAutomaticReconnect().build();
+        c.on('notify', function () { dotnetRef.invokeMethodAsync('OnRemoteNotify'); });
+        c.start().catch(function () { });
+        window.__userHub = c;
+    };
+    window.disposeUserHub = function () {
+        if (window.__userHub) { try { window.__userHub.stop(); } catch (e) { } window.__userHub = null; }
+    };
+
     window.initChatHub = function (adId, dotnetRef) {
         function start() {
             if (!window.signalR) return;

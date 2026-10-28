@@ -6,6 +6,8 @@
 @inject NavigationManager Nav
 @inject IEventPublisher Events
 @inject IJSRuntime JS
+@implements IDisposable
+@inject IJSRuntime JS
 
 <h5 class="fw-bold mb-3">📢 آگهی‌ها و گفتگوهای من</h5>
 
@@ -52,11 +54,16 @@ else
     @if (_chart14.Count > 0)
     {
         <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
-            <h6 class="fw-bold mb-3">📊 بازدید ۱۴ روز اخیر</h6>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">📊 بازدید اخیر</h6>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill" @onclick="ToggleChartDays">
+                    @(_chartDays == 14 ? "۱۴ روز" : "۳۰ روز")
+                </button>
+            </div>
             <div class="d-flex align-items-end gap-1" style="height:110px">
                 @foreach (var d in _chart14)
                 {
-                    var h = d.Max > 0 ? Math.Max(6, d.Count * 100 / d.Max) : 6;
+                    var h = _chartMax > 0 ? Math.Max(6, d.Count * 100 / _chartMax) : 6;
                     <div class="flex-fill text-center" title="@d.Label: @d.Count.ToString("N0") بازدید">
                         <div class="bg-primary rounded-top mx-auto" style="height:@(h)px;width:70%;opacity:.85"></div>
                         <div class="small text-muted" style="font-size:.6rem">@d.Label</div>
@@ -178,7 +185,53 @@ else
     private string? _msg;
     private Guid _uid;
     private (int TotalViews, int ActiveCount, int TotalChats, int Favorites) _stats;
-    private List<(string Label, int Count, int Max)> _chart14 = new();
+    private List<(string Label, int Count)> _chart14 = new();
+    private int _chartMax;
+    private int _chartDays = 14;
+    private List<(DateTime Date, int Count)> _viewsRaw = new();
+    private DotNetObjectReference<MyAds>? _selfRef;
+
+    private void BuildChart()
+    {
+        var pc = new System.Globalization.PersianCalendar();
+        var chart = new List<(string Label, int Count)>();
+        for (var i = _chartDays - 1; i >= 0; i--)
+        {
+            var day = DateTime.UtcNow.Date.AddDays(-i);
+            var cnt = _viewsRaw.FirstOrDefault(v => v.Date == day).Count;
+            chart.Add(($"{pc.GetMonth(day):00}/{pc.GetDayOfMonth(day):00}".ToFarsiDigits(), cnt));
+        }
+        _chartMax = chart.Count > 0 ? chart.Max(c => c.Count) : 0;
+        _chart14 = chart;
+    }
+
+    private void ToggleChartDays()
+    {
+        _chartDays = _chartDays == 14 ? 30 : 14;
+        BuildChart();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_loading)
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("initUserHub", _selfRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnRemoteNotify()
+    {
+        await OnInitializedAsync();
+        StateHasChanged();
+    }
+
+    public async void Dispose()
+    {
+        try { await JS.InvokeVoidAsync("disposeUserHub"); } catch { }
+        _selfRef?.Dispose();
+    }
     private List<AdRow> _myAds = new();
     private List<ChatRow> _myChats = new();
     private List<FavRow> _favs = new();
@@ -240,28 +293,20 @@ else
         _searchesRawCity = searches.ToDictionary(s => s.Id, s => s.CityId);
 
         // ---------- آمار آگهی‌دهنده ----------
-        var since = DateTime.UtcNow.AddDays(-13).Date;
-        var viewsByDay = await Db.ClassifiedAdViewDailies.AsNoTracking()
+        var since = DateTime.UtcNow.AddDays(-(_chartDays - 1)).Date;
+        var raw = await Db.ClassifiedAdViewDailies.AsNoTracking()
             .Where(v => v.UserId == _uid && v.Date >= since)
             .GroupBy(v => v.Date)
             .Select(g => new { Date = g.Key, Count = g.Sum(x => x.Count) })
             .ToListAsync();
-
-        var chart = new List<(string Label, int Count, int Max)>();
-        for (var i = 13; i >= 0; i--)
-        {
-            var day = DateTime.UtcNow.Date.AddDays(-i);
-            var cnt = viewsByDay.FirstOrDefault(v => v.Date == day)?.Count ?? 0;
-            var pc = new System.Globalization.PersianCalendar();
-            chart.Add(($"{pc.GetMonth(day):00}/{pc.GetDayOfMonth(day):00}".ToFarsiDigits(), cnt, 0));
-        }
-        var max = chart.Count > 0 ? chart.Max(c => c.Count) : 0;
-        _chart14 = chart.Select(c => (c.Label, c.Count, max)).ToList();
+        _viewsRaw = raw.Select(x => (x.Date, Count: (int)x.Count)).ToList();
 
         _stats.TotalViews = (int)_myAds.Sum(a => a.ViewCount);
         _stats.ActiveCount = _myAds.Count(a => a.Status == ClassifiedAdStatus.Approved);
         _stats.Favorites = await Db.ClassifiedFavorites.CountAsync(f => f.Ad.UserId == _uid);
         _stats.TotalChats = await Db.ClassifiedChatMessages.CountAsync(m => m.Ad.UserId == _uid);
+
+        BuildChart();
 
         var chatAdIds = await Db.ClassifiedChatMessages
             .Where(m => m.UserId == _uid || m.Ad.UserId == _uid)
