@@ -1,6 +1,7 @@
 @page "/ads/{Id:long}"
 @inject ApplicationDbContext Db
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthState
 @using System.Text.Json
 
 @if (_ad is null)
@@ -76,6 +77,29 @@ else
                 {
                     <div class="alert alert-secondary py-2 mt-2 mb-0 text-center small">این آگهی فروخته/مسترد شده است</div>
                 }
+
+                @if (_canChat)
+                {
+                    <hr />
+                    @if (_chatSent)
+                    {
+                        <div class="alert alert-success py-2 small mb-0">پیام شما ارسال شد ✓ <NavLink href="@($"/panel/ads/chat/{Id}")">مشاهده گفتگو</NavLink></div>
+                    }
+                    else
+                    {
+                        <label class="form-label small text-muted">💬 پیام به آگهی‌دهنده</label>
+                        <textarea class="form-control" rows="2" value="@_chatText" @oninput="e => _chatText = e.Value?.ToString() ?? string.Empty"></textarea>
+                        @if (_chatErr is not null)
+                        {
+                            <div class="text-danger small mt-1">@_chatErr</div>
+                        }
+                        <button class="btn btn-outline-primary w-100 mt-2" disabled="@(_chatBusy || string.IsNullOrWhiteSpace(_chatText))" @onclick="SendChatAsync">ارسال پیام</button>
+                    }
+                }
+                else if (_isOwnerViewing)
+                {
+                    <NavLink href="@($"/panel/ads/chat/{Id}")" class="btn btn-outline-primary w-100 mt-3">💬 گفتگوی این آگهی</NavLink>
+                }
             </div>
         </div>
     </div>
@@ -85,6 +109,9 @@ else
     [Parameter] public long Id { get; set; }
 
     private bool _loaded, _showPhone;
+    private bool _canChat, _isOwnerViewing, _chatSent, _chatBusy;
+    private string _chatText = "";
+    private string? _chatErr;
     private AdVm? _ad;
     private List<(string Name, string Value)> _attrs = new();
 
@@ -104,8 +131,48 @@ else
             _ad = a;
             _attrs = ParseAttrs(a.AttrJson);
             await Db.ClassifiedAds.Where(x => x.Id == Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.ViewCount, x => x.ViewCount + 1));
+
+            // فرم پیام: فقط کاربر واردشده و غیرِ آگهی‌دهنده
+            var auth = await AuthState.GetAuthenticationStateAsync();
+            if (auth.User.Identity?.IsAuthenticated == true
+                && Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var uid))
+            {
+                _isOwnerViewing = await Db.ClassifiedAds.AnyAsync(x => x.Id == Id && x.UserId == uid);
+                _canChat = !_isOwnerViewing;
+            }
         }
         _loaded = true;
+    }
+
+    private async Task SendChatAsync()
+    {
+        _chatErr = Shop.Shared.ContentFilter.ViolationMessage(_chatText);
+        if (_chatErr is not null) return;
+
+        _chatBusy = true;
+        try
+        {
+            var auth = await AuthState.GetAuthenticationStateAsync();
+            var uid = Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+            Db.ClassifiedChatMessages.Add(new ClassifiedChatMessage
+            {
+                AdId = Id,
+                UserId = uid,
+                Text = _chatText.Trim(),
+                IsFromOwner = false,
+                CreatedAt = DateTime.UtcNow
+            });
+            await Db.SaveChangesAsync();
+            _chatSent = true;
+        }
+        catch (Exception ex)
+        {
+            _chatErr = "خطا در ارسال: " + ex.Message;
+        }
+        finally
+        {
+            _chatBusy = false;
+        }
     }
 
     private static List<(string, string)> ParseAttrs(string? json)

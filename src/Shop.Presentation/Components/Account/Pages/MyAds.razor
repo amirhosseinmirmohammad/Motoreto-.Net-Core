@@ -1,0 +1,156 @@
+@page "/panel/ads"
+@layout UserLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<h5 class="fw-bold mb-3">📢 آگهی‌ها و گفتگوهای من</h5>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    @if (_msg is not null)
+    {
+        <div class="alert alert-success py-2">@_msg</div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+        <h6 class="fw-bold mb-3">آگهی‌های من <NavLink href="/ads/post" class="btn btn-sm btn-primary float-end">+ آگهی جدید</NavLink></h6>
+        @if (_myAds.Count == 0)
+        {
+            <p class="text-muted small mb-0">هنوز آگهی ثبت نکرده‌اید.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead><tr><th>عنوان</th><th>قیمت</th><th>وضعیت</th><th>بازدید</th><th></th></tr></thead>
+                    <tbody>
+                        @foreach (var a in _myAds)
+                        {
+                            <tr>
+                                <td class="fw-bold" style="max-width:220px">@a.Title</td>
+                                <td class="small">@(a.Price is null ? "توافقی" : a.Price == 0 ? "رایگان" : a.Price.Value.ToString("N0"))</td>
+                                <td><span class="badge bg-@(a.Status == ClassifiedAdStatus.Approved ? "success" : a.Status == ClassifiedAdStatus.Pending ? "warning text-dark" : "secondary")">@StatusText(a.Status)</span></td>
+                                <td class="small">@a.ViewCount.ToString("N0")</td>
+                                <td class="text-end" style="white-space:nowrap">
+                                    <NavLink href="@($"/ads/{a.Id}")" class="btn btn-sm btn-outline-secondary">نمایش</NavLink>
+                                    <button class="btn btn-sm btn-outline-dark" disabled="@_busy" @onclick="() => ToggleSoldAsync(a.Id)">
+                                        @(a.Status == ClassifiedAdStatus.Sold ? "فعال‌سازی" : "فروخته شد")
+                                    </button>
+                                    <NavLink href="@($"/panel/ads/chat/{a.Id}")" class="btn btn-sm btn-outline-primary">گفتگو</NavLink>
+                                    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(a.Id)">حذف</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <h6 class="fw-bold mb-3">گفتگوهای من (پیام‌هایی که فرستاده‌ام یا پاسخ گرفته‌ام)</h6>
+        @if (_myChats.Count == 0)
+        {
+            <p class="text-muted small mb-0">گفتگویی وجود ندارد. از صفحهٔ هر آگهی می‌توانید به آگهی‌دهنده پیام دهید.</p>
+        }
+        else
+        {
+            @foreach (var c in _myChats)
+            {
+                <NavLink href="@($"/panel/ads/chat/{c.AdId}")" class="text-decoration-none text-dark">
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <b>@c.Title</b>
+                            <div class="small text-muted">آخرین پیام: @c.LastText</div>
+                        </div>
+                        <span class="small text-muted">@c.LastAt.ToPersianDateTime()</span>
+                    </div>
+                </NavLink>
+            }
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private string? _msg;
+    private Guid _uid;
+    private List<AdRow> _myAds = new();
+    private List<ChatRow> _myChats = new();
+
+    private sealed record AdRow(long Id, string Title, long? Price, ClassifiedAdStatus Status, long ViewCount);
+    private sealed record ChatRow(long AdId, string Title, string LastText, DateTime LastAt);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _uid = Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var g) ? g : Guid.Empty;
+
+        _myAds = await Db.ClassifiedAds.AsNoTracking()
+            .Where(a => a.UserId == _uid)
+            .OrderByDescending(a => a.Id)
+            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.Status, a.ViewCount))
+            .ToListAsync();
+
+        // گفتگوها: آگهی‌هایی که در آن‌ها پیام فرستاده‌ام یا مالکشان هستم
+        var chatAdIds = await Db.ClassifiedChatMessages
+            .Where(m => m.UserId == _uid || m.Ad.UserId == _uid)
+            .Select(m => m.AdId)
+            .Distinct()
+            .ToListAsync();
+
+        foreach (var adId in chatAdIds)
+        {
+            var row = await Db.ClassifiedAds.AsNoTracking()
+                .Where(a => a.Id == adId)
+                .Select(a => new { a.Id, a.Title })
+                .FirstOrDefaultAsync();
+            if (row is null) continue;
+
+            var last = await Db.ClassifiedChatMessages.AsNoTracking()
+                .Where(m => m.AdId == adId)
+                .OrderByDescending(m => m.Id)
+                .Select(m => new { m.Text, m.CreatedAt })
+                .FirstOrDefaultAsync();
+            if (last is not null)
+                _myChats.Add(new ChatRow(row.Id, row.Title, last.Text, last.CreatedAt));
+        }
+
+        _loading = false;
+    }
+
+    private async Task ToggleSoldAsync(long id)
+    {
+        _busy = true;
+        var a = await Db.ClassifiedAds.FirstAsync(x => x.Id == id && x.UserId == _uid);
+        a.Status = a.Status == ClassifiedAdStatus.Sold ? ClassifiedAdStatus.Approved : ClassifiedAdStatus.Sold;
+        await Db.SaveChangesAsync();
+        await OnInitializedAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(long id)
+    {
+        _busy = true;
+        await Db.ClassifiedChatMessages.Where(m => m.AdId == id && m.Ad.UserId == _uid).ExecuteDeleteAsync();
+        await Db.ClassifiedAds.Where(a => a.Id == id && a.UserId == _uid).ExecuteDeleteAsync();
+        _msg = "آگهی حذف شد ✓";
+        await OnInitializedAsync();
+        _busy = false;
+    }
+
+    private static string StatusText(ClassifiedAdStatus s) => s switch
+    {
+        ClassifiedAdStatus.Approved => "منتشرشده",
+        ClassifiedAdStatus.Pending => "در انتظار تأیید",
+        ClassifiedAdStatus.Rejected => "ردشده",
+        ClassifiedAdStatus.Sold => "فروخته‌شده",
+        _ => "منقضی"
+    };
+}

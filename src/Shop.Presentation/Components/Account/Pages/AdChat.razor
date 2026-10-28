@@ -1,0 +1,122 @@
+@page "/panel/ads/chat/{AdId:long}"
+@layout UserLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+@if (_denied)
+{
+    <div class="alert alert-warning my-4">به این گفتگو دسترسی ندارید.</div>
+}
+else if (_ad is not null)
+{
+    <h5 class="fw-bold mb-1">💬 گفتگوی آگهی</h5>
+    <p class="text-muted small">
+        <NavLink href="@($"/ads/{_ad.Id}")">@_ad.Title</NavLink>
+        — @(_ad.Price is null ? "توافقی" : _ad.Price == 0 ? "رایگان" : _ad.Price.Value.ToString("N0") + " تومان")
+    </p>
+
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-3" style="min-height:300px">
+        @if (_messages.Count == 0)
+        {
+            <p class="text-muted small">هنوز پیامی رد و بدل نشده است. اولین پیام را بفرستید.</p>
+        }
+        @foreach (var m in _messages)
+        {
+            <div class="d-flex @(m.IsMine ? "justify-content-start" : "justify-content-end") mb-2">
+                <div class="px-3 py-2 rounded-4 @(m.IsMine ? "bg-primary text-white" : "bg-light")" style="max-width:75%">
+                    <div class="small">@m.Text</div>
+                    <div class="small @(m.IsMine ? "text-white-50" : "text-muted") mt-1">@m.At.ToPersianDateTime()</div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (_filterErr is not null)
+    {
+        <div class="alert alert-danger py-2">@_filterErr</div>
+    }
+    <div class="d-flex gap-2">
+        <input type="text" class="form-control" placeholder="پیام شما..." value="@_text" @oninput="e => _text = e.Value?.ToString() ?? string.Empty" @onkeyup="SendOnEnter" />
+        <button class="btn btn-primary px-4" disabled="@(_busy || string.IsNullOrWhiteSpace(_text))" @onclick="SendAsync">
+            @_busyText
+        </button>
+    </div>
+    <p class="small text-muted mt-2 mb-0">⚠️ تبادل اطلاعات تماس و معامله حضوری بر عهدهٔ طرفین است؛ محتوای غیراخلاقی و تخلف از <NavLink href="/terms">قوانین</NavLink> ممنوع است.</p>
+}
+
+@code {
+    [Parameter] public long AdId { get; set; }
+
+    private bool _denied = true;
+    private string _text = "";
+    private bool _busy;
+    private Guid _uid;
+    private bool _isOwner;
+    private string? _filterErr;
+    private AdHead? _ad;
+    private List<Msg> _messages = new();
+
+    private sealed record AdHead(long Id, string Title, long? Price);
+    private sealed record Msg(string Text, DateTime At, bool IsMine);
+
+    private string _busyText => _busy ? "..." : "ارسال";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _uid = Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var g) ? g : Guid.Empty;
+
+        _ad = await Db.ClassifiedAds.AsNoTracking()
+            .Where(a => a.Id == AdId)
+            .Select(a => new AdHead(a.Id, a.Title, a.Price))
+            .FirstOrDefaultAsync();
+        if (_ad is null) return;
+
+        _isOwner = await Db.ClassifiedAds.AnyAsync(a => a.Id == AdId && a.UserId == _uid);
+        var participated = await Db.ClassifiedChatMessages.AnyAsync(m => m.AdId == AdId && m.UserId == _uid);
+
+        if (!_isOwner && !participated) return; // فقط طرفین گفتگو
+
+        await LoadMessagesAsync();
+        _denied = false;
+    }
+
+    private async Task LoadMessagesAsync()
+    {
+        _messages = await Db.ClassifiedChatMessages.AsNoTracking()
+            .Where(m => m.AdId == AdId)
+            .OrderBy(m => m.Id)
+            .Select(m => new Msg(m.Text, m.CreatedAt, m.UserId == _uid))
+            .ToListAsync();
+    }
+
+    private void SendOnEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") _ = SendAsync();
+    }
+
+    private async Task SendAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_text)) return;
+
+        // فیلتر محتوای غیراخلاقی — قانون پروژه
+        _filterErr = Shop.Shared.ContentFilter.ViolationMessage(_text);
+        if (_filterErr is not null) return;
+
+        _busy = true;
+        Db.ClassifiedChatMessages.Add(new ClassifiedChatMessage
+        {
+            AdId = AdId,
+            UserId = _uid,
+            Text = _text.Trim(),
+            IsFromOwner = _isOwner,
+            CreatedAt = DateTime.UtcNow
+        });
+        await Db.SaveChangesAsync();
+        _text = "";
+        await LoadMessagesAsync();
+        _busy = false;
+    }
+}
