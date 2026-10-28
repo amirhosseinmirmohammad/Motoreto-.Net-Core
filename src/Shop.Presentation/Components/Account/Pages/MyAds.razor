@@ -4,6 +4,7 @@
 @inject ApplicationDbContext Db
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
+@inject IEventPublisher Events
 
 <h5 class="fw-bold mb-3">📢 آگهی‌ها و گفتگوهای من</h5>
 
@@ -33,7 +34,16 @@ else
                         @foreach (var a in _myAds)
                         {
                             <tr>
-                                <td class="fw-bold" style="max-width:220px">@a.Title</td>
+                                <td class="fw-bold" style="max-width:220px">@a.Title
+                                    @if (a.Featured)
+                                    {
+                                        <span class="badge bg-warning text-dark ms-1">⬆️ نردبان</span>
+                                    }
+                                    @if (a.Urgent)
+                                    {
+                                        <span class="badge bg-danger ms-1">⚡ فوری</span>
+                                    }
+                                </td>
                                 <td class="small">@(a.Price is null ? "توافقی" : a.Price == 0 ? "رایگان" : a.Price.Value.ToString("N0"))</td>
                                 <td><span class="badge bg-@(a.Status == ClassifiedAdStatus.Approved ? "success" : a.Status == ClassifiedAdStatus.Pending ? "warning text-dark" : "secondary")">@StatusText(a.Status)</span></td>
                                 <td class="small">@a.ViewCount.ToString("N0")</td>
@@ -43,6 +53,13 @@ else
                                         @(a.Status == ClassifiedAdStatus.Sold ? "فعال‌سازی" : "فروخته شد")
                                     </button>
                                     <NavLink href="@($"/panel/ads/chat/{a.Id}")" class="btn btn-sm btn-outline-primary">گفتگو</NavLink>
+                                    @if (a.Status == ClassifiedAdStatus.Approved)
+                                    {
+                                        var p = _catPrices.GetValueOrDefault(a.CatId);
+                                        <button class="btn btn-sm btn-outline-warning" disabled="@_busy" title="۷ روز بالای لیست" @onclick="() => PromoteAsync(a.Id, K.Bump)">⬆️ @p.Bump.ToString("N0")</button>
+                                        <button class="btn btn-sm btn-outline-danger" disabled="@_busy" title="۷ روز برچسب فوری" @onclick="() => PromoteAsync(a.Id, K.Urgent)">⚡ @p.Urgent.ToString("N0")</button>
+                                        <button class="btn btn-sm btn-outline-success" disabled="@_busy" title="فوری + نردبان همزمان" @onclick="() => PromoteAsync(a.Id, K.Combo)">⚡⬆️ @p.Combo.ToString("N0")</button>
+                                    }
                                     <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(a.Id)">حذف</button>
                                 </td>
                             </tr>
@@ -84,8 +101,17 @@ else
     private List<AdRow> _myAds = new();
     private List<ChatRow> _myChats = new();
 
-    private sealed record AdRow(long Id, string Title, long? Price, ClassifiedAdStatus Status, long ViewCount);
+    private sealed record AdRow(long Id, string Title, long? Price, ClassifiedAdStatus Status, long ViewCount, int CatId, bool Featured, bool Urgent);
     private sealed record ChatRow(long AdId, string Title, string LastText, DateTime LastAt);
+    private sealed record CatPrices(long Bump, long Urgent, long Combo);
+    private Dictionary<int, CatPrices> _catPrices = new();
+
+    private static class K
+    {
+        public const string Bump = "bump";
+        public const string Urgent = "urgent";
+        public const string Combo = "combo";
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -95,8 +121,12 @@ else
         _myAds = await Db.ClassifiedAds.AsNoTracking()
             .Where(a => a.UserId == _uid)
             .OrderByDescending(a => a.Id)
-            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.Status, a.ViewCount))
+            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.Status, a.ViewCount, a.ClassifiedCategoryId, a.IsFeatured, a.IsUrgent))
             .ToListAsync();
+
+        _catPrices = await Db.ClassifiedCategories.AsNoTracking()
+            .Select(c => new { c.Id, c.BumpPrice, c.UrgentPrice, c.ComboPrice })
+            .ToDictionaryAsync(c => c.Id, c => new CatPrices(c.BumpPrice, c.UrgentPrice, c.ComboPrice));
 
         // گفتگوها: آگهی‌هایی که در آن‌ها پیام فرستاده‌ام یا مالکشان هستم
         var chatAdIds = await Db.ClassifiedChatMessages
@@ -143,6 +173,58 @@ else
         _msg = "آگهی حذف شد ✓";
         await OnInitializedAsync();
         _busy = false;
+    }
+
+    /// <summary>خرید نردبان/فوری/کمبو از کیف پول (تعرفهٔ هر دسته متفاوت است).</summary>
+    private async Task PromoteAsync(long id, string kind)
+    {
+        _busy = true;
+        try
+        {
+            var a = await Db.ClassifiedAds.Include(x => x.Category).FirstAsync(x => x.Id == id && x.UserId == _uid);
+            var price = kind switch
+            {
+                K.Bump => a.Category.BumpPrice,
+                K.Urgent => a.Category.UrgentPrice,
+                _ => a.Category.ComboPrice
+            };
+
+            var user = await Db.Users.FirstAsync(u => u.Id == _uid);
+            if (user.WalletBalance < price)
+            {
+                _msg = $"موجودی کیف پول کافی نیست ({price:N0} تومان). ابتدا کیف پول را شارژ کنید.";
+                return;
+            }
+
+            user.WalletBalance -= price;
+            Db.WalletTransactions.Add(new WalletTransaction
+            {
+                UserId = _uid,
+                Amount = price,
+                Type = WalletTransactionType.ClassifiedAdPayment,
+                BalanceAfter = user.WalletBalance,
+                Description = kind switch
+                {
+                    K.Bump => "نردبان آگهی: " + a.Title,
+                    K.Urgent => "فوری‌سازی آگهی: " + a.Title,
+                    _ => "کمبو فوری+نردبان آگهی: " + a.Title
+                },
+                CreatedAt = DateTime.UtcNow
+            });
+
+            if (kind is K.Bump or K.Combo) { a.IsFeatured = true; a.BumpAt = DateTime.UtcNow; }
+            if (kind is K.Urgent or K.Combo) { a.IsUrgent = true; a.UrgentAt = DateTime.UtcNow; }
+
+            await Db.SaveChangesAsync();
+            await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                _uid, "🚀 آگهی شما ارتقا یافت", a.Title, "bi-rocket-takeoff", $"/ads/{id}"));
+            _msg = "ارتقای آگهی با موفقیت انجام شد ✓";
+            await OnInitializedAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private static string StatusText(ClassifiedAdStatus s) => s switch

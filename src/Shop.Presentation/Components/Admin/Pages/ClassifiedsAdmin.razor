@@ -2,6 +2,7 @@
 @layout AdminLayout
 @attribute [Authorize]
 @inject ApplicationDbContext Db
+@inject IEventPublisher Events
 
 <h4 class="fw-bold mb-1">📢 آگهی‌های دست دوم (دیوار)</h4>
 
@@ -201,7 +202,16 @@ else
     private async Task SetStatusAsync(long id, ClassifiedAdStatus st)
     {
         _busy = true;
+        var ownerId = await Db.ClassifiedAds.Where(a => a.Id == id).Select(a => (Guid?)a.UserId).FirstOrDefaultAsync();
         await Db.ClassifiedAds.Where(a => a.Id == id).ExecuteUpdateAsync(u => u.SetProperty(a => a.Status, st));
+        if (ownerId is not null)
+        {
+            var title = st == ClassifiedAdStatus.Approved ? "✓ آگهی شما تأیید و منتشر شد"
+                      : st == ClassifiedAdStatus.Sold ? "آگهی شما «فروخته‌شده» علامت خورد"
+                      : "وضعیت آگهی شما تغییر کرد";
+            await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                ownerId.Value, title, null, "bi-megaphone", $"/ads/{id}"));
+        }
         await LoadAdsAsync();
         _busy = false;
     }
@@ -209,9 +219,13 @@ else
     private async Task RejectAsync(long id)
     {
         _busy = true;
+        var ownerId = await Db.ClassifiedAds.Where(a => a.Id == id).Select(a => (Guid?)a.UserId).FirstOrDefaultAsync();
         await Db.ClassifiedAds.Where(a => a.Id == id).ExecuteUpdateAsync(u => u
             .SetProperty(a => a.Status, ClassifiedAdStatus.Rejected)
             .SetProperty(a => a.RejectReason, "مغایر قوانین آگهی‌ها"));
+        if (ownerId is not null)
+            await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                ownerId.Value, "آگهی شما رد شد", "دلیل: مغایر قوانین آگهی‌ها", "bi-x-circle", "/panel/ads"));
         await LoadAdsAsync();
         _busy = false;
     }

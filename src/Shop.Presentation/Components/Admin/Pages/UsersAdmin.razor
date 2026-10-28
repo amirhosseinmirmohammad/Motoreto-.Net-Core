@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Identity
 @inject ApplicationDbContext Db
 @inject UserManager<User> UserManager
+@inject IEventPublisher Events
 
 <h4 class="fw-bold mb-3">👥 کاربران</h4>
 
@@ -247,9 +248,11 @@ else
             u.Mobile = string.IsNullOrWhiteSpace(_em.Mobile) ? null : _em.Mobile.Trim();
 
             // شارژ/برداشت کیف پول به‌صورت تراکنش دفتری
+            long walletDelta = 0;
             if (long.TryParse(_walletInput?.Replace(",", ""), out var delta) && delta != 0)
             {
                 u.WalletBalance += delta;
+                walletDelta = delta;
                 Db.WalletTransactions.Add(new WalletTransaction
                 {
                     UserId = u.Id,
@@ -259,10 +262,18 @@ else
                     Description = delta > 0 ? "شارژ دستی توسط ادمین" : "برداشت دستی توسط ادمین",
                     CreatedAt = DateTime.UtcNow
                 });
+                walletDelta = delta;
             }
-
             await Db.SaveChangesAsync();
             _editId = null;
+
+            // اعلان تغییر کیف پول
+            if (walletDelta != 0)
+                await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                    u.Id,
+                    walletDelta > 0 ? "💰 کیف پول شما شارژ شد" : "برداشت از کیف پول شما",
+                    $"مبلغ: {Math.Abs(walletDelta):N0} تومان", "bi-wallet2", "/panel"));
+
             await LoadAsync();
         }
         finally

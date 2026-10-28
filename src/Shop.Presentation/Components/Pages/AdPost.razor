@@ -32,6 +32,10 @@ else
                                   Value="(_catId == 0 ? "" : _catId.ToString())"
                                   ValueChanged="CategoryChanged"
                                   Placeholder="انتخاب دسته‌بندی..." />
+                @if (!string.IsNullOrWhiteSpace(_tariffHint))
+                {
+                    <div class="form-text small text-primary">@_tariffHint</div>
+                }
             </div>
             <div class="col-md-6">
                 <label class="form-label small text-muted">شهر *</label>
@@ -110,8 +114,16 @@ else
                 <InputText @bind-Value="_m.Phone" class="form-control" dir="ltr" />
             </div>
             <div class="col-md-6">
-                <label class="form-label small text-muted">تصویر آگهی</label>
+                <label class="form-label small text-muted">تصویر اصلی آگهی</label>
                 <UploadDropzone @bind-Value="_m.MainImage" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">تصاویر بیشتر گالری (اختیاری)</label>
+                <div class="row g-2">
+                    <div class="col-4"><UploadDropzone @bind-Value="_g1" /></div>
+                    <div class="col-4"><UploadDropzone @bind-Value="_g2" /></div>
+                    <div class="col-4"><UploadDropzone @bind-Value="_g3" /></div>
+                </div>
             </div>
 
             <div class="col-12">
@@ -135,6 +147,7 @@ else
 
 @code {
     private bool _busy, _done, _agree;
+    private string? _g1, _g2, _g3;
     private string? _err;
     private int _catId;
     private string _priceMode = "with";
@@ -190,7 +203,22 @@ else
         _attrs = _catId == 0 ? [] : await Db.ClassifiedAttributes.AsNoTracking()
             .Where(a => a.CategoryId == _catId)
             .OrderBy(a => a.SortOrder).ToListAsync();
+
+        // راهنمای تعرفهٔ دسته (مدل دیوار)
+        var cat = await Db.ClassifiedCategories.AsNoTracking().FirstAsync(c => c.Id == _catId);
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var uid = Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var g) ? g : Guid.Empty;
+        var myActive = await Db.ClassifiedAds.CountAsync(a => a.UserId == uid
+            && a.ClassifiedCategoryId == _catId
+            && (a.Status == ClassifiedAdStatus.Pending || a.Status == ClassifiedAdStatus.Approved));
+
+        var freeLeft = Math.Max(0, cat.FreeAdLimit - myActive);
+        _tariffHint = cat.AdPrice == 0
+            ? $"این دسته رایگان است • نردبان {cat.BumpPrice:N0} • فوری {cat.UrgentPrice:N0} • کمبو {cat.ComboPrice:N0} تومان"
+            : $"آگهی رایگان باقی‌مانده: {freeLeft} — آگهی بعدی {(cat.AdPrice > 0 ? cat.AdPrice.ToString("N0") + " تومان" : "رایگان")} • نردبان {cat.BumpPrice:N0} • فوری {cat.UrgentPrice:N0} • کمبو {cat.ComboPrice:N0} تومان";
     }
+
+    private string _tariffHint = "";
 
     private async Task SubmitAsync()
     {
@@ -231,6 +259,35 @@ else
             var auth = await AuthState.GetAuthenticationStateAsync();
             var uid = Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
 
+            // مدل دیوار: سهمیهٔ رایگان در هر دسته؛ عبور از سقف → آگهی پولی از کیف پول
+            var cat = await Db.ClassifiedCategories.AsNoTracking().FirstAsync(c => c.Id == _catId);
+            var myActive = await Db.ClassifiedAds.CountAsync(a => a.UserId == uid
+                && a.ClassifiedCategoryId == _catId
+                && (a.Status == ClassifiedAdStatus.Pending || a.Status == ClassifiedAdStatus.Approved));
+            DateTime? paidAt = null;
+            if (myActive >= cat.FreeAdLimit && cat.AdPrice > 0)
+            {
+                var user = await Db.Users.FirstAsync(u => u.Id == uid);
+                if (user.WalletBalance < cat.AdPrice)
+                {
+                    _err = $"ظرفیت رایگان این دسته پر شده است. هزینهٔ آگهی {cat.AdPrice:N0} تومان است و موجودی کیف پول کافی نیست — از «پنل کاربری» شارژ کنید.";
+                    _busy = false;
+                    return;
+                }
+                user.WalletBalance -= cat.AdPrice;
+                paidAt = DateTime.UtcNow;
+                Db.WalletTransactions.Add(new WalletTransaction
+                {
+                    UserId = uid,
+                    Amount = cat.AdPrice,
+                    Type = WalletTransactionType.ClassifiedAdPayment,
+                    BalanceAfter = user.WalletBalance,
+                    Description = "ثبت آگهی پولی در دسته " + cat.Name,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await Db.SaveChangesAsync();
+            }
+
             Db.ClassifiedAds.Add(new ClassifiedAd
             {
                 Title = _m.Title.Trim(),
@@ -241,8 +298,10 @@ else
                 UserId = uid,
                 Phone = _m.Phone.Trim(),
                 MainImage = string.IsNullOrWhiteSpace(_m.MainImage) ? null : _m.MainImage,
+                ImagesJson = string.Join(",", new[] { _g1, _g2, _g3 }.Where(u => !string.IsNullOrWhiteSpace(u))),
                 AttributesJson = attrsJson,
                 Status = ClassifiedAdStatus.Pending,
+                PaidAt = paidAt,
                 CreatedAt = DateTime.UtcNow,
                 ExpiresAt = DateTime.UtcNow.AddDays(30)
             });

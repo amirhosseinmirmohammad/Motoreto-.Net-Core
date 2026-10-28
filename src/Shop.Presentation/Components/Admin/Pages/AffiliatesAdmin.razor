@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext Db
+@inject IEventPublisher Events
 
 <h4 class="fw-bold mb-3">🤝 همکاران فروش (افیلیت)</h4>
 
@@ -133,6 +134,9 @@ else
         a.PaidOut = a.Earned;
         a.PayoutRequestedAt = null;
         await Db.SaveChangesAsync();
+        await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+            a.UserId, "💰 تسویه افیلیت انجام شد",
+            $"{a.PaidOut:N0} تومان پرداخت شد", "bi-cash-coin", "/panel"));
         await LoadAsync();
         _busy = false;
     }

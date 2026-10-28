@@ -1,4 +1,6 @@
 using EFCore.NamingConventions;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +10,7 @@ using Shop.Application.Interfaces;
 using Shop.Infrastructure.Background;
 using Shop.Infrastructure.Data;
 using Shop.Infrastructure.Gateways;
+using Shop.Infrastructure.Messaging;
 using Shop.Infrastructure.Seeding;
 using Shop.Infrastructure.Services;
 
@@ -80,6 +83,21 @@ public static class DependencyInjection
 
         // ---- Jobهای پس‌زمینه ----
         services.AddHostedService<ReservationCleanupJob>();
+
+        // ---------- پیام‌رسانی (Kafka + Outbox Pattern) — اعلان‌ها و رویدادهای فرایندها ----------
+        services.AddSingleton<KafkaProducerHolder>();
+        services.AddScoped<IEventPublisher, EventPublisher>();
+        services.AddHostedService<OutboxDispatcherJob>();
+        services.AddHostedService<NotificationConsumerJob>();
+
+        // ---------- Hangfire: jobهای زمان‌بندی‌شده (انقضای آگهی/نردبان/فوری و...) ----------
+        services.AddHangfire(cfg => cfg
+            .SetDataCompatibilityLevel(Hangfire.CompatibilityLevel.Version_180)
+            .UseSimpleAssemblyNameTypeSerializer()
+            .UseRecommendedSerializerSettings()
+            .UsePostgreSqlStorage(o => o.UseNpgsqlConnection(configuration.GetConnectionString("DefaultConnection"))));
+        services.AddHangfireServer();
+        services.AddScoped<Background.ClassifiedJobs>();
 
         // ---- Seed اولیه ----
         services.AddScoped<DataSeeder>();

@@ -672,6 +672,10 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("attributes_json");
 
+                    b.Property<DateTime?>("BumpAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("bump_at");
+
                     b.Property<int>("CityId")
                         .HasColumnType("integer")
                         .HasColumnName("city_id");
@@ -701,9 +705,17 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_featured");
 
+                    b.Property<bool>("IsUrgent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_urgent");
+
                     b.Property<string>("MainImage")
                         .HasColumnType("text")
                         .HasColumnName("main_image");
+
+                    b.Property<DateTime?>("PaidAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at");
 
                     b.Property<string>("Phone")
                         .IsRequired()
@@ -726,6 +738,10 @@ namespace Shop.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("title");
+
+                    b.Property<DateTime?>("UrgentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("urgent_at");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -803,6 +819,18 @@ namespace Shop.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<long>("AdPrice")
+                        .HasColumnType("bigint")
+                        .HasColumnName("ad_price");
+
+                    b.Property<long>("BumpPrice")
+                        .HasColumnType("bigint")
+                        .HasColumnName("bump_price");
+
+                    b.Property<int>("FreeAdLimit")
+                        .HasColumnType("integer")
+                        .HasColumnName("free_ad_limit");
+
                     b.Property<string>("Icon")
                         .HasColumnType("text")
                         .HasColumnName("icon");
@@ -824,6 +852,10 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer")
                         .HasColumnName("sort_order");
+
+                    b.Property<long>("UrgentPrice")
+                        .HasColumnType("bigint")
+                        .HasColumnName("urgent_price");
 
                     b.HasKey("Id")
                         .HasName("pk_classified_categories");
@@ -1040,6 +1072,53 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_news_letter_subscribers_email");
 
                     b.ToTable("news_letter_subscribers", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.Notification", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("Body")
+                        .HasColumnType("text")
+                        .HasColumnName("body");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Icon")
+                        .HasColumnType("text")
+                        .HasColumnName("icon");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_read");
+
+                    b.Property<string>("Link")
+                        .HasColumnType("text")
+                        .HasColumnName("link");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_notifications");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_notifications_user_id");
+
+                    b.ToTable("notifications", (string)null);
                 });
 
             modelBuilder.Entity("Shop.Domain.Order", b =>
@@ -1297,6 +1376,47 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasName("pk_otp_codes");
 
                     b.ToTable("otp_codes", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.OutboxMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_at");
+
+                    b.Property<int>("RetryCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("retry_count");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_outbox_messages");
+
+                    b.ToTable("outbox_messages", (string)null);
                 });
 
             modelBuilder.Entity("Shop.Domain.Payment", b =>
@@ -2936,6 +3056,18 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasConstraintName("fk_favorites_user_user_id");
 
                     b.Navigation("Product");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Shop.Domain.Notification", b =>
+                {
+                    b.HasOne("Shop.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_notifications_user_user_id");
 
                     b.Navigation("User");
                 });

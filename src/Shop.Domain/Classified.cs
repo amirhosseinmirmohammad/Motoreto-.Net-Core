@@ -26,6 +26,18 @@ public class ClassifiedCategory
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
 
+    // ---- تعرفه‌های دیوار (تومان) ----
+    /// <summary>تعداد آگهی رایگان فعال همزمان در این دسته.</summary>
+    public int FreeAdLimit { get; set; } = 1;
+    /// <summary>قیمت آگهی پولی (۰ = دسته رایگان).</summary>
+    public long AdPrice { get; set; }
+    /// <summary>قیمت نردبان (۷ روز بالای لیست).</summary>
+    public long BumpPrice { get; set; } = 50_000;
+    /// <summary>قیمت فوری (۷ روز برچسب فوری).</summary>
+    public long UrgentPrice { get; set; } = 30_000;
+    /// <summary>قیمت کمبو فوری + نردبان همزمان (معمولاً ارزان‌تر از جمع تک‌به‌تک).</summary>
+    public long ComboPrice { get; set; } = 60_000;
+
     public virtual List<ClassifiedAttribute> Attributes { get; set; } = [];
     public virtual List<ClassifiedAd> Ads { get; set; } = [];
 }
@@ -80,8 +92,18 @@ public class ClassifiedAd
     public string? RejectReason { get; set; }
 
     public long ViewCount { get; set; }
-    /// <summary>نردبان‌شده (در بالای لیست).</summary>
+
+    /// <summary>نردبان‌شده (در بالای لیست — ۷ روز).</summary>
     public bool IsFeatured { get; set; }
+    /// <summary>برچسب فوری (۷ روز).</summary>
+    public bool IsUrgent { get; set; }
+
+    /// <summary>وقت آخرین نردبان (برای sort و انقضای ۷ روزه).</summary>
+    public DateTime? BumpAt { get; set; }
+    /// <summary>وقت فعال‌شدن فوری.</summary>
+    public DateTime? UrgentAt { get; set; }
+    /// <summary>وقت پرداخت آگهی پولی.</summary>
+    public DateTime? PaidAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
     /// <summary>تاریخ انقضای نمایش (پیش‌فرض +۳۰ روز).</summary>

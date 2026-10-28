@@ -3,7 +3,7 @@
    - App shell + استاتیک: Cache First
    - صفحات: Network First با fallback آفلاین
    ============================================================ */
-const VERSION = 'shop-v1';
+const VERSION = 'shop-v2';
 const STATIC_CACHE = VERSION + '-static';
 const PAGE_CACHE = VERSION + '-pages';
 const OFFLINE_URL = '/offline.html';
@@ -22,9 +22,13 @@ const PRECACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
-    );
+    // skipWaiting خودکار نیست — پس از اعلان به کاربر، با زدن «بروزرسانی» فعال می‌شود
+    event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE)));
+});
+
+// فرمان بروزرسانی از صفحه (دکمه «بروزرسانی» بنر نسخه جدید)
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {

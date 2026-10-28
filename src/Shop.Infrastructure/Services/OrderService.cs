@@ -61,6 +61,7 @@ public class OrderService(
     ICartService cartService,
     IInventoryService inventory,
     Application.Interfaces.ILoyaltyService loyalty,
+    Application.Interfaces.IEventPublisher events,
     ILogger<OrderService> logger) : IOrderService
 {
     public async Task<PlaceOrderResult> PlaceOrderAsync(Guid userId, CheckoutViewModel model, CancellationToken ct = default)
@@ -194,14 +195,17 @@ public class OrderService(
 
             // اسنپ‌شات نام فروشندگان
             var sellerIds = order.Items.Where(i => i.SellerId is not null).Select(i => i.SellerId!.Value).Distinct().ToList();
+            Dictionary<long, (string StoreName, Guid OwnerUserId)> sellers = new();
             if (sellerIds.Count > 0)
             {
-                var names = await db.Sellers
+                var list = await db.Sellers
                     .Where(s => sellerIds.Contains(s.Id))
-                    .ToDictionaryAsync(s => s.Id, s => s.StoreName, token);
+                    .Select(s => new { s.Id, s.StoreName, s.OwnerUserId })
+                    .ToListAsync(token);
+                sellers = list.ToDictionary(s => s.Id, s => (s.StoreName, s.OwnerUserId));
 
                 foreach (var item in order.Items.Where(i => i.SellerId is not null))
-                    item.SellerName = names.GetValueOrDefault(item.SellerId!.Value, "فروشنده مارکت‌پلیس");
+                    item.SellerName = sellers.GetValueOrDefault(item.SellerId!.Value).StoreName ?? "فروشنده مارکت‌پلیس";
             }
 
             db.Orders.Add(order);
@@ -229,6 +233,25 @@ public class OrderService(
 
             logger.LogInformation("سفارش {OrderNumber} برای کاربر {UserId} ثبت شد. مبلغ: {Total}",
                 order.OrderNumber, userId, total);
+
+            // اعلان‌ها (از کافکا منتشر می‌شود): خریدار + فروشندگان صاحب آفر
+            await events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                userId,
+                $"سفارش {order.OrderNumber} ثبت شد",
+                $"مبلغ: {total:N0} تومان — در انتظار پرداخت/پردازش",
+                "bi-receipt", "/orders"), token);
+
+            foreach (var sid in sellerIds)
+            {
+                var s = sellers.GetValueOrDefault(sid);
+                if (s.OwnerUserId == default || s.OwnerUserId == userId) continue;
+                var count = order.Items.Count(i => i.SellerId == sid);
+                await events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                    s.OwnerUserId,
+                    "🛒 فروش جدید!",
+                    $"{count} قلم از آفرهای شما در سفارش {order.OrderNumber} قرار گرفت",
+                    "bi-cart-check", "/seller"), token);
+            }
 
             return new PlaceOrderResult
             {
@@ -303,6 +326,14 @@ public class OrderService(
                 .Where(o => o.Id == orderId)
                 .Select(o => o.UserId)
                 .FirstAsync(ct);
+
+            // اعلان: پرداخت تأیید شد
+            var paidOrderNumber = await db.Orders.Where(o => o.Id == orderId).Select(o => o.OrderNumber).FirstAsync(ct);
+            await events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                buyerId,
+                $"✓ پرداخت سفارش {paidOrderNumber} تأیید شد",
+                "کالای شما به‌زودی آماده‌سازی و ارسال می‌شود",
+                "bi-check2-circle", "/orders"), ct);
 
             // باشگاه مشتریان: امتیاز خرید + پاداش معرفی
             var orderTotal = await db.Orders.Where(o => o.Id == orderId).Select(o => o.Total).FirstAsync(ct);
@@ -430,6 +461,22 @@ public class OrderService(
             order.Status = status;
             if (status == OrderStatus.Shipped) order.ShippedAt = DateTime.UtcNow;
             await db.SaveChangesAsync(token);
+
+            // اعلان تغییر وضعیت به خریدار
+            var statusTitle = status switch
+            {
+                OrderStatus.Paid => "پرداخت شد ✓",
+                OrderStatus.Processing => "در حال پردازش",
+                OrderStatus.Shipped => "ارسال شد 📦",
+                OrderStatus.Delivered => "تحویل شد",
+                OrderStatus.Canceled => "لغو شد",
+                _ => status.ToString()
+            };
+            await events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                order.UserId,
+                $"سفارش {order.OrderNumber} {statusTitle}",
+                null, "bi-box-seam", "/orders"), token);
+
             return true;
         }, ct);
     }

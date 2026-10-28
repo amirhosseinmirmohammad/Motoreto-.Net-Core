@@ -18,7 +18,10 @@ public enum WalletTransactionType
     OrderPayment = 4,
 
     /// <summary>شارژ دستی توسط ادمین</summary>
-    AdminCharge = 5
+    AdminCharge = 5,
+
+    /// <summary>هزینهٔ آگهی/نردبان/فوری دیوار</summary>
+    ClassifiedAdPayment = 6
 }
 
 /// <summary>گردش کیف پول کاربر.</summary>

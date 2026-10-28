@@ -38,6 +38,13 @@
 
     <div class="toast-container position-fixed bottom-0 start-0 p-3" id="toastContainer"></div>
 
+    @* بنر اعلان بروزرسانی نسخه (با تشخیص service worker جدید) *@
+    <div id="updateBanner" class="position-fixed top-0 start-50 translate-middle-x mt-2 p-2 px-3 bg-dark text-white rounded-4 shadow d-flex align-items-center gap-2" style="z-index:2100;display:none">
+        <span class="small">🚀 نسخه جدید سایت منتشر شد</span>
+        <button id="updateBtn" class="btn btn-sm btn-primary rounded-pill px-3">بروزرسانی</button>
+        <button id="updateDismiss" class="btn-close btn-close-white btn-sm" aria-label="بستن"></button>
+    </div>
+
     <script src="~/lib/bootstrap/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     <script src="~/js/pjax.js" asp-append-version="true"></script>

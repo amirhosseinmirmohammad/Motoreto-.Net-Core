@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Hangfire;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -326,6 +327,19 @@ app.MapPost("/aff/lead/{code}", async (string code, IFormCollection form, Applic
         }));
 
     app.UseRouting();
+
+    // ---------- Hangfire: داشبورد (فقط ادمین) + jobهای تکرارشونده ----------
+    app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+    {
+        Authorization = [new Shop.Presentation.Services.HangfireAdminFilter()]
+    });
+    using (var hfScope = app.Services.CreateScope())
+    {
+        Hangfire.RecurringJob.AddOrUpdate<Shop.Infrastructure.Background.ClassifiedJobs>(
+            "classified-expire-cleanup",
+            j => j.ExpireAndCleanupAsync(),
+            Hangfire.Cron.HourInterval(1));
+    }
 
     // ---------- CORS داینامیک (از SiteSettings) ----------
     app.Use(async (context, next) =>

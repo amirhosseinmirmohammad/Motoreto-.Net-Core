@@ -4,6 +4,7 @@
 @inject ApplicationDbContext Db
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
+@inject IEventPublisher Events
 
 @if (_denied)
 {
@@ -116,6 +117,24 @@ else if (_ad is not null)
         });
         await Db.SaveChangesAsync();
         _text = "";
+
+        // اعلان پیام جدید به طرف مقابل
+        var adOwnerId = await Db.ClassifiedAds.Where(a => a.Id == AdId).Select(a => (Guid?)a.UserId).FirstOrDefaultAsync();
+        if (adOwnerId is not null && adOwnerId != _uid)
+        {
+            await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                adOwnerId.Value, "💬 پیام جدید برای آگهی شما", _ad?.Title, "bi-chat-dots", $"/panel/ads/chat/{AdId}"));
+        }
+        else if (_isOwner)
+        {
+            var buyers = await Db.ClassifiedChatMessages
+                .Where(m => m.AdId == AdId && m.UserId != _uid)
+                .Select(m => m.UserId).Distinct().ToListAsync();
+            foreach (var b in buyers)
+                await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                    b, "💬 پاسخ جدید در گفتگوی آگهی", _ad?.Title, "bi-chat-dots", $"/panel/ads/chat/{AdId}"));
+        }
+
         await LoadMessagesAsync();
         _busy = false;
     }

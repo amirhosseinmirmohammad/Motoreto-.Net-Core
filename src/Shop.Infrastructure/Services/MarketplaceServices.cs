@@ -9,7 +9,7 @@ using Shop.Shared;
 namespace Shop.Infrastructure.Services;
 
 /// <summary>چرخه حیات فروشنده مارکت‌پلیس: ثبت‌نام → بررسی ادمین → پیشنهاد فروش روی کالاهای کاتالوگ.</summary>
-public class SellerService(ApplicationDbContext db) : ISellerService
+public class SellerService(ApplicationDbContext db, IEventPublisher events) : ISellerService
 {
     public async Task<(bool Success, string Message)> ApplyAsync(Guid userId, SellerApplyViewModel model, CancellationToken ct = default)
     {
@@ -112,6 +112,13 @@ public class SellerService(ApplicationDbContext db) : ISellerService
         await db.SellerOffers
             .Where(o => o.SellerId == sellerId)
             .ExecuteUpdateAsync(u => u.SetProperty(o => o.IsActive, true), ct);
+
+        var owner = await db.Sellers.AsNoTracking()
+            .Where(s => s.Id == sellerId).Select(s => (Guid?)s.OwnerUserId).FirstOrDefaultAsync(ct);
+        if (owner is not null)
+            await events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                owner.Value, "🎉 فروشگاه شما تأیید شد!",
+                $"کمیسیون {commissionPercent}٪ — از همین حالا می‌توانید آفر ثبت کنید", "bi-shop", "/seller"), ct);
     }
 
     public async Task RejectAsync(long sellerId, string reason, CancellationToken ct = default)
@@ -121,6 +128,13 @@ public class SellerService(ApplicationDbContext db) : ISellerService
             .ExecuteUpdateAsync(u => u
                 .SetProperty(s => s.Status, SellerStatus.Rejected)
                 .SetProperty(s => s.RejectReason, reason), ct);
+
+        var owner = await db.Sellers.AsNoTracking()
+            .Where(s => s.Id == sellerId).Select(s => (Guid?)s.OwnerUserId).FirstOrDefaultAsync(ct);
+        if (owner is not null)
+            await events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                owner.Value, "درخواست فروشندگی شما رد شد",
+                $"دلیل: {reason}", "bi-x-circle", "/seller/register"), ct);
     }
 
     public async Task<List<SellerOfferDto>> GetMyOffersAsync(Guid userId, CancellationToken ct = default)

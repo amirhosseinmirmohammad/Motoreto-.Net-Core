@@ -262,12 +262,91 @@
         });
     }
 
-    // ---------- PWA ----------
+    // ---------- PWA + اعلان بروزرسانی نسخه ----------
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/service-worker.js').catch(function () { /* offline naming */ });
+            navigator.serviceWorker.register('/service-worker.js').then(function (reg) {
+                // نسخه جدید در حالت انتظار است؟ (دپلوی قبلی)
+                if (reg.waiting && navigator.serviceWorker.controller) notifyUpdate(reg.waiting);
+                // نسخه جدید همین حالا نصب شد؟ (دپلوی جدید)
+                reg.addEventListener('updatefound', function () {
+                    var nw = reg.installing;
+                    if (!nw) return;
+                    nw.addEventListener('statechange', function () {
+                        if (nw.state === 'installed' && navigator.serviceWorker.controller) notifyUpdate(nw);
+                    });
+                });
+            }).catch(function () { /* offline naming */ });
+
+            // پس از فعال‌شدن نسخه جدید (کاربر «بروزرسانی» زده) → رفرش کامل
+            var refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', function () {
+                if (refreshing) return;
+                refreshing = true;
+                window.location.reload();
+            });
         });
     }
+
+    var updatePrompted = false;
+    function notifyUpdate(worker) {
+        if (updatePrompted || !worker) return;
+        updatePrompted = true;
+        window.__pendingWorker = worker;
+        var banner = document.getElementById('updateBanner');
+        if (banner) {
+            banner.style.display = 'flex';
+            var btn = document.getElementById('updateBtn');
+            if (btn) btn.addEventListener('click', function () {
+                banner.style.display = 'none';
+                if (window.__pendingWorker) window.__pendingWorker.postMessage({ type: 'SKIP_WAITING' });
+            });
+            var closeBtn = document.getElementById('updateDismiss');
+            if (closeBtn) closeBtn.addEventListener('click', function () { banner.style.display = 'none'; });
+        } else {
+            // بدون بنر: بروزرسانی بی‌صدا
+            worker.postMessage({ type: 'SKIP_WAITING' });
+        }
+    }
+    window.notifyUpdate = notifyUpdate;
+
+    // ---------- اعلان‌ها (زنگوله هدر) ----------
+    function faTime(s) {
+        try { return new Date(s).toLocaleDateString('fa-IR') + ' ' + new Date(s).toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' }); }
+        catch (e) { return ''; }
+    }
+    function loadNotifications() {
+        var badge = document.getElementById('notifBadge');
+        if (!badge) return;
+        fetch('/api/notifications/summary').then(function (r) { return r.ok ? r.json() : null; }).then(function (res) {
+            if (!res) return;
+            badge.textContent = res.unread > 99 ? '+99' : res.unread;
+            badge.classList.toggle('d-none', res.unread === 0);
+            var list = document.getElementById('notifList');
+            if (!list) return;
+            list.innerHTML = res.items.length === 0
+                ? '<div class="px-3 py-3 small text-muted">اعلانی ندارید.</div>'
+                : res.items.map(function (n) {
+                    return '<a href="' + (n.link || '/panel/notifications') + '" class="list-group-item list-group-item-action small py-2' + (n.isRead ? ' text-muted' : ' fw-bold') + '" data-nid="' + n.id + '">' +
+                        '<i class="bi ' + (n.icon || 'bi-bell') + ' me-1 text-primary"></i>' + n.title +
+                        (n.body ? '<span class="d-block fw-normal text-muted mt-1">' + n.body + '</span>' : '') +
+                        '<span class="d-block fw-normal text-muted small mt-1">' + faTime(n.createdAt) + '</span></a>';
+                }).join('');
+            list.querySelectorAll('[data-nid]').forEach(function (el) {
+                el.addEventListener('click', function () { fetch('/api/notifications/read/' + el.dataset.nid); });
+            });
+        }).catch(function () { });
+    }
+    window.loadNotifications = loadNotifications;
+    window.addEventListener('load', loadNotifications);
+    setInterval(loadNotifications, 45000);
+    var bell = document.getElementById('notifBell');
+    if (bell) bell.addEventListener('click', loadNotifications);
+    var readAll = document.getElementById('notifReadAll');
+    if (readAll) readAll.addEventListener('click', function (e) {
+        e.preventDefault();
+        fetch('/api/notifications/read-all').then(loadNotifications);
+    });
 
     // ---------- انیمیشن reveal با اسکرول (variant + stagger) ----------
     function initReveal() {

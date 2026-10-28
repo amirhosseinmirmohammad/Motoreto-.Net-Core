@@ -1,0 +1,92 @@
+@page "/panel/notifications"
+@layout UserLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+
+<h5 class="fw-bold mb-3">🔔 اعلان‌ها</h5>
+
+<div class="d-flex gap-2 mb-3">
+    <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="ReadAllAsync">همه خوانده شد</button>
+    <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="ClearAllAsync">پاک‌کردن همه</button>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_rows.Count == 0)
+{
+    <div class="alert alert-light border">اعلانی ندارید.</div>
+}
+else
+{
+    @foreach (var n in _rows)
+    {
+        <a href="@Nav.ToAbsoluteUri(n.Link ?? "/panel")" class="text-decoration-none text-dark"
+           @onclick="() => _ = MarkReadAsync(n.Id)">
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-2 @(n.IsRead ? "opacity-75" : "border-end border-4 border-primary")">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <b><i class="bi @(n.Icon ?? "bi-bell") text-primary me-1"></i>@n.Title</b>
+                        @if (!string.IsNullOrWhiteSpace(n.Body))
+                        {
+                            <div class="small text-muted mt-1">@n.Body</div>
+                        }
+                    </div>
+                    <span class="small text-muted">@n.Date.ToPersianDateTime()</span>
+                </div>
+            </div>
+        </a>
+    }
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private Guid _uid;
+    private List<Row> _rows = new();
+
+    private sealed record Row(long Id, string Title, string? Body, string? Icon, string? Link, bool IsRead, DateTime Date);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        _uid = Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var g) ? g : Guid.Empty;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.Notifications.AsNoTracking()
+            .Where(n => n.UserId == _uid)
+            .OrderByDescending(n => n.Id)
+            .Take(50)
+            .Select(n => new Row(n.Id, n.Title, n.Body, n.Icon, n.Link, n.IsRead, n.CreatedAt))
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private async Task MarkReadAsync(long id)
+    {
+        await Db.Notifications.Where(n => n.UserId == _uid && n.Id == id)
+            .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true));
+    }
+
+    private async Task ReadAllAsync()
+    {
+        _busy = true;
+        await Db.Notifications.Where(n => n.UserId == _uid && !n.IsRead)
+            .ExecuteUpdateAsync(s => s.SetProperty(n => n.IsRead, true));
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task ClearAllAsync()
+    {
+        _busy = true;
+        await Db.Notifications.Where(n => n.UserId == _uid).ExecuteDeleteAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+}

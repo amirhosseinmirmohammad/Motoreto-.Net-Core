@@ -2,6 +2,7 @@
 @inject ApplicationDbContext Db
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthState
+@inject IEventPublisher Events
 @using System.Text.Json
 
 @if (_ad is null)
@@ -22,7 +23,18 @@ else
 
     <div class="row g-4 pb-4">
         <div class="col-lg-7">
-            <img src="@(_ad.MainImage ?? "/images/products/real/1.webp")" class="img-fluid rounded-4 shadow-sm w-100" style="max-height:420px;object-fit:cover" alt="@_ad.Title" />
+            <img src="@(_active ?? "/images/products/real/1.webp")" class="img-fluid rounded-4 shadow-sm w-100" style="max-height:420px;object-fit:cover" alt="@_ad.Title" />
+            @if (_gallery.Count > 0)
+            {
+                <div class="d-flex gap-2 mt-2">
+                    <img src="@_active" class="rounded-3 @(1 == 1 ? "border border-2 border-primary" : "")" style="width:72px;height:56px;object-fit:cover;cursor:pointer" @onclick="() => SetActive(null)" />
+                    @foreach (var g in _gallery)
+                    {
+                        var img = g;
+                        <img src="@img" class="rounded-3" style="width:72px;height:56px;object-fit:cover;cursor:pointer" @onclick="() => SetActive(img)" />
+                    }
+                </div>
+            }
             <div class="card border-0 shadow-sm rounded-4 p-4 mt-3">
                 <h4 class="fw-bold">@_ad.Title</h4>
                 <p class="text-muted" style="white-space:pre-line">@_ad.Description</p>
@@ -116,20 +128,29 @@ else
     private List<(string Name, string Value)> _attrs = new();
 
     private sealed record AdVm(string Title, string? Description, long? Price, string Phone, string? MainImage,
-        string CityName, string CategoryName, DateTime Date, long ViewCount, ClassifiedAdStatus Status, string? AttrJson);
+        string CityName, string CategoryName, DateTime Date, long ViewCount, ClassifiedAdStatus Status, string? AttrJson, string? ImagesJson);
+
+    private string? _active;
+    private List<string> _gallery = new();
+
+    private void SetActive(string? img) => _active = img ?? _ad?.MainImage;
 
     protected override async Task OnInitializedAsync()
     {
         var a = await Db.ClassifiedAds.AsNoTracking()
             .Where(x => x.Id == Id && (x.Status == ClassifiedAdStatus.Approved || x.Status == ClassifiedAdStatus.Sold))
             .Select(x => new AdVm(x.Title, x.Description, x.Price, x.Phone, x.MainImage,
-                x.City.Name, x.Category.Name, x.CreatedAt, x.ViewCount, x.Status, x.AttributesJson))
+                x.City.Name, x.Category.Name, x.CreatedAt, x.ViewCount, x.Status, x.AttributesJson, x.ImagesJson))
             .FirstOrDefaultAsync();
 
         if (a is not null)
         {
             _ad = a;
             _attrs = ParseAttrs(a.AttrJson);
+            _active = a.MainImage;
+            _gallery = (a.ImagesJson ?? "")
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
             await Db.ClassifiedAds.Where(x => x.Id == Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.ViewCount, x => x.ViewCount + 1));
 
             // فرم پیام: فقط کاربر واردشده و غیرِ آگهی‌دهنده
@@ -164,6 +185,10 @@ else
             });
             await Db.SaveChangesAsync();
             _chatSent = true;
+            var ownerId = await Db.ClassifiedAds.Where(x => x.Id == Id).Select(x => (Guid?)x.UserId).FirstOrDefaultAsync();
+            if (ownerId is not null)
+                await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(
+                    ownerId.Value, "💬 پیام جدید برای آگهی شما", _chatText.Trim(), "bi-chat-dots", $"/panel/ads/chat/{Id}"));
         }
         catch (Exception ex)
         {
