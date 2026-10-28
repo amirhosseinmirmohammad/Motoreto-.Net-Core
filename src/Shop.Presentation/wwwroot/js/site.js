@@ -363,6 +363,38 @@
         fetch('/api/notifications/read-all').then(loadNotifications);
     });
 
+    // ---------- SignalR: اعلان زنده ----------
+    if (window.signalR && document.getElementById('notifBell')) {
+        var notifConn = new signalR.HubConnectionBuilder()
+            .withUrl('/hubs/app')
+            .withAutomaticReconnect()
+            .build();
+        notifConn.on('notify', function (n) {
+            loadNotifications();
+            if (window.showToast) window.showToast(n.title || 'اعلان جدید', 'info');
+        });
+        notifConn.start().catch(function () { /* polling ۴۵ ثانیه‌ای پشتیبان است */ });
+    }
+
+    // ---------- SignalR: چت زنده آگهی ----------
+    window.initChatHub = function (adId, dotnetRef) {
+        function start() {
+            if (!window.signalR) return;
+            var c = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/app?adId=' + adId)
+                .withAutomaticReconnect()
+                .build();
+            c.on('chatRefresh', function () { dotnetRef.invokeMethodAsync('OnRemoteMessage'); });
+            c.start().catch(function () { });
+            window.__chatConn = c;
+        }
+        if (window.signalR) start();
+        else { var t = setInterval(function () { if (window.signalR) { clearInterval(t); start(); } }, 300); setTimeout(function () { clearInterval(t); }, 10000); }
+    };
+    window.disposeChatHub = function () {
+        if (window.__chatConn) { try { window.__chatConn.stop(); } catch (e) { } window.__chatConn = null; }
+    };
+
     // ---------- انیمیشن reveal با اسکرول (variant + stagger) ----------
     function initReveal() {
         var els = document.querySelectorAll('.reveal:not(.visible)');

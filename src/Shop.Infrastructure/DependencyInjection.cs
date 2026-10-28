@@ -99,7 +99,6 @@ public static class DependencyInjection
         services.AddHangfireServer();
         services.AddScoped<Background.ClassifiedJobs>();
         services.AddScoped<Background.DatabaseBackupJob>();
-
         // ---- Seed اولیه ----
         services.AddScoped<DataSeeder>();
 

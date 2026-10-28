@@ -63,6 +63,8 @@ try
     builder.Services.AddHttpClient<Shop.Presentation.Services.FeedImportService>();
     builder.Services.AddHostedService<Shop.Presentation.Services.FeedSyncJob>();
     builder.Services.AddScoped<Shop.Application.Interfaces.ISmsService, Shop.Presentation.Services.KavenegarSmsService>();
+    builder.Services.AddSignalR();
+    builder.Services.AddScoped<Shop.Application.Interfaces.INotificationBroadcaster, Shop.Presentation.Services.SignalRBroadcaster>();
 
     // ---------- Identity ----------
     builder.Services
@@ -424,6 +426,9 @@ app.MapPost("/aff/lead/{code}", async (string code, IFormCollection form, Applic
     {
         Predicate = _ => true
     });
+
+    // ---------- SignalR: اعلان و چت زنده ----------
+    app.MapHub<Shop.Presentation.Hubs.AppHub>("/hubs/app");
 
     app.MapRazorComponents<Shop.Presentation.Components.App>()
         .AddInteractiveServerRenderMode();

@@ -5,6 +5,9 @@
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @inject IEventPublisher Events
+@inject IJSRuntime JS
+@inject INotificationBroadcaster Broadcaster
+@implements IDisposable
 
 @if (_denied)
 {
@@ -132,6 +135,9 @@ else if (_ad is not null)
         await Db.SaveChangesAsync();
         _text = "";
 
+        // چت زنده: گروه آگهی رفرش شود
+        try { await Broadcaster.PushChatRefreshAsync(AdId); } catch { }
+
         // اعلان پیام جدید به طرف مقابل
         var adOwnerId = await Db.ClassifiedAds.Where(a => a.Id == AdId).Select(a => (Guid?)a.UserId).FirstOrDefaultAsync();
         if (adOwnerId is not null && adOwnerId != _uid)
@@ -151,5 +157,30 @@ else if (_ad is not null)
 
         await LoadMessagesAsync();
         _busy = false;
+    }
+
+    // ---- چت زنده (SignalR) ----
+    private DotNetObjectReference<AdChat>? _selfRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_denied)
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("initChatHub", AdId, _selfRef);
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnRemoteMessage()
+    {
+        await LoadMessagesAsync();
+        StateHasChanged();
+    }
+
+    public async void Dispose()
+    {
+        try { await JS.InvokeVoidAsync("disposeChatHub"); } catch { }
+        _selfRef?.Dispose();
     }
 }

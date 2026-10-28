@@ -3,6 +3,7 @@
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthState
 @inject IEventPublisher Events
+@inject INotificationBroadcaster Broadcaster
 @using System.Text.Json
 
 @if (_ad is null)
@@ -348,6 +349,8 @@ else
             });
             await Db.SaveChangesAsync();
             _chatSent = true;
+            // چت زنده + اعلان مالک
+            try { await Broadcaster.PushChatRefreshAsync(Id); } catch { }
             var ownerId = await Db.ClassifiedAds.Where(x => x.Id == Id).Select(x => (Guid?)x.UserId).FirstOrDefaultAsync();
             if (ownerId is not null)
                 await Events.PublishNotificationAsync(new Application.Interfaces.NotificationEvent(

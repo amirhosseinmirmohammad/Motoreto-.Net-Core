@@ -99,6 +99,7 @@ public class EventPublisher(ApplicationDbContext db, ILogger<EventPublisher> log
 public class OutboxDispatcherJob(
     KafkaProducerHolder kafka,
     IServiceScopeFactory scopes,
+    INotificationBroadcaster broadcaster,
     ILogger<OutboxDispatcherJob> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stopping)
@@ -131,13 +132,14 @@ public class OutboxDispatcherJob(
                         }
                         else if (!kafka.Enabled)
                         {
-                            // dev بدون کافکا: مستقیم اعلان بساز
+                            // dev بدون کافکا: مستقیم اعلان بساز + push زنده
                             db.Notifications.Add(new Notification
                             {
                                 UserId = evt.UserId, Title = evt.Title, Body = evt.Body,
                                 Icon = evt.Icon, Link = evt.Link, CreatedAt = DateTime.UtcNow
                             });
                             row.PublishedAt = DateTime.UtcNow;
+                            await broadcaster.PushAsync(evt.UserId, evt.Title, evt.Body, evt.Icon, evt.Link, stopping);
                         }
                         else
                         {
@@ -182,6 +184,7 @@ public class OutboxDispatcherJob(
 public class NotificationConsumerJob(
     KafkaProducerHolder kafka,
     IServiceScopeFactory scopes,
+    INotificationBroadcaster broadcaster,
     ILogger<NotificationConsumerJob> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stopping)
@@ -223,6 +226,16 @@ public class NotificationConsumerJob(
                             CreatedAt = DateTime.UtcNow
                         });
                         await db.SaveChangesAsync(stopping);
+
+                        // اعلان زنده (SignalR)
+                        try
+                        {
+                            await broadcaster.PushAsync(evt.UserId, evt.Title, evt.Body, evt.Icon, evt.Link, stopping);
+                        }
+                        catch (Exception brEx)
+                        {
+                            logger.LogWarning(brEx, "broadcast SignalR ناموفق بود");
+                        }
 
                         // پیامک رویدادهای مهم (سفارش/پرداخت)
                         if (evt.Sms)
