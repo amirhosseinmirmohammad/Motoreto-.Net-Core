@@ -1,7 +1,7 @@
 # AGENTS.md — State پروژه مارکت (فروشگاه اینترنتی)
 
 > ⚠️ **قانون برای هر ایجنت:** بعد از هر تغییر، این فایل را به‌روز کن (بخش «آخرین تغییرات» و «کارهای باقی‌مانده»).
-> آخرین به‌روزرسانی: 2026-10-29 (نسخه ۵)
+> آخرین به‌روزرسانی: 2026-10-29 (نسخه ۶)
 
 ---
 
@@ -61,7 +61,12 @@ D:\Projects\Motoreto\stop-server.bat
 6. تست دستی جریان Checkout چندفروشنده‌ای (تعرفه‌های اختصاصی + فیلتر پرداخت).
 7. git ✅ — ریپو از قبل بود؛ کامیت‌ها منظم گرفته شود.
 
-## ۶.۵) آخرین تغییرات (نسخه ۵)
+## ۶.۵) آخرین تغییرات (نسخه ۶)
+- **سیستم آگهی دست دوم (مدل دیوار) ✅** — entity `Classified` (دسته/ویژگی داینامیک text-number-select-bool/آگهی با AttributesJson + Status Pending→Approved + انقضای ۳۰روزه + نردبان) + مایگریشن `ClassifiedAds` + `seed-classified.sql` (۹ دسته دیوار: املاک/وسایل نقلیه/موبایل/کامپیوتر/لوازم خانگی/استخدام/خدمات/استفاده‌ی نو/شخصی + ۳۰+ ویژگی اختصاصی هر دسته). صفحات: `/ads` (چیپ دسته + شهر + سرچ + sort) ، `/ads/{id}` (مشخصات جدولی + نمایش شماره تماس) ، `/ads/post` (فرم داینامیک بر اساس دسته + UploadDropzone) ، `/manage/classifieds` (مدیریش تأیید/رد/نردبان/حذف + CRUD دسته/ویژگی). لینک در هدر سایت و AdminLayout.
+- **شمسی‌سازی پنل‌ها ✅** — همه `Fa()` های ادمین به `ToPersianDate/ToPersianDateTime` (ارقام فارسی + وقت ایران) وصل شد + UserComments/FeedsAdmin.
+- **زمان‌بندی شگفت‌انگیز ✅** — `AmazingScheduleEnabled/StartMinutes/EndMinutes` در SiteSettings + UI تنظیمات (input time، پشتیبانی بازه شبانه) + `AmazingWindow.Resolve` (وقت ایران) در GetAmazingAsync + شمارش‌معکوس تا پایان بازه. خارج از بازه → بخش خالی. توجه: کش home-data-v1 تا انقضا ممکن است کهنه باشد.
+
+## ۶.۴) آخرین تغییرات (نسخه ۵)
 - **اتصال تنظیمات فروشنده به Checkout ✅** — کلاس `MarketplaceShipping` (Infrastructure/Services): ارسال چندفروشنده‌ای = هر فروشنده/مارکت یک مرسوله مستقل؛ پست با `ShippingCostOverride`/`FreeShippingThresholdOverride` هر فروشنده؛ اکسپرس = تعرفه مارکت × تعداد مرسوله. اعمال‌شده در `StockReservationService` (هر دو متد) و `OrderService.PlaceOrder` + **اعتبارسنجی PaymentMethods** (روش پرداخت باید از سوی همه فروشندگان سبد پذیرفته باشد). CheckoutController: `AcceptOnline/AcceptCod/ShipmentCount` به ViewBag → View: غیرفعال‌سازی روش پرداخت مجاز نیست + اعلان تعداد مرسوله‌ها + JS برآورد اکسپرس ضرب‌در مرسوله‌ها. نکته: برآورد پستِ سمت کلاینت هنوز تعرفه فروشنده را ندارد (سرور ملاک نهایی است).
 - **git ✅** — ریپو از قبل موجود بود (agents.md قدیمی بود)؛ کامیت `d1926ee` با همه تغییرات نسخه ۳-۵ + خروج `Logs/` و `server*.log` از git.
 
