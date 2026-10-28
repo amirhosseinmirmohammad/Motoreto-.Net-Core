@@ -47,6 +47,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Affiliate> Affiliates => Set<Affiliate>();
     public DbSet<AffiliateLead> AffiliateLeads => Set<AffiliateLead>();
     public DbSet<ShopFeed> ShopFeeds => Set<ShopFeed>();
+    public DbSet<PaymentGateway> PaymentGateways => Set<PaymentGateway>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

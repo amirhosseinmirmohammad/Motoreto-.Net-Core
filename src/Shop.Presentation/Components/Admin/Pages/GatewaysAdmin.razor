@@ -1,0 +1,195 @@
+@page "/manage/gateways"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-1">💳 درگاه‌های پرداخت</h4>
+<p class="text-muted small">درگاه‌های پرداخت آنلاین را تعریف و فعال کنید. کاربر در تسویه حساب، درگاه فعال را انتخاب می‌کند.</p>
+
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <h6 class="fw-bold mb-3">➕ افزودن درگاه</h6>
+    @if (_err is not null)
+    {
+        <div class="alert alert-danger py-2 small">@_err</div>
+    }
+    <div class="row g-2">
+        <div class="col-md-3">
+            <label class="form-label small text-muted">نوع درگاه *</label>
+            <select class="form-select" value="@_type" @onchange="TypeChanged">
+                <option value="Zarinpal">زرین‌پال</option>
+                <option value="Zibal">زیبال</option>
+                <option value="IDPay">آی‌دی‌پی</option>
+                <option value="NextPay">نکست‌پی</option>
+                <option value="Payping">پی‌پینگ</option>
+                <option value="Bale">بله</option>
+                <option value="Sadad">سداد</option>
+                <option value="Parsian">پارسیان</option>
+                <option value="Mellat">ملت (به‌پرداخت)</option>
+                <option value="Saman">سامان (سپ)</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">نام نمایشی *</label>
+            <input type="text" class="form-control" placeholder="زرین‌پال" value="@_name" @oninput="e => _name = e.Value?.ToString()" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">مرچنت آیدی *</label>
+            <input type="text" class="form-control" dir="ltr" value="@_merchant" @oninput="e => _merchant = e.Value?.ToString()" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">کلید امنیتی</label>
+            <input type="text" class="form-control" dir="ltr" value="@_secret" @oninput="e => _secret = e.Value?.ToString()" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">کارمزد درگاه (٪)</label>
+            <input type="number" class="form-control" min="0" max="10" step="0.1" value="@_fee" @oninput="e => _fee = decimal.TryParse(e.Value?.ToString(), out var v) ? v : 1" />
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" checked="@_sandbox" @onchange="e => _sandbox = e.Value is true" id="swSb" />
+                <label class="form-check-label small" for="swSb">حالت آزمایشی</label>
+            </div>
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+            <button class="btn btn-primary w-100" disabled="@(_busy || string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_merchant))" @onclick="AddAsync">
+                @(_busy ? "..." : "افزودن درگاه")
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_rows.Count == 0)
+{
+    <div class="alert alert-light border">درگاهی تعریف نشده است. درگاه پیشنهادی: زرین‌پال (رایج‌ترین درگاه ایرانی).</div>
+}
+else
+{
+    <div class="card border-0 shadow-sm rounded-4 p-3">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>درگاه</th>
+                        <th>نوع</th>
+                        <th>مرچنت</th>
+                        <th>کارمزد</th>
+                        <th>حالت</th>
+                        <th>وضعیت</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var g in _rows)
+                    {
+                        <tr>
+                            <td class="fw-bold">@g.Name</td>
+                            <td class="small" dir="ltr">@g.Type</td>
+                            <td class="small" dir="ltr">@(g.MerchantId.Length > 12 ? g.MerchantId[..12] + "..." : g.MerchantId)</td>
+                            <td>@g.FeePercent.ToString("0.0")٪</td>
+                            <td><span class="badge bg-@(g.IsSandbox ? "warning text-dark" : "success")">@(g.IsSandbox ? "تست" : "واقعی")</span></td>
+                            <td><span class="badge bg-@(g.IsActive ? "success" : "secondary")">@(g.IsActive ? "فعال" : "غیرفعال")</span></td>
+                            <td class="text-end" style="white-space:nowrap">
+                                <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(g.Id)">
+                                    @(g.IsActive ? "غیرفعال" : "فعال")
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(g.Id)">حذف</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true, _busy, _sandbox = true;
+    private string _type = "Zarinpal", _name = "", _merchant = "", _secret = "";
+    private decimal _fee = 1;
+    private string? _err;
+    private List<GRow> _rows = new();
+
+    private sealed record GRow(int Id, string Name, string Type, string MerchantId, decimal FeePercent, bool IsSandbox, bool IsActive);
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rows = await Db.PaymentGateways
+            .AsNoTracking()
+            .OrderBy(g => g.SortOrder).ThenBy(g => g.Id)
+            .Select(g => new GRow(g.Id, g.Name, g.Type, g.MerchantId, g.FeePercent, g.IsSandbox, g.IsActive))
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private async Task AddAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_merchant)) return;
+        _busy = true;
+        _err = null;
+
+        try
+        {
+            var maxOrder = await Db.PaymentGateways.AnyAsync()
+                ? await Db.PaymentGateways.MaxAsync(g => g.SortOrder) : 0;
+
+            Db.PaymentGateways.Add(new PaymentGateway
+            {
+                Name = _name.Trim(),
+                Type = _type,
+                MerchantId = _merchant.Trim(),
+                SecretKey = _secret,
+                FeePercent = _fee,
+                IsSandbox = _sandbox,
+                SortOrder = maxOrder + 1,
+                IsActive = true
+            });
+            await Db.SaveChangesAsync();
+
+            _name = _merchant = _secret = "";
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _err = "خطا: " + ex.Message;
+        }
+
+        _busy = false;
+    }
+
+    private async Task ToggleAsync(int id)
+    {
+        _busy = true;
+        var g = await Db.PaymentGateways.FirstAsync(x => x.Id == id);
+        g.IsActive = !g.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        _busy = true;
+        var g = await Db.PaymentGateways.FirstAsync(x => x.Id == id);
+        Db.PaymentGateways.Remove(g);
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private void TypeChanged(ChangeEventArgs e) => _type = e.Value?.ToString() ?? "Zarinpal";
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.PaymentGateways
+            .AsNoTracking()
+            .OrderBy(g => g.SortOrder).ThenBy(g => g.Id)
+            .Select(g => new GRow(g.Id, g.Name, g.Type, g.MerchantId, g.FeePercent, g.IsSandbox, g.IsActive))
+            .ToListAsync();
+        _loading = false;
+    }
+}
