@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
@@ -59,7 +60,7 @@ try
     builder.Services.AddSingleton<Shop.Presentation.Services.ObjectStorageService>();
     builder.Services.AddScoped<Shop.Presentation.Services.ImageUploadService>();
     builder.Services.AddHttpClient<Shop.Presentation.Services.FeedImportService>();
-    builder.Services.AddScoped<Shop.Application.Interfaces.ISmsService, Shop.Infrastructure.Services.ConsoleSmsService>();
+    builder.Services.AddScoped<Shop.Application.Interfaces.ISmsService, Shop.Presentation.Services.KavenegarSmsService>();
 
     // ---------- Identity ----------
     builder.Services
@@ -148,7 +149,23 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseRateLimiter();
+// ---- Captcha ساده (ریاضی) برای فرم‌های عمومی ----
+app.MapGet("/api/captcha", (HttpContext ctx) =>
+{
+    var r = Random.Shared;
+    int a = r.Next(2, 9), b = r.Next(2, 9);
+    var answer = a + b;
+    ctx.Session.SetString("captcha", answer.ToString());
+    return Results.Json(new { question = $"{a} + {b} = ?" });
+});
+
+app.MapPost("/api/captcha/verify", (HttpContext ctx, [FromBody] JsonElement body) =>
+{
+    var expected = ctx.Session.GetString("captcha");
+    var provided = body.TryGetProperty("answer", out var a) ? a.GetString() : null;
+    var ok = expected is not null && provided == expected;
+    return Results.Json(new { valid = ok });
+});
 
 // اتصال به Object Storage (SeaweedFS/S3) — ساخت باکت در صورت نبود
 try
