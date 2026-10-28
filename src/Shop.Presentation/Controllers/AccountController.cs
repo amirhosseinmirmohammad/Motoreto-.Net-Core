@@ -111,6 +111,20 @@ public class AccountController(
         if (!string.IsNullOrEmpty(guestToken))
             await cart.MergeGuestCartAsync(guestToken, user.Id, ct);
 
+        // ---- CPA: پاداش ثبت‌نام از طریق لینک همکار فروش ----
+        var affCode = Request.Cookies["aff"];
+        if (!string.IsNullOrWhiteSpace(affCode))
+        {
+            var aff = await db.Affiliates.FirstOrDefaultAsync(a => a.Code == affCode && a.IsActive, ct);
+            if (aff is not null)
+            {
+                const int cpaBonus = 20000; // پاداش هر ثبت‌نام موفق (تومان)
+                aff.RegistrationCount++;
+                aff.Earned += cpaBonus;
+                await db.SaveChangesAsync(ct);
+            }
+        }
+
         TempData["Success"] = $"خوش آمدید {user.FirstName} جان! 🎉";
         return Redirect("/panel");
     }

@@ -45,6 +45,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<SellerCategory> SellerCategories => Set<SellerCategory>();
     public DbSet<BrandCategory> BrandCategories => Set<BrandCategory>();
     public DbSet<Affiliate> Affiliates => Set<Affiliate>();
+    public DbSet<AffiliateLead> AffiliateLeads => Set<AffiliateLead>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

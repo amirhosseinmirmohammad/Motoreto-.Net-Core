@@ -71,6 +71,24 @@ D:\Projects\Motoreto\stop-server.bat
 - Quill/SEO: `@section Head` به `_Layout` اضافه شد؛ Quill از CDN (آفلاین → ادیتور متنی جایگزین)
 - سرور از داخل ابزار ایجنت اجرا شود بعد از مدتی کشته می‌شود → همیشه `start-server.bat` توسط کاربر اجرا شود
 
+## ۶.۸) افیلیت — سه مدل پرداخت (کامل شد)
+- **CPS (فروش):** کوکی ۳۰ روزه → تسویه → `Earned += Total × Commission%` — ضدتقلب: خرید خودِ همکار کمیسیون ندارد
+- **CPA (ثبت‌نام):** کوکی در Register خوانده می‌شود → `RegistrationCount++` + پاداش ۲۰٬۰۰۰ تومان (`AccountController.Register` — ثابت `cpaBonus`)
+- **CPL (سرنخ):** لندینگ عمومی `/aff/lead/{code}` (فرم نام+موبایل، بدون لاگین) → `affiliate_leads` + `LeadCount++` + ۱۵٬۰۰۰ تومان — endpoint های GET/POST در Program.cs
+- **تسویه:** کاربر در `/panel` موجودی + «درخواست تسویه» (حد نصاب ۵۰۰٬۰۰۰ تومان → `PayoutRequestedAt`)؛ ادمین در `/manage/affiliates`: جدول کامل (کلیک/CPA/CPL/CPS/کسب‌شده/پرداخت‌شده/موجودی) + دکمه «تسویه شد» (PaidOut=Earned)
+- **سود مارکت:** کمیسیون همکار (پیش‌فرض ۳٪، ادمین ۱-۳۰٪) از کمیسیون ۵٪ فروشنده کسر می‌شود؛ self-referral بلاک
+- **تبلیغ در لندینگ CPL:** فرم مستقل HTML (بدون لاگین) برای کانال‌ها/بلاگرها
+
+## ۶.۸-فید) اتصال فروشگاه‌ها به سبک تروب (Feed-based) — طرح کامل، شروع نشده
+مدل: فروشگاه‌های بیرونی به‌جای ثبت دستی محصول، **feed URL** می‌دهند (JSON/XML با title,price,stock,image,category,external_id) → ما import/sync دوره‌ای می‌کنیم → کالاهایشان با برچسب منبع در مارکت لیست می‌شود → سفارش‌ها به فروشگاه اطلاع داده می‌شود (webhook/ایمیل) → درآمد ما: کمیسیون فروش یا CPC.
+- **Entity جدید `ShopFeed`:** Id, SellerId? (یا ShopName+Email برای فروشگاه بدون حساب), FeedUrl, Token (برای webhook بازگشت), SyncIntervalMinutes, Status(Active/Blocked), LastSyncAt, LastSyncError, ProductCount
+- **ستون روی Product:** `source_feed_id` (null = کالای مارکت — در فرم ادمین قفل شود)
+- **ImportService:** HttpClient → دانلود feed → پارس JSON (قرارداد: `{"products":[{external_id,title,price_toman,stock,image_url,category,description}]}`) → upsert با کلید (feed_id, external_id) → قیمت/موجودی آپدیت، حذف غایب‌ها (IsActive=false)
+- **Sync:** دکمه «همگام‌سازی» در ادمین + BackgroundJob دوره‌ای (الگوی ReservationCleanupJob)
+- **ورک‌فلو:** فروشگاه در `/seller/register` ثبت‌نام می‌کند → در پنلش تب «اتصال فروشگاه» feed URL می‌دهد → ادمین در `/manage/feeds` تأیید می‌کند → sync
+- **بعداً:** webhook سفارش + مدل CPC (شمارش کلیک روی کالاهای feed)
+- ❗ این بخش **شروع نشده** — اولین قدم: entity + migration + ImportService
+
 ## ۶.۷) کارهای باقی‌مانده (قدیمی — جزئیات بیشتر)
 1. **فیلتر /products با junction دسته‌ها** — الان فقط `p.CategoryId`؛ باید `ids.Contains(p.CategoryId) || p.ProductCategories/جunction.Any(...)` شود (ProductService خط ~162).
 2. **سیستم افیلیت** — درخواست شده، شروع نشده: entity `Affiliate`(UserId,Code,Commission,Balance,Earned,Clicks)، ستون `orders.affiliate_code`، endpoint `/aff/{code}` + کوکی ۳۰ روزه، اتریبیوشن هنگام ثبت سفارش، پنل ادمین + تب در پنل کاربر.

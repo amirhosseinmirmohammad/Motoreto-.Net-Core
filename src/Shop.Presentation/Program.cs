@@ -174,6 +174,53 @@ app.MapGet("/aff/{code}", async (string code, ApplicationDbContext db, HttpConte
     return Results.Redirect("/?ref=" + code);
 });
 
+// افیلیت مدل CPL: لندینگ ثبت سرنخ برای همکار
+app.MapGet("/aff/lead/{code}", async (string code, ApplicationDbContext db) =>
+{
+    var aff = await db.Affiliates.AsNoTracking().FirstOrDefaultAsync(a => a.Code == code && a.IsActive);
+    return aff is null ? Results.NotFound() : Results.Content(
+        $@"<!DOCTYPE html><html lang='fa' dir='rtl'><head><meta charset='utf-8'>
+        <meta name='viewport' content='width=device-width, initial-scale=1.0'><title>پیشنهاد ویژه مارکت</title>
+        <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css'></head>
+        <body class='bg-light'><div class='container' style='max-width:480px;margin-top:8vh'>
+        <div class='card border-0 shadow-sm rounded-4 p-4'>
+        <h4 class='fw-bold text-center mb-1'>🎁 پیشنهاد ویژه مارکت</h4>
+        <p class='text-center text-muted small'>اطلاعات‌تان را ثبت کنید تا مشاور رایگان خرید و کد تخفیف اولین خرید برایتان ارسال شود.</p>
+        <form method='post' action='/aff/lead/{code}'>
+            <input class='form-control mb-2' name='FullName' placeholder='نام و نام خانوادگی' required>
+            <input class='form-control mb-3' name='Phone' placeholder='شماره موبایل' dir='ltr' required>
+            <button class='btn btn-primary w-100 py-2'>ثبت و دریافت مشاوره رایگان</button>
+        </form></div></div></body></html>", "text/html");
+});
+
+app.MapPost("/aff/lead/{code}", async (string code, IFormCollection form, ApplicationDbContext db) =>
+{
+    var aff = await db.Affiliates.FirstOrDefaultAsync(a => a.Code == code && a.IsActive);
+    if (aff is null) return Results.NotFound();
+
+    var fullName = form["FullName"].ToString().Trim();
+    var phone = form["Phone"].ToString().Trim();
+    if (fullName.Length < 2 || phone.Length < 10)
+        return Results.BadRequest("اطلاعات نامعتبر است.");
+
+    db.AffiliateLeads.Add(new AffiliateLead
+    {
+        AffiliateId = aff.Id,
+        FullName = fullName,
+        Phone = phone,
+        CreatedAt = DateTime.UtcNow
+    });
+
+    // پورسانت CPL
+    const int cplBonus = 15000;
+    aff.LeadCount++;
+    aff.Earned += cplBonus;
+    await db.SaveChangesAsync();
+
+    return Results.Content(
+        "<!DOCTYPE html><html lang='fa' dir='rtl'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1.0'><title>ثبت شد</title><link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css'></head><body class='bg-light'><div class='container' style='max-width:480px;margin-top:10vh'><div class='card border-0 shadow-sm rounded-4 p-4 text-center'><h4 class='text-success fw-bold'>✓ ثبت شد!</h4><p class='text-muted'>کارشناسان ما به‌زودی با شما تماس می‌گیرند.</p></div></div></body></html>", "text/html");
+});
+
     // ---------- Migration + Seed (با Retry) ----------
     using (var scope = app.Services.CreateScope())
     {

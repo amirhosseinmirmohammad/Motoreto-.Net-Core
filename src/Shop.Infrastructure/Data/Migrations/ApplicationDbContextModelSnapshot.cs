@@ -218,6 +218,10 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
+                    b.Property<int>("LeadCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("lead_count");
+
                     b.Property<long>("OrderAmount")
                         .HasColumnType("bigint")
                         .HasColumnName("order_amount");
@@ -225,6 +229,18 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.Property<int>("OrderCount")
                         .HasColumnType("integer")
                         .HasColumnName("order_count");
+
+                    b.Property<long>("PaidOut")
+                        .HasColumnType("bigint")
+                        .HasColumnName("paid_out");
+
+                    b.Property<DateTime?>("PayoutRequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("payout_requested_at");
+
+                    b.Property<int>("RegistrationCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("registration_count");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -242,6 +258,50 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_affiliates_user_id");
 
                     b.ToTable("affiliates", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.AffiliateLead", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<int>("AffiliateId")
+                        .HasColumnType("integer")
+                        .HasColumnName("affiliate_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("full_name");
+
+                    b.Property<string>("Interest")
+                        .HasColumnType("text")
+                        .HasColumnName("interest");
+
+                    b.Property<bool>("IsContacted")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_contacted");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("phone");
+
+                    b.HasKey("Id")
+                        .HasName("pk_affiliate_leads");
+
+                    b.HasIndex("AffiliateId")
+                        .HasDatabaseName("ix_affiliate_leads_affiliate_id");
+
+                    b.ToTable("affiliate_leads", (string)null);
                 });
 
             modelBuilder.Entity("Shop.Domain.Blog", b =>
@@ -2308,6 +2368,18 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasConstraintName("fk_affiliates_user_user_id");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Shop.Domain.AffiliateLead", b =>
+                {
+                    b.HasOne("Shop.Domain.Affiliate", "Affiliate")
+                        .WithMany()
+                        .HasForeignKey("AffiliateId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_affiliate_leads_affiliates_affiliate_id");
+
+                    b.Navigation("Affiliate");
                 });
 
             modelBuilder.Entity("Shop.Domain.Blog", b =>

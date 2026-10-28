@@ -110,7 +110,9 @@ public class CheckoutController(
         {
             var aff = await db.Affiliates.FirstOrDefaultAsync(a => a.Code == affCode && a.IsActive, ct);
             var order = await db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == result.OrderId, ct);
-            if (aff is not null && order is not null)
+
+            // ضدتقلب: خریدِ خودِ همکار کمیسیون ندارد + سود مارکت حفظ شود (کمیسیون همکار ≤ کمیسیون فروشنده به‌صورت پیش‌فرض ۵٪ است)
+            if (aff is not null && order is not null && aff.UserId != CurrentUserId() && order.Total > 0)
             {
                 order.AffiliateCode = aff.Code;
                 aff.OrderCount++;

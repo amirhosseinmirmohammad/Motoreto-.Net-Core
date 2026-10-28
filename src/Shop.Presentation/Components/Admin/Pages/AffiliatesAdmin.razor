@@ -25,9 +25,13 @@ else
                         <th>همکار</th>
                         <th>کمیسیون</th>
                         <th>کلیک</th>
-                        <th>سفارش</th>
+                        <th>ثبت‌نام (CPA)</th>
+                        <th>سرنخ (CPL)</th>
+                        <th>سفارش (CPS)</th>
                         <th>مبلغ سفارش‌ها</th>
-                        <th>کمیسیون کسب‌شده</th>
+                        <th>کسب‌شده</th>
+                        <th>پرداخت‌شده</th>
+                        <th>موجودی</th>
                         <th>وضعیت</th>
                         <th></th>
                     </tr>
@@ -43,6 +47,8 @@ else
                                        value="@_draft[a.Id]" @oninput="e => _draft[a.Id] = int.TryParse(e.Value?.ToString(), out var v) ? v : _draft[a.Id]" />
                             </td>
                             <td>@a.Clicks.ToString("N0")</td>
+                            <td>@a.Registrations.ToString("N0")</td>
+                            <td>@a.Leads.ToString("N0")</td>
                             <td>@a.Orders.ToString("N0")</td>
                             <td class="small">@a.Amount.ToString("N0") تومان</td>
                             <td class="fw-bold text-success">@a.Earned.ToString("N0") تومان</td>
@@ -66,7 +72,7 @@ else
     private List<ARow> _rows = new();
     private Dictionary<int, int> _draft = new();
 
-    private sealed record ARow(int Id, string Code, string UserName, int Commission, int Clicks, int Orders, long Amount, long Earned, bool Active);
+    private sealed record ARow(int Id, string Code, string UserName, int Commission, int Clicks, int Registrations, int Leads, int Orders, long Amount, long Earned, long PaidOut, bool PayoutRequested, bool Active);
 
     protected override async Task OnInitializedAsync() => await LoadAsync();
 
@@ -74,11 +80,11 @@ else
     {
         _rows = await Db.Affiliates
             .AsNoTracking()
-            .OrderByDescending(a => a.Earned)
+            .OrderByDescending(a => a.PayoutRequestedAt).ThenByDescending(a => a.Earned)
             .Select(a => new ARow(
                 a.Id, a.Code,
                 (a.User.FirstName ?? "") + " " + (a.User.LastName ?? ""),
-                a.CommissionPercent, a.ClickCount, a.OrderCount, a.OrderAmount, a.Earned, a.IsActive))
+                a.CommissionPercent, a.ClickCount, a.RegistrationCount, a.LeadCount, a.OrderCount, a.OrderAmount, a.Earned, a.PaidOut, a.PayoutRequestedAt != null, a.IsActive))
             .ToListAsync();
 
         _draft = _rows.ToDictionary(a => a.Id, a => a.Commission);
@@ -100,6 +106,18 @@ else
         _busy = true;
         var a = await Db.Affiliates.FirstAsync(x => x.Id == id);
         a.IsActive = !a.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+
+    /// <summary>تسویه دستی توسط ادمین: PaidOut = Earned (موجودی صفر) و پاک کردن درخواست.</summary>
+    private async Task MarkPaidAsync(int id)
+    {
+        _busy = true;
+        var a = await Db.Affiliates.FirstAsync(x => x.Id == id);
+        a.PaidOut = a.Earned;
+        a.PayoutRequestedAt = null;
         await Db.SaveChangesAsync();
         await LoadAsync();
         _busy = false;

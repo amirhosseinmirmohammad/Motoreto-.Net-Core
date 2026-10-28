@@ -80,6 +80,27 @@ else
                     <div class="small text-muted">کمیسیون کسب‌شده (تومان)</div>
                     <div class="fw-bold text-success">@_earned.ToString("N0")</div>
                 </div>
+                <div class="col-12">
+                    <hr class="my-1" />
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div>
+                            <span class="small text-muted">موجودی قابل تسویه: </span>
+                            <span class="fw-bold text-primary">@_balance.ToString("N0") تومان</span>
+                        </div>
+                        @if (_payoutRequested)
+                        {
+                            <span class="badge bg-warning text-dark">درخواست تسویه ثبت شد — پس از بررسی واریز می‌شود</span>
+                        }
+                        else if (_balance >= 500000)
+                        {
+                            <button type="button" class="btn btn-sm btn-success" disabled="@_affBusy" @onclick="RequestPayoutAsync">درخواست تسویه</button>
+                        }
+                        else
+                        {
+                            <span class="small text-muted">حد نصاب تسویه: ۵۰۰٬۰۰۰ تومان</span>
+                        }
+                    </div>
+                </div>
             </div>
         }
         @if (_affMsg is not null)
@@ -111,6 +132,8 @@ else
             _clicks = aff.ClickCount;
             _ordersAff = aff.OrderCount;
             _earned = aff.Earned;
+            _balance = aff.Balance;
+            _payoutRequested = aff.PayoutRequestedAt is not null;
         }
 
         _loading = false;
@@ -118,8 +141,23 @@ else
 
     private string? _affCode, _affLink, _affMsg;
     private int _clicks, _ordersAff;
-    private long _earned;
+    private long _earned, _balance;
+    private bool _payoutRequested;
     private bool _affBusy;
+
+    private async Task RequestPayoutAsync()
+    {
+        _affBusy = true;
+        var uid = await GetUserIdAsync();
+        var aff = await Db.Affiliates.FirstAsync(a => a.UserId == uid);
+        if (aff.Balance >= 500000)
+        {
+            aff.PayoutRequestedAt = DateTime.UtcNow;
+            await Db.SaveChangesAsync();
+            _payoutRequested = true;
+        }
+        _affBusy = false;
+    }
 
     private async Task CreateAffiliateAsync()
     {
