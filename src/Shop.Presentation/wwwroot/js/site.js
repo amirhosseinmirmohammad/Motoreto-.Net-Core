@@ -513,3 +513,15 @@ window.richEditor = {
     },
     destroy: function (id) { delete window.richEditor.refs[id]; }
 };
+/* ---------- PWA Splash hide after load ---------- */
+window.addEventListener('load', function () {
+    var splash = document.getElementById('pwaSplash');
+    if (splash) {
+        setTimeout(function () { splash.classList.add('hide'); }, 800);
+    }
+});
+/* اگر Blazor دیر لود شد، حداکثر ۳ ثانیه */
+setTimeout(function () {
+    var s = document.getElementById('pwaSplash');
+    if (s) s.classList.add('hide');
+}, 3000);

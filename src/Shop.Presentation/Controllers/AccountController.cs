@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Shop.Application.Interfaces;
 using Shop.Application.ViewModels;
@@ -29,6 +30,7 @@ public class AccountController(
     [HttpPost("/account/login")]
     [AllowAnonymous]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("login")]
     public async Task<IActionResult> Login(LoginViewModel model, CancellationToken ct)
     {
         ViewBag.ReturnUrl = model.ReturnUrl;

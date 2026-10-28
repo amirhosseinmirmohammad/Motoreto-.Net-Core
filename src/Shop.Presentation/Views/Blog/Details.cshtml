@@ -16,7 +16,7 @@
                         <span><i class="bi bi-eye"></i> @Model.ViewCount.ToString("N0").ToFarsiDigits() بازدید</span>
                     </div>
                     <p class="lead text-muted">@Model.ShortDescription</p>
-                    <div class="blog-body">@Html.Raw(Model.Body)</div>
+                    <div class="blog-body">@Html.Raw(Shop.Shared.HtmlSanitizer.Sanitize(Model.Body))</div>
                 </div>
             </div>
 

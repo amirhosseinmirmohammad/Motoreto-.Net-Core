@@ -135,6 +135,16 @@
     </div>
 </footer>
 
+    @* ---------- Bottom Navigation (Glassmorphism - Mobile) ---------- *@
+    <nav class="bottom-nav">
+        <NavLink href="/" class="" Match="NavLinkMatch.All"><i class="bi bi-house-door"></i><span>خانه</span></NavLink>
+        <NavLink href="/products" class=""><i class="bi bi-grid"></i><span>محصولات</span></NavLink>
+        <NavLink href="/cart" class=""><i class="bi bi-cart3"></i><span>سبد</span>
+            <span class="bn-badge" id="bnCartBadge" style="display:none">۰</span>
+        </NavLink>
+        <NavLink href="/compare" class=""><i class="bi bi-bar-chart-line"></i><span>مقایسه</span></NavLink>
+        <NavLink href="/panel" class=""><i class="bi bi-person"></i><span>حساب</span></NavLink>
+    </nav>
 @code {
     private SiteSettings? _settings;
     private List<CategoryNodeDto> _menu = [];

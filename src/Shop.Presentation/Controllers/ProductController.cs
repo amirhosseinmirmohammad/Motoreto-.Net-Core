@@ -4,6 +4,7 @@ using Shop.Application.DTOs;
 using Shop.Application.Interfaces;
 using Shop.Infrastructure.Data;
 using Shop.Presentation.Services;
+using Shop.Shared;
 
 namespace Shop.Presentation.Controllers;
 
@@ -54,6 +55,9 @@ public class ProductController(
         ViewData["SeoDescription"] = (string?)product.MetaDescription ?? plainDesc;
         ViewData["SeoUrl"] = $"{siteUrl}/p/{card.Slug}";
         ViewData["SeoImage"] = card.Image.StartsWith("http") ? card.Image : siteUrl + card.Image;
+
+        // Sanitize: توضیحات HTML را برای نمایش امن پاک‌سازی می‌کنیم (ضد XSS)
+        var safeDescription = (product.Description ?? "").Sanitize();
         ViewData["SeoJsonLd"] = System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, object?>
         {
             ["@context"] = "https://schema.org",

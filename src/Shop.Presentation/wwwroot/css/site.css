@@ -603,3 +603,33 @@ a { color: var(--brand); }
 .slider-title{display:block !important;margin:0 !important;color:#fff;font-size:clamp(1.3rem,3.2vw,2.4rem);font-weight:900;line-height:1.5;text-shadow:0 3px 18px rgba(0,0,0,.4);max-width:620px}
 .slider-cta{display:inline-flex !important;align-self:flex-start;align-items:center;gap:6px;background:#fff;color:#1f2340;font-weight:800;font-size:.9rem;border-radius:999px;padding:10px 24px;box-shadow:0 8px 22px rgba(0,0,0,.25);transition:.2s;margin-top:6px;pointer-events:auto}
 .slider-slide:hover .slider-cta{background:#ef4056;color:#fff;transform:translateY(-2px)}
+/* ---------- PWA Splash Screen (مثل اسنپ) ---------- */
+.pwa-splash{position:fixed;inset:0;z-index:999999;background:linear-gradient(135deg,#1f2340 0%,#2d3561 50%,#ef4056 150%);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease,visibility .6s ease}
+.pwa-splash.hide{opacity:0;visibility:hidden;pointer-events:none}
+.splash-content{text-align:center;color:#fff}
+.splash-logo-ring{width:72px;height:72px;margin:0 auto 16px;border:3px solid rgba(255,255,255,.3);border-top-color:#ef4056;border-radius:50%;animation:splashSpin 1.2s linear infinite}
+.splash-logo-ring::after{content:"🛍️";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.8rem}
+@keyframes splashSpin{to{transform:rotate(360deg)}}
+.splash-logo-text{font-size:2rem;font-weight:900;letter-spacing:2px;margin-bottom:6px}
+.splash-tagline{font-size:.8rem;opacity:.7;margin-bottom:24px}
+.splash-loader{display:flex;gap:6px;justify-content:center}
+.splash-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.4);animation:splashBounce .6s ease infinite alternate}
+.splash-dot:nth-child(2){animation-delay:.2s}
+.splash-dot:nth-child(3){animation-delay:.4s}
+@keyframes splashBounce{to{transform:translateY(-8px);background:#ef4056}}
+
+/* ---------- Bottom Navigation (Glassmorphism) ---------- */
+.bottom-nav{position:fixed;bottom:12px;left:12px;right:12px;z-index:9000;display:none;
+  background:rgba(255,255,255,.72);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid rgba(255,255,255,.4);border-radius:22px;
+  box-shadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06),inset 0 1px 0 rgba(255,255,255,.5);
+  padding:6px 4px;justify-content:space-around;align-items:center}
+.bottom-nav a{display:flex;flex-direction:column;align-items:center;gap:2px;text-decoration:none;color:#6b7280;font-size:.6rem;font-weight:600;padding:6px 10px;border-radius:14px;transition:.2s;position:relative}
+.bottom-nav a i{font-size:1.25rem}
+.bottom-nav a.active{color:#ef4056;background:rgba(239,64,86,.08)}
+.bottom-nav a:active{transform:scale(.92)}
+.bottom-nav .bn-badge{position:absolute;top:2px;right:8px;background:#ef4056;color:#fff;font-size:.55rem;font-weight:800;border-radius:999px;min-width:16px;height:16px;display:flex;align-items:center;justify-content:center;padding:0 4px}
+@media(max-width:768px){.bottom-nav{display:flex}}
+@media(min-width:769px){.bottom-nav{display:none !important}}
+/* فضای خالی پایین صفحه برای پنهان نشدن محتوا در موبایل */
+@media(max-width:768px){body{padding-bottom:72px}}

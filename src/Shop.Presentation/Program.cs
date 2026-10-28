@@ -132,9 +132,23 @@ try
     builder.Services.AddHealthChecks()
         .AddCheck<DbHealthCheck>("database", tags: ["ready"]);
 
+
+
     builder.Services.AddScoped<IGuestCartAccessor, GuestCartAccessor>();
 
-    var app = builder.Build();
+var app = builder.Build();
+
+// ---- Security Headers ----
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+    await next();
+});
+
+app.UseRateLimiter();
 
 // اتصال به Object Storage (SeaweedFS/S3) — ساخت باکت در صورت نبود
 try
