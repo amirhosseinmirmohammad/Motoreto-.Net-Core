@@ -1270,6 +1270,10 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(220)")
                         .HasColumnName("slug");
 
+                    b.Property<int?>("SourceFeedId")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_feed_id");
+
                     b.Property<int>("Stock")
                         .HasColumnType("integer")
                         .HasColumnName("stock");
@@ -1718,6 +1722,56 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasDatabaseName("ix_seller_offers_product_id_seller_id");
 
                     b.ToTable("seller_offers", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.ShopFeed", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ContactEmail")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("contact_email");
+
+                    b.Property<string>("FeedUrl")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("feed_url");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("LastSyncAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_sync_at");
+
+                    b.Property<string>("LastSyncError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_sync_error");
+
+                    b.Property<int>("ProductCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("product_count");
+
+                    b.Property<string>("ShopName")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("shop_name");
+
+                    b.Property<int>("SyncIntervalMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("sync_interval_minutes");
+
+                    b.HasKey("Id")
+                        .HasName("pk_shop_feeds");
+
+                    b.ToTable("shop_feeds", (string)null);
                 });
 
             modelBuilder.Entity("Shop.Domain.SiteMessage", b =>

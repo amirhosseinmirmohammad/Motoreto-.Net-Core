@@ -58,6 +58,7 @@ try
     builder.Services.AddScoped<Shop.Presentation.Services.IFileUploadService, Shop.Presentation.Services.FileUploadService>();
     builder.Services.AddSingleton<Shop.Presentation.Services.ObjectStorageService>();
     builder.Services.AddScoped<Shop.Presentation.Services.ImageUploadService>();
+    builder.Services.AddHttpClient<Shop.Presentation.Services.FeedImportService>();
     builder.Services.AddScoped<Shop.Application.Interfaces.ISmsService, Shop.Infrastructure.Services.ConsoleSmsService>();
 
     // ---------- Identity ----------
@@ -173,6 +174,8 @@ app.MapGet("/aff/{code}", async (string code, ApplicationDbContext db, HttpConte
     }
     return Results.Redirect("/?ref=" + code);
 });
+
+// بنرهای اسلایدر — در صورت نبود تولید می‌شوند
 
 // افیلیت مدل CPL: لندینگ ثبت سرنخ برای همکار
 app.MapGet("/aff/lead/{code}", async (string code, ApplicationDbContext db) =>

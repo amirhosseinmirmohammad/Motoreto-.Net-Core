@@ -1,0 +1,131 @@
+@page "/manage/feeds"
+@layout AdminLayout
+@attribute [Authorize]
+@using Shop.Presentation.Services
+@inject ApplicationDbContext Db
+@inject FeedImportService Importer
+
+<h4 class="fw-bold mb-1">🔌 فروشگاه‌های متصل (Feed)</h4>
+<p class="text-muted small">مدل تروب: فروشگاه feed JSON می‌دهد (title, price_toman, stock, image_url, category, external_id) و سیستم خودکار import/همگام می‌کند.</p>
+
+<div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+    <h6 class="fw-bold mb-3">➕ اتصال فروشگاه جدید</h6>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label small text-muted">نام فروشگاه *</label>
+            <input type="text" class="form-control" value="@_name" @oninput="e => _name = e.Value?.ToString()" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small text-muted">ایمیل تماس *</label>
+            <input type="email" class="form-control" dir="ltr" value="@_email" @oninput="e => _email = e.Value?.ToString()" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label small text-muted">آدرس Feed (JSON) *</label>
+            <input type="text" class="form-control" dir="ltr" placeholder="https://shop.example/feed.json" value="@_url" @oninput="e => _url = e.Value?.ToString()" />
+        </div>
+        <div class="col-12">
+            <button class="btn btn-primary" disabled="@(_busy || string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_url))" @onclick="AddAsync">
+                اتصال فروشگاه
+            </button>
+        </div>
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else
+{
+    @foreach (var f in _rows)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-3 mb-3">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                <div>
+                    <div class="fw-bold">
+                        @f.ShopName
+                        <span class="badge bg-@(f.Active ? "success" : "secondary") ms-1">@(f.Active ? "فعال" : "غیرفعال")</span>
+                    </div>
+                    <div class="small text-muted mt-1" dir="ltr">@f.FeedUrl</div>
+                    <div class="small mt-1">
+                        📦 @f.ProductCount.ToString("N0") کالا
+                        • آخرین sync: @(f.LastSync?.ToString("yyyy/MM/dd HH:mm") ?? "—")
+                        @if (f.Error is not null)
+                        {
+                            <span class="text-danger">• خطا: @f.Error</span>
+                        }
+                    </div>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <button class="btn btn-sm btn-success" disabled="@_busy" @onclick="() => SyncAsync(f.Id)">
+                        <i class="bi bi-arrow-repeat"></i> همگام‌سازی
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(f.Id)">
+                        @(f.Active ? "غیرفعال" : "فعال")
+                    </button>
+                </div>
+            </div>
+            @if (_msgFor.TryGetValue(f.Id, out var msg))
+            {
+                <div class="small text-success mt-2">@msg</div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private string _name = "", _email = "", _url = "";
+    private List<FRow> _rows = new();
+    private Dictionary<int, string> _msgFor = new();
+
+    private sealed record FRow(int Id, string ShopName, string FeedUrl, int ProductCount, DateTime? LastSync, string? Error, bool Active);
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _rows = await Db.ShopFeeds
+            .AsNoTracking()
+            .OrderByDescending(f => f.Id)
+            .Select(f => new FRow(f.Id, f.ShopName, f.FeedUrl, f.ProductCount, f.LastSyncAt, f.LastSyncError, f.IsActive))
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private async Task AddAsync()
+    {
+        _busy = true;
+        Db.ShopFeeds.Add(new ShopFeed
+        {
+            ShopName = _name.Trim(),
+            ContactEmail = _email.Trim(),
+            FeedUrl = _url.Trim(),
+            SyncIntervalMinutes = 360,
+            IsActive = true
+        });
+        await Db.SaveChangesAsync();
+        _name = _email = _url = "";
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task SyncAsync(int id)
+    {
+        _busy = true;
+        var (ok, msg) = await Importer.SyncAsync(id);
+        _msgFor[id] = (ok ? "✓ " : "✗ ") + msg;
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task ToggleAsync(int id)
+    {
+        _busy = true;
+        var f = await Db.ShopFeeds.FirstAsync(x => x.Id == id);
+        f.IsActive = !f.IsActive;
+        await Db.SaveChangesAsync();
+        await LoadAsync();
+        _busy = false;
+    }
+}

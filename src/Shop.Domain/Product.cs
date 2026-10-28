@@ -22,6 +22,9 @@ public class Product
     /// <summary>توضیح متا برای موتورهای جستجو و هوش مصنوعی — حداکثر ~۱۶۰ کاراکتر.</summary>
     public string? MetaDescription { get; set; }
 
+    /// <summary>فید متصل (null = کالای اصلی مارکت — در فرم ادمین قابل ویرایش دستی نیست).</summary>
+    public int? SourceFeedId { get; set; }
+
     /// <summary>کد کالا.</summary>
     public string Code { get; set; } = default!;
 
