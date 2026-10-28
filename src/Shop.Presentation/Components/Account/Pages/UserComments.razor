@@ -61,7 +61,7 @@ else
                         <div class="small">
                             <span class="text-warning">@Stars(c.Rating)</span>
                             <span class="text-muted">روی «@c.Product»</span>
-                            <span class="text-muted ms-2">@c.Date.ToString("yyyy/MM/dd")</span>
+                            <span class="text-muted ms-2">@c.Date.ToPersianDate()</span>
                             @if (c.Approved)
                             {
                                 <span class="badge bg-success ms-1">تأییدشده</span>

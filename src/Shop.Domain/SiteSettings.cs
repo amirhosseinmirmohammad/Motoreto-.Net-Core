@@ -58,6 +58,17 @@ public class SiteSettings
     /// <summary>درصد مالیات بر ارزش افزوده (پیش‌فرض ۹٪ قانون ایران — قابل تغییر از پنل).</summary>
     public int TaxPercent { get; set; } = 9;
 
+    // ---- زمان‌بندی پیشنهاد شگفت‌انگیز ----
+
+    /// <summary>زمان‌بندی شگفت‌انگیز فعال باشد؟ خاموش = آیتم‌های شگفت‌انگیز همیشه نمایش داده می‌شوند.</summary>
+    public bool AmazingScheduleEnabled { get; set; }
+
+    /// <summary>ساعت شروع بازه شگفت‌انگیز (دقیقه از نیمه‌شب به وقت ایران — ۵۴۰ = ۰۹:۰۰).</summary>
+    public int AmazingStartMinutes { get; set; } = 540;
+
+    /// <summary>ساعت پایان بازه شگفت‌انگیز (دقیقه از نیمه‌شب به وقت ایران — ۱۳۲۰ = ۲۲:۰۰). کمتر از شروع = بازه شبانه.</summary>
+    public int AmazingEndMinutes { get; set; } = 1320;
+
     /// <summary>نام درگاه پرداخت فعال (Fake / Zarinpal / ...).</summary>
     public string PaymentGateway { get; set; } = "Fake";
 

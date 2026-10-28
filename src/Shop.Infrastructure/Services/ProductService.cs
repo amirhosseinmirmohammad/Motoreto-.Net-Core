@@ -275,11 +275,25 @@ public class ProductService(ApplicationDbContext db) : IProductService
 
     public async Task<List<ProductCardDto>> GetAmazingAsync(int count, CancellationToken ct = default)
     {
-        return await ActiveCards()
+        // زمان‌بندی شگفت‌انگیز از تنظیمات: خارج از بازه ساعتی، بخش خالی می‌شود
+        var cfg = await db.SiteSettings.AsNoTracking()
+            .OrderBy(s => s.Id)
+            .Select(s => new { s.AmazingScheduleEnabled, s.AmazingStartMinutes, s.AmazingEndMinutes })
+            .FirstOrDefaultAsync(ct);
+        var window = AmazingWindow.Resolve(cfg?.AmazingScheduleEnabled ?? false, cfg?.AmazingStartMinutes ?? 0, cfg?.AmazingEndMinutes ?? 0, DateTime.UtcNow);
+        if (!window.Active) return [];
+
+        var list = await ActiveCards()
             .Where(p => p.IsAmazing && p.Stock > 0 && p.DiscountPercent > 0)
             .OrderByDescending(p => p.DiscountPercent)
             .Take(count)
             .ToListAsync(ct);
+
+        // شمارش‌معکوس تا پایان بازه (به وقت ایران محاسبه شده)
+        if (window.EndUtc is not null)
+            foreach (var card in list) card.AmazingEndsAt = window.EndUtc;
+
+        return list;
     }
 
     public async Task<List<ProductCardDto>> GetSpecialAsync(int count, CancellationToken ct = default)

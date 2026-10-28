@@ -131,9 +131,5 @@ else
         _busy = false;
     }
 
-    private static string Fa(DateTime d)
-    {
-        var pc = new System.Globalization.PersianCalendar();
-        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
-    }
+    private static string Fa(DateTime d) => d.ToPersianDate();
 }

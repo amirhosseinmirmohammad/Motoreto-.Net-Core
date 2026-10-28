@@ -33,10 +33,9 @@ else
                     <div class="small text-muted mt-1" style="white-space:pre-line">@m.Body</div>
                 </div>
                 <div class="d-flex gap-1">
-                    @if (!m.Read)
-                    {
-                        <button class="btn btn-sm btn-outline-success" disabled="@_busy" @onclick="() => MarkReadAsync(m.Id)">خوانده شد</button>
-                    }
+                    <button class="btn btn-sm btn-outline-@(m.Read ? "secondary" : "success")" disabled="@_busy" @onclick="() => ToggleReadAsync(m.Id)">
+                        @(m.Read ? "نخوانده" : "خوانده شد")
+                    </button>
                     <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(m.Id)">حذف</button>
                 </div>
             </div>
@@ -78,11 +77,11 @@ else
         _loading = false;
     }
 
-    private async Task MarkReadAsync(long id)
+    private async Task ToggleReadAsync(long id)
     {
         _busy = true;
         var m = await Db.SiteMessages.FirstAsync(x => x.Id == id);
-        m.IsRead = true;
+        m.IsRead = !m.IsRead;
         await Db.SaveChangesAsync();
         await LoadAsync();
         _busy = false;
@@ -98,9 +97,5 @@ else
         _busy = false;
     }
 
-    private static string Fa(DateTime d)
-    {
-        var pc = new System.Globalization.PersianCalendar();
-        return $"{pc.GetYear(d):0000}/{pc.GetMonth(d):00}/{pc.GetDayOfMonth(d):00}";
-    }
+    private static string Fa(DateTime d) => d.ToPersianDate();
 }

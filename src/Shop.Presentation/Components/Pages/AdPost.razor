@@ -1,0 +1,246 @@
+@page "/ads/post"
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@inject Shop.Presentation.Services.ImageUploadService Uploader
+
+<h4 class="fw-bold pt-3">➕ ثبت آگهی جدید</h4>
+<p class="text-muted small">آگهی شما پس از بررسی و تأیید مدیر نمایش داده می‌شود.</p>
+
+@if (_done)
+{
+    <div class="alert alert-success">
+        آگهی شما با موفقیت ثبت شد ✓ و پس از تأیید مدیر در <NavLink href="/ads">بخش آگهی‌ها</NavLink> نمایش داده می‌شود.
+        <div class="mt-2"><NavLink href="/ads/post" class="btn btn-sm btn-outline-primary">ثبت آگهی دیگر</NavLink></div>
+    </div>
+}
+else
+{
+    @if (_err is not null)
+    {
+        <div class="alert alert-danger py-2">@_err</div>
+    }
+
+    <div class="card border-0 shadow-sm rounded-4 p-4">
+        <EditForm Model="_m" OnValidSubmit="SubmitAsync" class="row g-3">
+            <DataAnnotationsValidator />
+
+            <div class="col-md-6">
+                <label class="form-label small text-muted">دسته‌بندی *</label>
+                <SearchableSelect Options="_cats.Select(c => new SearchableSelect.Opt(c.Id.ToString(), c.Name)).ToList()"
+                                  Value="(_catId == 0 ? "" : _catId.ToString())"
+                                  ValueChanged="CategoryChanged"
+                                  Placeholder="انتخاب دسته‌بندی..." />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">شهر *</label>
+                <select class="form-select" value="@_m.CityId.ToString()" @onchange="e => _m.CityId = int.TryParse(e.Value?.ToString(), out var v) ? v : 0">
+                    <option value="0">— انتخاب شهر —</option>
+                    @foreach (var c in _cities)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label small text-muted">عنوان آگهی *</label>
+                <InputText @bind-Value="_m.Title" class="form-control" placeholder="مثلاً: آپارتمان ۸۰ متری نوساز، سعادت‌آباد" />
+                <ValidationMessage For="() => _m.Title" class="text-danger small" />
+            </div>
+            <div class="col-12">
+                <label class="form-label small text-muted">توضیحات *</label>
+                <InputTextArea @bind-Value="_m.Description" class="form-control" rows="5" />
+                <ValidationMessage For="() => _m.Description" class="text-danger small" />
+            </div>
+
+            @* فیلدهای داینامیک دسته *@
+            @if (_attrs.Count > 0)
+            {
+                <div class="col-12"><hr class="my-1" /><h6 class="fw-bold text-primary mb-0">مشخصات این دسته</h6></div>
+                @foreach (var a in _attrs)
+                {
+                    <div class="col-md-4">
+                        <label class="form-label small text-muted">@a.Name @(a.IsRequired ? "*" : "")</label>
+                        @if (a.Type == "select")
+                        {
+                            <select class="form-select" value="@Val(a.Id)" @onchange="e => SetVal(a.Id, e.Value?.ToString() ?? string.Empty)">
+                                <option value="">— انتخاب —</option>
+                                @foreach (var opt in (a.Options ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                {
+                                    <option value="@opt">@opt</option>
+                                }
+                            </select>
+                        }
+                        else if (a.Type == "bool")
+                        {
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input" id="att@a.Id" checked="@IsOn(a.Id)" @onchange="e => SetBool(a.Id, e.Value is true)" />
+                                <label class="form-check-label small" for="att@a.Id">دارد</label>
+                            </div>
+                        }
+                        else
+                        {
+                            <input type="@(a.Type == "number" ? "number" : "text")" class="form-control"
+                                   value="@Val(a.Id)" @oninput="e => SetVal(a.Id, e.Value?.ToString() ?? string.Empty)" />
+                        }
+                    </div>
+                }
+            }
+
+            <div class="col-12"><hr class="my-1" /><h6 class="fw-bold text-primary mb-0">قیمت و تماس</h6></div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">نوع قیمت</label>
+                <select class="form-select" value="@_priceMode" @onchange="e => _priceMode = e.Value?.ToString() ?? string.Empty">
+                    <option value="with">قیمت‌دار</option>
+                    <option value="negotiable">توافقی</option>
+                    <option value="free">رایگان</option>
+                </select>
+            </div>
+            @if (_priceMode == "with")
+            {
+                <div class="col-md-8">
+                    <label class="form-label small text-muted">قیمت (تومان) *</label>
+                    <InputNumber @bind-Value="_price" class="form-control" />
+                </div>
+            }
+            <div class="col-md-6">
+                <label class="form-label small text-muted">شماره تماس *</label>
+                <InputText @bind-Value="_m.Phone" class="form-control" dir="ltr" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small text-muted">تصویر آگهی</label>
+                <UploadDropzone @bind-Value="_m.MainImage" />
+            </div>
+
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
+                    @(_busy ? "در حال ثبت..." : "ثبت آگهی")
+                </button>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    private bool _busy, _done;
+    private string? _err;
+    private int _catId;
+    private string _priceMode = "with";
+    private long? _price;
+    private List<ClassifiedCategory> _cats = new();
+    private List<ClassifiedAttribute> _attrs = new();
+    private List<City> _cities = new();
+    private Dictionary<int, string> _vals = new();
+
+    private sealed record PostModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "عنوان الزامی است.")]
+        [System.ComponentModel.DataAnnotations.StringLength(120)]
+        public string Title { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "توضیحات الزامی است.")]
+        [System.ComponentModel.DataAnnotations.StringLength(4000)]
+        public string Description { get; set; } = "";
+
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "شماره تماس الزامی است.")]
+        [System.ComponentModel.DataAnnotations.StringLength(15)]
+        public string Phone { get; set; } = "";
+
+        public int CityId { get; set; }
+        public string? MainImage { get; set; }
+    }
+
+    private PostModel _m = new();
+
+    private string Val(int id) => _vals.TryGetValue(id, out var v) ? v : "";
+    private bool IsOn(int id) => Val(id) == "true";
+    private void SetVal(int id, string v) => _vals[id] = v;
+    private void SetBool(int id, bool on) => _vals[id] = on ? "true" : "false";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cats = await Db.ClassifiedCategories.AsNoTracking()
+            .Where(c => c.IsActive).OrderBy(c => c.SortOrder)
+            .Select(c => new ClassifiedCategory { Id = c.Id, Name = c.Name, Icon = c.Icon })
+            .ToListAsync();
+        _cities = await Db.Cities.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
+
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var uid = Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var g) ? g : Guid.Empty;
+        var mobile = await Db.Users.AsNoTracking().Where(u => u.Id == uid).Select(u => u.Mobile).FirstOrDefaultAsync();
+        if (!string.IsNullOrWhiteSpace(mobile)) _m.Phone = mobile;
+    }
+
+    private async Task CategoryChanged(string? v)
+    {
+        _catId = int.TryParse(v, out var id) ? id : 0;
+        _vals.Clear();
+        _attrs = _catId == 0 ? [] : await Db.ClassifiedAttributes.AsNoTracking()
+            .Where(a => a.CategoryId == _catId)
+            .OrderBy(a => a.SortOrder).ToListAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _err = null;
+        if (_catId == 0) { _err = "دسته‌بندی را انتخاب کنید."; return; }
+        if (_m.CityId == 0) { _err = "شهر را انتخاب کنید."; return; }
+
+        // اعتبارسنجی فیلدهای اجباری داینامیک
+        foreach (var a in _attrs.Where(a => a.IsRequired))
+        {
+            if (string.IsNullOrWhiteSpace(Val(a.Id)))
+            {
+                _err = $"فیلد «{a.Name}» الزامی است.";
+                return;
+            }
+        }
+
+        long? price = _priceMode switch
+        {
+            "negotiable" => null,
+            "free" => 0,
+            _ => _price
+        };
+        if (_priceMode == "with" && (_price is null || _price < 0)) { _err = "قیمت را وارد کنید."; return; }
+
+        var attrsJson = System.Text.Json.JsonSerializer.Serialize(
+            _attrs.Select(a => new { name = a.Name, value = Val(a.Id) })
+                  .Where(x => !string.IsNullOrWhiteSpace(x.value)));
+
+        _busy = true;
+        try
+        {
+            var auth = await AuthState.GetAuthenticationStateAsync();
+            var uid = Guid.Parse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+
+            Db.ClassifiedAds.Add(new ClassifiedAd
+            {
+                Title = _m.Title.Trim(),
+                Description = _m.Description.Trim(),
+                Price = price,
+                ClassifiedCategoryId = _catId,
+                CityId = _m.CityId,
+                UserId = uid,
+                Phone = _m.Phone.Trim(),
+                MainImage = string.IsNullOrWhiteSpace(_m.MainImage) ? null : _m.MainImage,
+                AttributesJson = attrsJson,
+                Status = ClassifiedAdStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(30)
+            });
+            await Db.SaveChangesAsync();
+            _done = true;
+        }
+        catch (Exception ex)
+        {
+            _err = "خطا در ثبت آگهی: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

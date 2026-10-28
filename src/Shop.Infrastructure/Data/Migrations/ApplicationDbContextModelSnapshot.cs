@@ -659,6 +659,174 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.ToTable("cities", (string)null);
                 });
 
+            modelBuilder.Entity("Shop.Domain.ClassifiedAd", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AttributesJson")
+                        .HasColumnType("text")
+                        .HasColumnName("attributes_json");
+
+                    b.Property<int>("CityId")
+                        .HasColumnType("integer")
+                        .HasColumnName("city_id");
+
+                    b.Property<int>("ClassifiedCategoryId")
+                        .HasColumnType("integer")
+                        .HasColumnName("classified_category_id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsFeatured")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_featured");
+
+                    b.Property<string>("MainImage")
+                        .HasColumnType("text")
+                        .HasColumnName("main_image");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("phone");
+
+                    b.Property<long?>("Price")
+                        .HasColumnType("bigint")
+                        .HasColumnName("price");
+
+                    b.Property<string>("RejectReason")
+                        .HasColumnType("text")
+                        .HasColumnName("reject_reason");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("title");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<long>("ViewCount")
+                        .HasColumnType("bigint")
+                        .HasColumnName("view_count");
+
+                    b.HasKey("Id")
+                        .HasName("pk_classified_ads");
+
+                    b.HasIndex("CityId")
+                        .HasDatabaseName("ix_classified_ads_city_id");
+
+                    b.HasIndex("ClassifiedCategoryId")
+                        .HasDatabaseName("ix_classified_ads_classified_category_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_classified_ads_user_id");
+
+                    b.ToTable("classified_ads", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedAttribute", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryId")
+                        .HasColumnType("integer")
+                        .HasColumnName("category_id");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_required");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Options")
+                        .HasColumnType("text")
+                        .HasColumnName("options");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_classified_attributes");
+
+                    b.HasIndex("CategoryId")
+                        .HasDatabaseName("ix_classified_attributes_category_id");
+
+                    b.ToTable("classified_attributes", (string)null);
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedCategory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Icon")
+                        .HasColumnType("text")
+                        .HasColumnName("icon");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("slug");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.HasKey("Id")
+                        .HasName("pk_classified_categories");
+
+                    b.ToTable("classified_categories", (string)null);
+                });
+
             modelBuilder.Entity("Shop.Domain.Comment", b =>
                 {
                     b.Property<long>("Id")
@@ -1903,6 +2071,18 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("address");
 
+                    b.Property<int>("AmazingEndMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("amazing_end_minutes");
+
+                    b.Property<bool>("AmazingScheduleEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("amazing_schedule_enabled");
+
+                    b.Property<int>("AmazingStartMinutes")
+                        .HasColumnType("integer")
+                        .HasColumnName("amazing_start_minutes");
+
                     b.Property<string>("ContactUs")
                         .HasColumnType("text")
                         .HasColumnName("contact_us");
@@ -2609,6 +2789,48 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.Navigation("State");
                 });
 
+            modelBuilder.Entity("Shop.Domain.ClassifiedAd", b =>
+                {
+                    b.HasOne("Shop.Domain.City", "City")
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_ads_cities_city_id");
+
+                    b.HasOne("Shop.Domain.ClassifiedCategory", "Category")
+                        .WithMany("Ads")
+                        .HasForeignKey("ClassifiedCategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_ads_classified_categories_classified_category_id");
+
+                    b.HasOne("Shop.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_ads_user_user_id");
+
+                    b.Navigation("Category");
+
+                    b.Navigation("City");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedAttribute", b =>
+                {
+                    b.HasOne("Shop.Domain.ClassifiedCategory", "Category")
+                        .WithMany("Attributes")
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_attributes_classified_categories_category_id");
+
+                    b.Navigation("Category");
+                });
+
             modelBuilder.Entity("Shop.Domain.Comment", b =>
                 {
                     b.HasOne("Shop.Domain.Product", "Product")
@@ -2950,6 +3172,13 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.Navigation("Children");
 
                     b.Navigation("Products");
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedCategory", b =>
+                {
+                    b.Navigation("Ads");
+
+                    b.Navigation("Attributes");
                 });
 
             modelBuilder.Entity("Shop.Domain.Order", b =>

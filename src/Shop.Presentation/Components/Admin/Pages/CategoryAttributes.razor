@@ -62,6 +62,7 @@
                                 <th>ویژگی</th>
                                 <th>فیلتر</th>
                                 <th>واریانت</th>
+                                <th>ترتیب</th>
                                 <th></th>
                             </tr>
                         </thead>
@@ -69,11 +70,17 @@
                             @foreach (var a in _attrs)
                             {
                                 <tr>
-                                    <td class="fw-bold">@a.Name</td>
-                                    <td>@(a.ShowInFilter ? "✓" : "—")</td>
-                                    <td>@(a.IsVariantOption ? "✓" : "—")</td>
-                                    <td class="text-end">
-                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(a.Id)">حذف</button>
+                                    <td style="max-width:220px">
+                                        <input class="form-control form-control-sm" value="@a.Name" @oninput="e => a.Name = e.Value?.ToString() ?? string.Empty" />
+                                    </td>
+                                    <td><input type="checkbox" class="form-check-input mt-0" checked="@a.ShowInFilter" @onchange="e => a.ShowInFilter = e.Value is true" /></td>
+                                    <td><input type="checkbox" class="form-check-input mt-0" checked="@a.IsVariantOption" @onchange="e => a.IsVariantOption = e.Value is true" /></td>
+                                    <td style="width:80px">
+                                        <input type="number" class="form-control form-control-sm" value="@a.SortOrder" @oninput="e => a.SortOrder = int.TryParse(e.Value?.ToString(), out var v) ? v : a.SortOrder" />
+                                    </td>
+                                    <td class="text-end" style="white-space:nowrap">
+                                        <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="() => SaveAsync(a.Id)">ذخیره</button>
+                                        <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(a.Id)">حذف</button>
                                     </td>
                                 </tr>
                             }
@@ -146,6 +153,20 @@
         _newName = "";
         _newFilter = true;
         _newVariant = false;
+        await LoadAttrsAsync();
+        _busy = false;
+    }
+
+    private async Task SaveAsync(int id)
+    {
+        _busy = true;
+        var src = _attrs.First(a => a.Id == id);
+        var attr = await Db.CategoryAttributes.FirstAsync(a => a.Id == id);
+        attr.Name = src.Name.Trim();
+        attr.ShowInFilter = src.ShowInFilter;
+        attr.IsVariantOption = src.IsVariantOption;
+        attr.SortOrder = src.SortOrder;
+        await Db.SaveChangesAsync();
         await LoadAttrsAsync();
         _busy = false;
     }

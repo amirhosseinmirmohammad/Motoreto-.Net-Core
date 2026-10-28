@@ -1,0 +1,122 @@
+@page "/ads"
+@inject ApplicationDbContext Db
+
+<PageTitle>آگهی‌های دست دوم</PageTitle>
+
+<header class="text-center py-4">
+    <h1 class="fw-bold">🛍️ آگهی‌های دست دوم و استوک</h1>
+    <p class="text-muted">خرید و فروش آسان — مثل دیوار، مستقیم از آگهی‌دهنده</p>
+</header>
+
+@* نوار فیلتر *@
+<div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+        <input type="text" class="form-control" style="max-width:300px" placeholder="جستجو در آگهی‌ها..."
+               value="@_q" @oninput="e => _q = e.Value?.ToString() ?? string.Empty" @onkeyup="@(async () => await LoadAsync())" />
+        <select class="form-select" style="max-width:200px" value="@_cityId.ToString()" @onchange="CityChanged">
+            <option value="0">همه شهرها</option>
+            @foreach (var c in _cities)
+            {
+                <option value="@c.Id">@c.Name</option>
+            }
+        </select>
+        <select class="form-select" style="max-width:170px" value="@_sort" @onchange="SortChanged">
+            <option value="new">جدیدترین</option>
+            <option value="cheap">ارزان‌ترین</option>
+            <option value="exp">گران‌ترین</option>
+            <option value="view">پربازدیدترین</option>
+        </select>
+        <NavLink href="/ads/post" class="btn btn-primary px-4 ms-auto">+ ثبت آگهی</NavLink>
+    </div>
+    <div class="d-flex gap-2 flex-wrap mt-3">
+        <button class="btn btn-sm @(_catId == 0 ? "btn-primary" : "btn-outline-secondary") rounded-pill" @onclick="@(async () => await SetCat(0))">همه</button>
+        @foreach (var c in _cats)
+        {
+            <button class="btn btn-sm @(_catId == c.Id ? "btn-primary" : "btn-outline-secondary") rounded-pill" @onclick="@(async () => await SetCat(c.Id))">
+                <i class="@(c.Icon ?? "bi-tag")"></i> @c.Name
+            </button>
+        }
+    </div>
+</div>
+
+@if (_loading)
+{
+    <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
+}
+else if (_ads.Count == 0)
+{
+    <div class="alert alert-light border text-center">آگهی‌ای یافت نشد. اولین آگهی را شما ثبت کنید!</div>
+}
+else
+{
+    <div class="row g-3">
+        @foreach (var a in _ads)
+        {
+            <div class="col-6 col-md-4 col-lg-3">
+                <NavLink href="@($"/ads/{a.Id}")" class="text-decoration-none text-dark">
+                    <div class="card border-0 shadow-sm rounded-4 h-100">
+                        <img src="@(a.Image ?? "/images/products/real/1.webp")" class="card-img-top rounded-4" style="height:160px;object-fit:cover" loading="lazy" alt="@a.Title" />
+                        <div class="card-body p-3">
+                            <div class="fw-bold text-truncate">@a.Title</div>
+                            <div class="text-success fw-bold mt-1">
+                                @(a.Price is null ? "توافقی" : a.Price == 0 ? "رایگان" : a.Price.Value.ToString("N0") + " تومان")
+                            </div>
+                            <div class="small text-muted mt-1 d-flex justify-content-between">
+                                <span><i class="bi bi-geo-alt"></i> @a.City</span>
+                                <span>@a.Date.ToPersianDate()</span>
+                            </div>
+                        </div>
+                    </div>
+                </NavLink>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private int _catId, _cityId;
+    private string _q = "", _sort = "new";
+    private List<ClassifiedCategory> _cats = new();
+    private List<City> _cities = new();
+    private List<AdRow> _ads = new();
+
+    private sealed record AdRow(long Id, string Title, long? Price, string City, string? Image, DateTime Date, int CatId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cats = await Db.ClassifiedCategories.AsNoTracking()
+            .Where(c => c.IsActive).OrderBy(c => c.SortOrder).ToListAsync();
+        _cities = await Db.Cities.AsNoTracking().OrderBy(c => c.Name).ToListAsync();
+        await LoadAsync();
+    }
+
+    private async Task SetCat(int id) { _catId = id; await LoadAsync(); }
+    private async Task CityChanged(ChangeEventArgs e) { _cityId = int.TryParse(e.Value?.ToString(), out var v) ? v : 0; await LoadAsync(); }
+    private async Task SortChanged(ChangeEventArgs e) { _sort = e.Value?.ToString() ?? "new"; await LoadAsync(); }
+
+    private async Task LoadAsync()
+    {
+        var now = DateTime.UtcNow;
+        var query = Db.ClassifiedAds.AsNoTracking()
+            .Where(a => a.Status == ClassifiedAdStatus.Approved && (a.ExpiresAt == null || a.ExpiresAt > now));
+
+        if (_catId > 0) query = query.Where(a => a.ClassifiedCategoryId == _catId);
+        if (_cityId > 0) query = query.Where(a => a.CityId == _cityId);
+        if (!string.IsNullOrWhiteSpace(_q))
+            query = query.Where(a => a.Title.Contains(_q) || a.Description.Contains(_q));
+
+        query = _sort switch
+        {
+            "cheap" => query.OrderBy(a => a.Price ?? long.MaxValue),
+            "exp" => query.OrderByDescending(a => a.Price ?? 0),
+            "view" => query.OrderByDescending(a => a.ViewCount),
+            _ => query.OrderByDescending(a => a.IsFeatured).ThenByDescending(a => a.Id)
+        };
+
+        _ads = await query.Take(60)
+            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.City.Name, a.MainImage, a.CreatedAt, a.ClassifiedCategoryId))
+            .ToListAsync();
+        _loading = false;
+    }
+}

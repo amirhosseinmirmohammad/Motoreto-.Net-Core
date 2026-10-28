@@ -49,6 +49,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ShopFeed> ShopFeeds => Set<ShopFeed>();
     public DbSet<PaymentGateway> PaymentGateways => Set<PaymentGateway>();
 
+    // ---- آگهی‌های دست دوم (مدل دیوار) ----
+    public DbSet<ClassifiedCategory> ClassifiedCategories => Set<ClassifiedCategory>();
+    public DbSet<ClassifiedAttribute> ClassifiedAttributes => Set<ClassifiedAttribute>();
+    public DbSet<ClassifiedAd> ClassifiedAds => Set<ClassifiedAd>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

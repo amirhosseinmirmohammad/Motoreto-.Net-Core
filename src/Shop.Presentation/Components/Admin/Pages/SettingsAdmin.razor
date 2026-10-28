@@ -94,6 +94,23 @@ else
                 <InputNumber @bind-Value="_s.MaxQuantityPerProduct" class="form-control" />
             </div>
 
+            <div class="col-12"><hr class="my-1" /><h6 class="fw-bold text-primary mb-0">پیشنهاد شگفت‌انگیز</h6></div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">زمان‌بندی نمایش</label>
+                <div class="form-check form-switch">
+                    <InputCheckbox @bind-Value="_s.AmazingScheduleEnabled" class="form-check-input" id="swAmz" />
+                    <label class="form-check-label small" for="swAmz">نمایش فقط در بازه ساعتی زیر</label>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">از ساعت</label>
+                <input type="time" class="form-control" value="@MinToHhMm(_s.AmazingStartMinutes)" @onchange="e => _s.AmazingStartMinutes = HhMmToMin(e.Value?.ToString())" disabled="@(!_s.AmazingScheduleEnabled)" />
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted">تا ساعت (کمتر از شروع = بازه شبانه)</label>
+                <input type="time" class="form-control" value="@MinToHhMm(_s.AmazingEndMinutes)" @onchange="e => _s.AmazingEndMinutes = HhMmToMin(e.Value?.ToString())" disabled="@(!_s.AmazingScheduleEnabled)" />
+            </div>
+
             <div class="col-12">
                 <button type="submit" class="btn btn-primary px-5" disabled="@_busy">
                     @(_busy ? "در حال ذخیره..." : "ذخیره تنظیمات")
@@ -106,6 +123,14 @@ else
 @code {
     private bool _loading = true, _busy, _saved;
     private string? _err;
+
+    private static string MinToHhMm(int m) => $"{m / 60:00}:{m % 60:00}";
+    private static int HhMmToMin(string? s)
+    {
+        var parts = (s ?? "").Split(':');
+        return parts.Length == 2 && int.TryParse(parts[0], out var h) && int.TryParse(parts[1], out var mm)
+            ? Math.Clamp(h * 60 + mm, 0, 1440) : 540;
+    }
 
     private sealed record S
     {
@@ -122,6 +147,9 @@ else
         public long FreeShippingThreshold { get; set; }
         public int ReservationMinutes { get; set; }
         public int MaxQuantityPerProduct { get; set; }
+        public bool AmazingScheduleEnabled { get; set; }
+        public int AmazingStartMinutes { get; set; } = 540;
+        public int AmazingEndMinutes { get; set; } = 1320;
     }
 
     private S _s = new();
@@ -146,7 +174,10 @@ else
             ShippingExpressCost = s.ShippingExpressCost,
             FreeShippingThreshold = s.FreeShippingThreshold,
             ReservationMinutes = s.ReservationMinutes,
-            MaxQuantityPerProduct = s.MaxQuantityPerProduct
+            MaxQuantityPerProduct = s.MaxQuantityPerProduct,
+            AmazingScheduleEnabled = s.AmazingScheduleEnabled,
+            AmazingStartMinutes = s.AmazingStartMinutes,
+            AmazingEndMinutes = s.AmazingEndMinutes
         };
 
         _aboutUs = s.AboutUs;
@@ -177,6 +208,9 @@ else
             s.ShippingExpressCost = _s.ShippingExpressCost;
             s.FreeShippingThreshold = _s.FreeShippingThreshold;
             s.ReservationMinutes = _s.ReservationMinutes;
+            s.AmazingScheduleEnabled = _s.AmazingScheduleEnabled;
+            s.AmazingStartMinutes = _s.AmazingStartMinutes;
+            s.AmazingEndMinutes = _s.AmazingEndMinutes;
             s.MaxQuantityPerProduct = _s.MaxQuantityPerProduct;
             s.AboutUs = _aboutUs;
             s.ContactUs = _contactUs;

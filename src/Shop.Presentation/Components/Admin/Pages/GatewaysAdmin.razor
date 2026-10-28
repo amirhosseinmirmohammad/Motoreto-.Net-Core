@@ -58,6 +58,45 @@
     </div>
 </div>
 
+@if (_editId is not null)
+{
+    <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+        <h6 class="fw-bold mb-3">✏️ ویرایش درگاه</h6>
+        <div class="row g-2">
+            <div class="col-md-3">
+                <label class="form-label small text-muted">نام نمایشی</label>
+                <input type="text" class="form-control" value="@_eName" @oninput="e => _eName = e.Value?.ToString()" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">مرچنت آیدی</label>
+                <input type="text" class="form-control" dir="ltr" value="@_eMerchant" @oninput="e => _eMerchant = e.Value?.ToString()" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted">کلید امنیتی</label>
+                <input type="text" class="form-control" dir="ltr" value="@_eSecret" @oninput="e => _eSecret = e.Value?.ToString()" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small text-muted">کارمزد (٪)</label>
+                <input type="number" class="form-control" min="0" max="10" step="0.1" value="@_eFee" @oninput="e => _eFee = decimal.TryParse(e.Value?.ToString(), out var v) ? v : 1" />
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small text-muted">ترتیب</label>
+                <input type="number" class="form-control" value="@_eSort" @oninput="e => _eSort = int.TryParse(e.Value?.ToString(), out var v) ? v : 0" />
+            </div>
+            <div class="col-md-3 d-flex align-items-center">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" checked="@_eSandbox" @onchange="e => _eSandbox = e.Value is true" id="swSbE" />
+                    <label class="form-check-label small" for="swSbE">حالت آزمایشی</label>
+                </div>
+            </div>
+            <div class="col-md-9 d-flex gap-2">
+                <button class="btn btn-primary px-4" disabled="@_busy" @onclick="SaveEditAsync">ذخیره</button>
+                <button class="btn btn-outline-secondary" @onclick="() => _editId = null">انصراف</button>
+            </div>
+        </div>
+    </div>
+}
+
 @if (_loading)
 {
     <div class="d-flex justify-content-center py-5"><div class="spinner-border text-primary"></div></div>
@@ -93,6 +132,7 @@ else
                             <td><span class="badge bg-@(g.IsSandbox ? "warning text-dark" : "success")">@(g.IsSandbox ? "تست" : "واقعی")</span></td>
                             <td><span class="badge bg-@(g.IsActive ? "success" : "secondary")">@(g.IsActive ? "فعال" : "غیرفعال")</span></td>
                             <td class="text-end" style="white-space:nowrap">
+                                <button class="btn btn-sm btn-outline-primary" @onclick="() => StartEditAsync(g.Id)">ویرایش</button>
                                 <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => ToggleAsync(g.Id)">
                                     @(g.IsActive ? "غیرفعال" : "فعال")
                                 </button>
@@ -169,6 +209,54 @@ else
         await Db.SaveChangesAsync();
         await LoadAsync();
         _busy = false;
+    }
+
+    // ---- ویرایش درگاه ----
+    private int? _editId;
+    private string _eName = "", _eMerchant = "", _eSecret = "";
+    private decimal _eFee = 1;
+    private int _eSort;
+    private bool _eSandbox;
+
+    private async Task StartEditAsync(int id)
+    {
+        _err = null;
+        var g = await Db.PaymentGateways.AsNoTracking().FirstAsync(x => x.Id == id);
+        _editId = id;
+        _eName = g.Name;
+        _eMerchant = g.MerchantId;
+        _eSecret = g.SecretKey ?? "";
+        _eFee = g.FeePercent;
+        _eSort = g.SortOrder;
+        _eSandbox = g.IsSandbox;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editId is null || string.IsNullOrWhiteSpace(_eName) || string.IsNullOrWhiteSpace(_eMerchant)) return;
+        _busy = true;
+        _err = null;
+        try
+        {
+            var g = await Db.PaymentGateways.FirstAsync(x => x.Id == _editId.Value);
+            g.Name = _eName.Trim();
+            g.MerchantId = _eMerchant.Trim();
+            g.SecretKey = _eSecret;
+            g.FeePercent = _eFee;
+            g.SortOrder = _eSort;
+            g.IsSandbox = _eSandbox;
+            await Db.SaveChangesAsync();
+            _editId = null;
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _err = "خطا: " + ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task DeleteAsync(int id)

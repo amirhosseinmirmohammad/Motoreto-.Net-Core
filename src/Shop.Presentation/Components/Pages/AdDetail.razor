@@ -1,0 +1,123 @@
+@page "/ads/{Id:long}"
+@inject ApplicationDbContext Db
+@inject NavigationManager Nav
+@using System.Text.Json
+
+@if (_ad is null)
+{
+    @if (_loaded)
+    {
+        <div class="alert alert-warning text-center my-5">آگهی موردنظر در دسترس نیست یا حذف شده است.</div>
+    }
+}
+else
+{
+    <nav aria-label="breadcrumb" class="pt-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><NavLink href="/ads">آگهی‌ها</NavLink></li>
+            <li class="breadcrumb-item active">@_ad.CategoryName</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4 pb-4">
+        <div class="col-lg-7">
+            <img src="@(_ad.MainImage ?? "/images/products/real/1.webp")" class="img-fluid rounded-4 shadow-sm w-100" style="max-height:420px;object-fit:cover" alt="@_ad.Title" />
+            <div class="card border-0 shadow-sm rounded-4 p-4 mt-3">
+                <h4 class="fw-bold">@_ad.Title</h4>
+                <p class="text-muted" style="white-space:pre-line">@_ad.Description</p>
+            </div>
+
+            @if (_attrs.Count > 0)
+            {
+                <div class="card border-0 shadow-sm rounded-4 p-4 mt-3">
+                    <h6 class="fw-bold mb-3">مشخصات</h6>
+                    <table class="table table-sm mb-0">
+                        <tbody>
+                            @foreach (var (name, value) in _attrs)
+                            {
+                                <tr>
+                                    <td class="text-muted" style="width:40%">@name</td>
+                                    <td class="fw-bold">@(value == "true" ? "دارد ✓" : value == "false" ? "ندارد" : value)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm rounded-4 p-4 sticky-top" style="top:90px">
+                <div class="fs-4 fw-bold text-success">
+                    @(_ad.Price is null ? "قیمت توافقی" : _ad.Price == 0 ? "رایگان" : _ad.Price.Value.ToString("N0") + " تومان")
+                </div>
+                <hr />
+                <div class="small text-muted">
+                    <div class="mb-1"><i class="bi bi-tag"></i> دسته: <b>@_ad.CategoryName</b></div>
+                    <div class="mb-1"><i class="bi bi-geo-alt"></i> شهر: <b>@_ad.CityName</b></div>
+                    <div class="mb-1"><i class="bi bi-clock"></i> ثبت: <b>@_ad.Date.ToPersianDateTime()</b></div>
+                    <div><i class="bi bi-eye"></i> بازدید: <b>@_ad.ViewCount.ToString("N0").ToFarsiDigits()</b></div>
+                </div>
+                <hr />
+                @if (_showPhone)
+                {
+                    <div class="text-center py-2 rounded-3 bg-light">
+                        <span class="small text-muted d-block">شماره تماس آگهی‌دهنده</span>
+                        <span class="fw-bold fs-5" dir="ltr">@_ad.Phone</span>
+                    </div>
+                }
+                else
+                {
+                    <button class="btn btn-primary w-100 py-2" @onclick="() => _showPhone = true">
+                        <i class="bi bi-telephone"></i> نمایش شماره تماس
+                    </button>
+                }
+                @if (_ad.Status == ClassifiedAdStatus.Sold)
+                {
+                    <div class="alert alert-secondary py-2 mt-2 mb-0 text-center small">این آگهی فروخته/مسترد شده است</div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public long Id { get; set; }
+
+    private bool _loaded, _showPhone;
+    private AdVm? _ad;
+    private List<(string Name, string Value)> _attrs = new();
+
+    private sealed record AdVm(string Title, string? Description, long? Price, string Phone, string? MainImage,
+        string CityName, string CategoryName, DateTime Date, long ViewCount, ClassifiedAdStatus Status, string? AttrJson);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var a = await Db.ClassifiedAds.AsNoTracking()
+            .Where(x => x.Id == Id && (x.Status == ClassifiedAdStatus.Approved || x.Status == ClassifiedAdStatus.Sold))
+            .Select(x => new AdVm(x.Title, x.Description, x.Price, x.Phone, x.MainImage,
+                x.City.Name, x.Category.Name, x.CreatedAt, x.ViewCount, x.Status, x.AttributesJson))
+            .FirstOrDefaultAsync();
+
+        if (a is not null)
+        {
+            _ad = a;
+            _attrs = ParseAttrs(a.AttrJson);
+            await Db.ClassifiedAds.Where(x => x.Id == Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.ViewCount, x => x.ViewCount + 1));
+        }
+        _loaded = true;
+    }
+
+    private static List<(string, string)> ParseAttrs(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return [];
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return doc.RootElement.EnumerateArray()
+                .Select(e => (e.GetProperty("name").GetString() ?? "", e.GetProperty("value").GetString() ?? ""))
+                .Where(x => !string.IsNullOrWhiteSpace(x.Item2)).ToList();
+        }
+        catch { return []; }
+    }
+}

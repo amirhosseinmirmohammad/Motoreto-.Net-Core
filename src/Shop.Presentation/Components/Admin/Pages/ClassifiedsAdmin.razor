@@ -1,0 +1,312 @@
+@page "/manage/classifieds"
+@layout AdminLayout
+@attribute [Authorize]
+@inject ApplicationDbContext Db
+
+<h4 class="fw-bold mb-1">📢 آگهی‌های دست دوم (دیوار)</h4>
+
+<ul class="nav nav-pills gap-2 mb-3">
+    <button class="nav-link @TabAdsClass" @onclick="SetTabAds">مدیریت آگهی‌ها</button>
+    <button class="nav-link @TabCatsClass" @onclick="SetTabCats">دسته‌ها و ویژگی‌ها</button>
+</ul>
+
+@if (_tab == "ads")
+{
+    <div class="d-flex gap-2 mb-3">
+        <select class="form-select" style="max-width:220px" value="@_status" @onchange="StatusChanged">
+            <option value="Pending">در انتظار تأیید</option>
+            <option value="Approved">منتشرشده</option>
+            <option value="Rejected">ردشده</option>
+            <option value="Sold">فروخته‌شده</option>
+            <option value="">همه</option>
+        </select>
+    </div>
+
+    @if (_ads.Count == 0)
+    {
+        <div class="alert alert-light border">آگهی‌ای در این وضعیت نیست.</div>
+    }
+    else
+    {
+        @foreach (var a in _ads)
+        {
+            <div class="card border-0 shadow-sm rounded-4 p-3 mb-2">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div>
+                        <div class="fw-bold">@a.Title
+                            <span class="badge bg-@(a.Status == ClassifiedAdStatus.Approved ? "success" : a.Status == ClassifiedAdStatus.Pending ? "warning text-dark" : "secondary") ms-1">@StatusText(a.Status)</span>
+                            @if (a.Featured)
+                            {
+                                <span class="badge bg-dark ms-1">نردبان</span>
+                            }
+                        </div>
+                        <div class="small text-muted mt-1">
+                            @a.Category • @a.City • @a.Date.ToPersianDateTime() • 👁 @a.ViewCount.ToString("N0")
+                            <span dir="ltr">• @a.Phone</span>
+                        </div>
+                        <div class="small mt-1">@((a.Price is null ? "توافقی" : a.Price == 0 ? "رایگان" : a.Price.Value.ToString("N0") + " تومان"))</div>
+                        @if (a.Status == ClassifiedAdStatus.Rejected && !string.IsNullOrWhiteSpace(a.Reason))
+                        {
+                            <div class="small text-danger">دلیل رد: @a.Reason</div>
+                        }
+                    </div>
+                    <div class="d-flex gap-1 flex-wrap">
+                        @if (a.Status == ClassifiedAdStatus.Pending)
+                        {
+                            <button class="btn btn-sm btn-success" disabled="@_busy" @onclick="() => SetStatusAsync(a.Id, ClassifiedAdStatus.Approved)">تأیید</button>
+                            <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => RejectAsync(a.Id)">رد</button>
+                        }
+                        @if (a.Status == ClassifiedAdStatus.Approved)
+                        {
+                            <button class="btn btn-sm btn-outline-dark" disabled="@_busy" @onclick="() => FeatureAsync(a.Id)">@(a.Featured ? "حذف نردبان" : "نردبان")</button>
+                            <button class="btn btn-sm btn-outline-secondary" disabled="@_busy" @onclick="() => SetStatusAsync(a.Id, ClassifiedAdStatus.Sold)">فروخته شد</button>
+                        }
+                        <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAdAsync(a.Id)">حذف</button>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm rounded-4 p-4">
+                <h6 class="fw-bold mb-3">افزودن دسته</h6>
+                <input type="text" class="form-control mb-2" placeholder="نام دسته" value="@_ncName" @oninput="e => _ncName = e.Value?.ToString()" />
+                <input type="text" class="form-control mb-2" dir="ltr" placeholder="آیکون (bi-house-door)" value="@_ncIcon" @oninput="e => _ncIcon = e.Value?.ToString()" />
+                <button class="btn btn-primary w-100" disabled="@(_busy || string.IsNullOrWhiteSpace(_ncName))" @onclick="AddCatAsync">افزودن</button>
+            </div>
+            <div class="card border-0 shadow-sm rounded-4 p-4 mt-3">
+                <h6 class="fw-bold mb-3">ویژگی جدید برای «@(_cats.FirstOrDefault(c => c.Id == _catId)?.Name ?? "—")»</h6>
+                <input type="text" class="form-control mb-2" placeholder="نام ویژگی" value="@_naName" @oninput="e => _naName = e.Value?.ToString()" />
+                <select class="form-select mb-2" value="@_naType" @onchange="e => _naType = e.Value?.ToString() ?? string.Empty">
+                    <option value="text">متن</option>
+                    <option value="number">عدد</option>
+                    <option value="select">انتخابی</option>
+                    <option value="bool">بله/خیر</option>
+                </select>
+                @if (_naType == "select")
+                {
+                    <input type="text" class="form-control mb-2" placeholder="گزینه‌ها با کاما" value="@_naOptions" @oninput="e => _naOptions = e.Value?.ToString()" />
+                }
+                <div class="form-check mb-2">
+                    <input type="checkbox" class="form-check-input" id="reqNa" checked="@_naReq" @onchange="e => _naReq = e.Value is true" />
+                    <label class="form-check-label small" for="reqNa">الزامی</label>
+                </div>
+                <button class="btn btn-primary w-100" disabled="@(_busy || _catId == 0 || string.IsNullOrWhiteSpace(_naName))" @onclick="AddAttrAsync">افزودن ویژگی</button>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-3">
+                @foreach (var c in _cats)
+                {
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <b><i class="@(c.Icon ?? "bi-tag")"></i> @c.Name</b>
+                            <span class="small text-muted">(@c.AttrCount ویژگی • @c.AdCount آگهی)</span>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-primary @(_catId == c.Id ? "active" : "")" @onclick="@(async () => await SelectCatAsync(c.Id))">مدیریت ویژگی‌ها</button>
+                            <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteCatAsync(c.Id)">حذف</button>
+                        </div>
+                    </div>
+                    @if (_catId == c.Id)
+                    {
+                        <div class="small me-4 py-1">
+                            @if (_catAttrs.Count == 0)
+                            {
+                                <span class="text-muted">ویژگی‌ای ندارد.</span>
+                            }
+                            @foreach (var at in _catAttrs)
+                            {
+                                <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                                    <span>@at.Name <span class="badge bg-light text-dark ms-1">@at.Type</span> @(at.IsRequired ? "★" : "")</span>
+                                    <button class="btn btn-sm btn-outline-danger py-0" disabled="@_busy" @onclick="() => DeleteAttrAsync(at.Id)">حذف</button>
+                                </div>
+                            }
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool _loading = true, _busy;
+    private string _tab = "ads";
+    private string TabAdsClass => _tab == "ads" ? "active" : "";
+    private string TabCatsClass => _tab == "cats" ? "active" : "";
+    private string _status = "Pending";
+    private string? _rejectReason;
+
+    private int _catId;
+    private string _ncName = "", _ncIcon = "", _naName = "", _naType = "text", _naOptions = "";
+    private bool _naReq;
+
+    private List<AdRow> _ads = new();
+    private List<CatRow> _cats = new();
+    private List<ClassifiedAttribute> _catAttrs = new();
+
+    private sealed record AdRow(long Id, string Title, long? Price, string Category, string City, string Phone, DateTime Date, long ViewCount, ClassifiedAdStatus Status, bool Featured, string? Reason);
+    private sealed record CatRow(int Id, string Name, string? Icon, int AttrCount, int AdCount);
+
+    private async Task SetTab(string t)
+    {
+        _tab = t;
+        if (t == "cats") await LoadCatsAsync();
+        else await LoadAdsAsync();
+    }
+
+    private Task SetTabAds() => SetTab("ads");
+    private Task SetTabCats() => SetTab("cats");
+
+    private async Task StatusChanged(ChangeEventArgs e)
+    {
+        _status = e.Value?.ToString() ?? "";
+        await LoadAdsAsync();
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadAdsAsync();
+
+    private async Task LoadAdsAsync()
+    {
+        var query = Db.ClassifiedAds.AsNoTracking();
+        if (!string.IsNullOrEmpty(_status) && Enum.TryParse<ClassifiedAdStatus>(_status, out var st))
+            query = query.Where(a => a.Status == st);
+
+        _ads = await query.OrderByDescending(a => a.Id).Take(60)
+            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.Category.Name, a.City.Name, a.Phone, a.CreatedAt, a.ViewCount, a.Status, a.IsFeatured, a.RejectReason))
+            .ToListAsync();
+        _loading = false;
+    }
+
+    private async Task LoadCatsAsync()
+    {
+        _cats = await Db.ClassifiedCategories.AsNoTracking()
+            .OrderBy(c => c.SortOrder)
+            .Select(c => new CatRow(c.Id, c.Name, c.Icon, c.Attributes.Count, c.Ads.Count))
+            .ToListAsync();
+    }
+
+    private async Task SelectCatAsync(int id)
+    {
+        _catId = id;
+        _catAttrs = await Db.ClassifiedAttributes.AsNoTracking()
+            .Where(a => a.CategoryId == id).OrderBy(a => a.SortOrder).ToListAsync();
+    }
+
+    private async Task SetStatusAsync(long id, ClassifiedAdStatus st)
+    {
+        _busy = true;
+        await Db.ClassifiedAds.Where(a => a.Id == id).ExecuteUpdateAsync(u => u.SetProperty(a => a.Status, st));
+        await LoadAdsAsync();
+        _busy = false;
+    }
+
+    private async Task RejectAsync(long id)
+    {
+        _busy = true;
+        await Db.ClassifiedAds.Where(a => a.Id == id).ExecuteUpdateAsync(u => u
+            .SetProperty(a => a.Status, ClassifiedAdStatus.Rejected)
+            .SetProperty(a => a.RejectReason, "مغایر قوانین آگهی‌ها"));
+        await LoadAdsAsync();
+        _busy = false;
+    }
+
+    private async Task FeatureAsync(long id)
+    {
+        _busy = true;
+        var a = await Db.ClassifiedAds.FirstAsync(x => x.Id == id);
+        a.IsFeatured = !a.IsFeatured;
+        await Db.SaveChangesAsync();
+        await LoadAdsAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAdAsync(long id)
+    {
+        _busy = true;
+        await Db.ClassifiedAds.Where(a => a.Id == id).ExecuteDeleteAsync();
+        await LoadAdsAsync();
+        _busy = false;
+    }
+
+    private async Task AddCatAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_ncName)) return;
+        _busy = true;
+        var baseSlug = new string(_ncName.Trim().Where(char.IsLetterOrDigit).ToArray());
+        Db.ClassifiedCategories.Add(new ClassifiedCategory
+        {
+            Name = _ncName.Trim(),
+            Slug = $"cat-{(baseSlug.Length == 0 ? "x" : baseSlug.ToLower())}-{Random.Shared.Next(100, 999)}",
+            Icon = string.IsNullOrWhiteSpace(_ncIcon) ? null : _ncIcon.Trim(),
+            SortOrder = _cats.Count + 1
+        });
+        await Db.SaveChangesAsync();
+        _ncName = _ncIcon = "";
+        await LoadCatsAsync();
+        _busy = false;
+    }
+
+    private async Task AddAttrAsync()
+    {
+        if (_catId == 0 || string.IsNullOrWhiteSpace(_naName)) return;
+        _busy = true;
+        Db.ClassifiedAttributes.Add(new ClassifiedAttribute
+        {
+            CategoryId = _catId,
+            Name = _naName.Trim(),
+            Type = _naType,
+            Options = string.IsNullOrWhiteSpace(_naOptions) ? null : _naOptions.Trim(),
+            IsRequired = _naReq,
+            SortOrder = _catAttrs.Count + 1
+        });
+        await Db.SaveChangesAsync();
+        _naName = _naOptions = "";
+        await SelectCatAsync(_catId);
+        await LoadCatsAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteAttrAsync(int id)
+    {
+        _busy = true;
+        await Db.ClassifiedAttributes.Where(a => a.Id == id).ExecuteDeleteAsync();
+        await SelectCatAsync(_catId);
+        await LoadCatsAsync();
+        _busy = false;
+    }
+
+    private async Task DeleteCatAsync(int id)
+    {
+        _busy = true;
+        try
+        {
+            if (await Db.ClassifiedAds.AnyAsync(a => a.ClassifiedCategoryId == id))
+            {
+                return; // دسته دارای آگهی — حذف امن ندارد
+            }
+            await Db.ClassifiedAttributes.Where(a => a.CategoryId == id).ExecuteDeleteAsync();
+            await Db.ClassifiedCategories.Where(c => c.Id == id).ExecuteDeleteAsync();
+            if (_catId == id) _catId = 0;
+            await LoadCatsAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string StatusText(ClassifiedAdStatus s) => s switch
+    {
+        ClassifiedAdStatus.Approved => "منتشرشده",
+        ClassifiedAdStatus.Pending => "در انتظار تأیید",
+        ClassifiedAdStatus.Rejected => "ردشده",
+        ClassifiedAdStatus.Sold => "فروخته‌شده",
+        _ => "منقضی"
+    };
+}
