@@ -132,6 +132,19 @@ public class ClassifiedFavorite
     public DateTime CreatedAt { get; set; }
 }
 
+/// <summary>بازدید روزانه هر آگهی — برای نمودار آمار آگهی‌دهنده.</summary>
+public class ClassifiedAdViewDaily
+{
+    public long Id { get; set; }
+    public long AdId { get; set; }
+    public virtual ClassifiedAd Ad { get; set; } = default!;
+    /// <summary>مالک آگهی (denormalized برای کوئری سریع پنل).</summary>
+    public Guid UserId { get; set; }
+    /// <summary>تاریخ UTC (فقط روز).</summary>
+    public DateTime Date { get; set; }
+    public int Count { get; set; }
+}
+
 /// <summary>جستجوی ذخیره‌شده — با انتشار آگهیِ منطبق، به کاربر اعلان می‌رود.</summary>
 public class ClassifiedSavedSearch
 {

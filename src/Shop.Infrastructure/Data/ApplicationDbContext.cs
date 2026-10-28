@@ -56,6 +56,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ClassifiedChatMessage> ClassifiedChatMessages => Set<ClassifiedChatMessage>();
     public DbSet<ClassifiedFavorite> ClassifiedFavorites => Set<ClassifiedFavorite>();
     public DbSet<ClassifiedSavedSearch> ClassifiedSavedSearches => Set<ClassifiedSavedSearch>();
+    public DbSet<ClassifiedAdViewDaily> ClassifiedAdViewDailies => Set<ClassifiedAdViewDaily>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
@@ -63,6 +64,11 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // ایندکس یکتا برای upsert بازدید روزانه آگهی (ON CONFLICT)
+        modelBuilder.Entity<ClassifiedAdViewDaily>()
+            .HasIndex(v => new { v.AdId, v.Date })
+            .IsUnique();
 
         // جفت‌کلیدهای junction (دسته‌بندی چندگانه محصول + دسته‌های فعالیت فروشنده + برند↔دسته)
         modelBuilder.Entity<ProductCategory>(e => e.HasKey(pc => new { pc.ProductId, pc.CategoryId }));

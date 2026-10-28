@@ -778,6 +778,41 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.ToTable("classified_ads", (string)null);
                 });
 
+            modelBuilder.Entity("Shop.Domain.ClassifiedAdViewDaily", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<long>("AdId")
+                        .HasColumnType("bigint")
+                        .HasColumnName("ad_id");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer")
+                        .HasColumnName("count");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_classified_ad_view_dailies");
+
+                    b.HasIndex("AdId", "Date")
+                        .IsUnique()
+                        .HasDatabaseName("ix_classified_ad_view_dailies_ad_id_date");
+
+                    b.ToTable("classified_ad_view_dailies", (string)null);
+                });
+
             modelBuilder.Entity("Shop.Domain.ClassifiedAttribute", b =>
                 {
                     b.Property<int>("Id")
@@ -3119,6 +3154,18 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.Navigation("City");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Shop.Domain.ClassifiedAdViewDaily", b =>
+                {
+                    b.HasOne("Shop.Domain.ClassifiedAd", "Ad")
+                        .WithMany()
+                        .HasForeignKey("AdId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_classified_ad_view_dailies_classified_ads_ad_id");
+
+                    b.Navigation("Ad");
                 });
 
             modelBuilder.Entity("Shop.Domain.ClassifiedAttribute", b =>

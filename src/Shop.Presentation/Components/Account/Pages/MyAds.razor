@@ -19,6 +19,52 @@ else
         <div class="alert alert-success py-2">@_msg</div>
     }
 
+    @* ---------- کارت‌های آمار ---------- *@
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 text-center">
+                <div class="fs-4 fw-bold text-primary">@_stats.TotalViews.ToString("N0").ToFarsiDigits()</div>
+                <div class="small text-muted">بازدید کل</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 text-center">
+                <div class="fs-4 fw-bold text-success">@_stats.ActiveCount.ToString("N0").ToFarsiDigits()</div>
+                <div class="small text-muted">آگهی فعال</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 text-center">
+                <div class="fs-4 fw-bold text-info">@_stats.TotalChats.ToString("N0").ToFarsiDigits()</div>
+                <div class="small text-muted">پیام‌های گفتگو</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm rounded-4 p-3 text-center">
+                <div class="fs-4 fw-bold text-warning">@_stats.Favorites.ToString("N0").ToFarsiDigits()</div>
+                <div class="small text-muted">ذخیره‌شده</div>
+            </div>
+        </div>
+    </div>
+
+    @* ---------- نمودار بازدید ۱۴ روز اخیر ---------- *@
+    @if (_chart14.Count > 0)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
+            <h6 class="fw-bold mb-3">📊 بازدید ۱۴ روز اخیر</h6>
+            <div class="d-flex align-items-end gap-1" style="height:110px">
+                @foreach (var d in _chart14)
+                {
+                    var h = d.Max > 0 ? Math.Max(6, d.Count * 100 / d.Max) : 6;
+                    <div class="flex-fill text-center" title="@d.Label: @d.Count.ToString("N0") بازدید">
+                        <div class="bg-primary rounded-top mx-auto" style="height:@(h)px;width:70%;opacity:.85"></div>
+                        <div class="small text-muted" style="font-size:.6rem">@d.Label</div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     <div class="card border-0 shadow-sm rounded-4 p-4 mb-3">
         <h6 class="fw-bold mb-3">آگهی‌های من <NavLink href="/ads/post" class="btn btn-sm btn-primary float-end">+ آگهی جدید</NavLink></h6>
         @if (_myAds.Count == 0)
@@ -125,6 +171,8 @@ else
     private bool _loading = true, _busy;
     private string? _msg;
     private Guid _uid;
+    private (int TotalViews, int ActiveCount, int TotalChats, int Favorites) _stats;
+    private List<(string Label, int Count, int Max)> _chart14 = new();
     private List<AdRow> _myAds = new();
     private List<ChatRow> _myChats = new();
     private List<FavRow> _favs = new();
@@ -184,6 +232,30 @@ else
             s.CityId is null ? null : cityNames.GetValueOrDefault(s.CityId.Value))).ToList();
         _searchesRaw = searches.ToDictionary(s => s.Id, s => s.CatId);
         _searchesRawCity = searches.ToDictionary(s => s.Id, s => s.CityId);
+
+        // ---------- آمار آگهی‌دهنده ----------
+        var since = DateTime.UtcNow.AddDays(-13).Date;
+        var viewsByDay = await Db.ClassifiedAdViewDailies.AsNoTracking()
+            .Where(v => v.UserId == _uid && v.Date >= since)
+            .GroupBy(v => v.Date)
+            .Select(g => new { Date = g.Key, Count = g.Sum(x => x.Count) })
+            .ToListAsync();
+
+        var chart = new List<(string Label, int Count, int Max)>();
+        for (var i = 13; i >= 0; i--)
+        {
+            var day = DateTime.UtcNow.Date.AddDays(-i);
+            var cnt = viewsByDay.FirstOrDefault(v => v.Date == day)?.Count ?? 0;
+            var pc = new System.Globalization.PersianCalendar();
+            chart.Add(($"{pc.GetMonth(day):00}/{pc.GetDayOfMonth(day):00}".ToFarsiDigits(), cnt, 0));
+        }
+        var max = chart.Count > 0 ? chart.Max(c => c.Count) : 0;
+        _chart14 = chart.Select(c => (c.Label, c.Count, max)).ToList();
+
+        _stats.TotalViews = (int)_myAds.Sum(a => a.ViewCount);
+        _stats.ActiveCount = _myAds.Count(a => a.Status == ClassifiedAdStatus.Approved);
+        _stats.Favorites = await Db.ClassifiedFavorites.CountAsync(f => f.Ad.UserId == _uid);
+        _stats.TotalChats = await Db.ClassifiedChatMessages.CountAsync(m => m.Ad.UserId == _uid);
 
         var chatAdIds = await Db.ClassifiedChatMessages
             .Where(m => m.UserId == _uid || m.Ad.UserId == _uid)

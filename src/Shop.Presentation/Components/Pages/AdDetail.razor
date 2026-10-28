@@ -281,6 +281,17 @@ else
                 .ToList();
             await Db.ClassifiedAds.Where(x => x.Id == Id).ExecuteUpdateAsync(s => s.SetProperty(x => x.ViewCount, x => x.ViewCount + 1));
 
+            // آمار بازدید روزانه (upsert اتمیک با ایندکس یکتا)
+            var ownerId = await Db.ClassifiedAds.Where(x => x.Id == Id).Select(x => (Guid?)x.UserId).FirstOrDefaultAsync();
+            if (ownerId is not null)
+            {
+                var today = DateTime.UtcNow.Date;
+                await Db.Database.ExecuteSqlInterpolatedAsync($@"
+INSERT INTO classified_ad_view_dailies (ad_id, user_id, date, count)
+VALUES ({Id}, {ownerId}, {today}, 1)
+ON CONFLICT (ad_id, date) DO UPDATE SET count = classified_ad_view_dailies.count + 1", CancellationToken.None);
+            }
+
             // فرم پیام: فقط کاربر واردشده و غیرِ آگهی‌دهنده
             var auth = await AuthState.GetAuthenticationStateAsync();
             if (auth.User.Identity?.IsAuthenticated == true
