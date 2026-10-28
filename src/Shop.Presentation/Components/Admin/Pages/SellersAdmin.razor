@@ -54,6 +54,26 @@ else
                 <div class="d-flex align-items-center gap-2">
                     @if (s.Status == SellerStatus.Approved)
                     {
+                        <button class="btn btn-sm btn-outline-info" @onclick="@(async () => await TogglePermsAsync(s.Id))">دسترسی‌ها</button>
+
+                        @if (_permSellerId == s.Id)
+                        {
+                            <div class="w-100 mt-2 p-3 rounded-3 bg-light">
+                                <b class="small d-block mb-2">🔐 دسترسی‌های پنل فروشنده</b>
+                                <div class="d-flex gap-3 flex-wrap">
+                                    @foreach (var (key, label) in Seller.PermissionKeys)
+                                    {
+                                        <label class="d-flex align-items-center gap-1 small">
+                                            <input type="checkbox" class="form-check-input mt-0"
+                                                   checked="@(_permDraft[s.Id].Contains(key))"
+                                                   @onchange="e => TogglePerm(s.Id, key, e.Value is true)" /> @label
+                                        </label>
+                                    }
+                                </div>
+                                <button class="btn btn-sm btn-primary mt-2" disabled="@_busy" @onclick="() => SavePermsAsync(s.Id)">ذخیره دسترسی‌ها</button>
+                            </div>
+                        }
+
                         <input type="number" class="form-control form-control-sm" style="width:80px" min="1" max="50"
                                value="@_commDraft[s.Id]" @oninput="e => _commDraft[s.Id] = int.TryParse(e.Value?.ToString(), out var v) ? v : _commDraft[s.Id]" />
                         <button class="btn btn-sm btn-outline-primary" disabled="@_busy" @onclick="() => SaveCommissionAsync(s.Id)">ذخیره کمیسیون</button>
@@ -122,6 +142,35 @@ else
 
     // ---- CRUD کامل فروشنده (نسخه ۳) ----
     private Dictionary<long, int> _commDraft = new();
+
+    // ---- دسترسی‌های فروشنده ----
+    private long? _permSellerId;
+    private Dictionary<long, List<string>> _permDraft = new();
+
+    private async Task TogglePermsAsync(long id)
+    {
+        if (_permSellerId == id) { _permSellerId = null; return; }
+        var s = await Db.Sellers.AsNoTracking().FirstAsync(x => x.Id == id);
+        _permSellerId = id;
+        _permDraft[id] = s.PermissionList;
+    }
+
+    private void TogglePerm(long id, string key, bool on)
+    {
+        if (!_permDraft.TryGetValue(id, out var list)) _permDraft[id] = list = [];
+        if (on && !list.Contains(key)) list.Add(key);
+        else if (!on) list.Remove(key);
+    }
+
+    private async Task SavePermsAsync(long id)
+    {
+        _busy = true;
+        await Db.Sellers.Where(s => s.Id == id)
+            .ExecuteUpdateAsync(u => u.SetProperty(s => s.Permissions, string.Join(",", _permDraft[id])));
+        _message = "دسترسی‌های فروشنده ذخیره شد ✓";
+        await LoadAsync();
+        _busy = false;
+    }
 
     private async Task SaveCommissionAsync(long id)
     {

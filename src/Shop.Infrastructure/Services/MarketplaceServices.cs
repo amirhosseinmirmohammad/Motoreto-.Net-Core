@@ -155,6 +155,8 @@ public class SellerService(ApplicationDbContext db, IEventPublisher events) : IS
             return (false, "ابتدا فروشگاه خود را ثبت کنید.");
         if (seller.Status != SellerStatus.Approved || !seller.IsActive)
             return (false, "فروشگاه شما هنوز تأیید نشده است.");
+        if (!seller.HasPermission("offer"))
+            return (false, "دسترسی ثبت آفر برای فروشگاه شما فعال نیست — با پشتیبانی تماس بگیرید.");
 
         var productExists = await db.Products.AnyAsync(p => p.Id == input.ProductId && p.IsActive, ct);
         if (!productExists)
@@ -239,6 +241,8 @@ public class SellerService(ApplicationDbContext db, IEventPublisher events) : IS
             return (false, "ابتدا فروشگاه خود را ثبت کنید.", 0);
         if (seller.Status != SellerStatus.Approved)
             return (false, "فروشگاه شما هنوز تأیید نشده است.", 0);
+        if (!seller.HasPermission("new-product"))
+            return (false, "دسترسی پیشنهاد کالای جدید برای فروشگاه شما فعال نیست.", 0);
 
         var slug = SlugHelper.Slugify(string.IsNullOrWhiteSpace(model.Slug) ? model.Name : model.Slug);
         var baseSlug = slug;

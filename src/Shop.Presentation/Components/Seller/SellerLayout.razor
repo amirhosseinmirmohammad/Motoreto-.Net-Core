@@ -1,5 +1,10 @@
 @inherits LayoutComponentBase
 @attribute [Authorize]
+@inject ApplicationDbContext Db
+@inject AuthenticationStateProvider AuthState
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.WebUtilities
+@implements IDisposable
 
 <div class="container py-4" style="max-width:1100px">
     <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
@@ -9,11 +14,72 @@
 
     <ul class="nav nav-pills gap-2 mb-4 flex-wrap">
         <NavLink class="nav-link" href="/seller" Match="NavLinkMatch.All">🏪 فروشگاه من</NavLink>
-        <NavLink class="nav-link" href="/seller/register">📝 ثبت‌نام فروشگاه</NavLink>
-        <NavLink class="nav-link" href="/seller/settings">⚙️ تنظیمات فروشگاه</NavLink>
-        <NavLink class="nav-link" href="/seller/offer">🏷️ آفر جدید</NavLink>
-        <NavLink class="nav-link" href="/seller/new-product">💡 پیشنهاد کالا</NavLink>
+        @if (_seller is null || _seller.HasPermission("offer"))
+        {
+            <NavLink class="nav-link" href="/seller/offer">🏷️ آفر جدید</NavLink>
+        }
+        @if (_seller is null || _seller.HasPermission("new-product"))
+        {
+            <NavLink class="nav-link" href="/seller/new-product">💡 پیشنهاد کالا</NavLink>
+        }
+        @if (_seller is null || _seller.HasPermission("settings"))
+        {
+            <NavLink class="nav-link" href="/seller/settings">⚙️ تنظیمات فروشگاه</NavLink>
+        }
+        @if (_seller is null)
+        {
+            <NavLink class="nav-link" href="/seller/register">📝 ثبت‌نام فروشگاه</NavLink>
+        }
     </ul>
 
-    @Body
+    @if (_denied)
+    {
+        <div class="alert alert-warning">
+            <b>دسترسی محدود</b> — این بخش برای فروشگاه شما توسط مدیریت فعال نشده است. برای فعال‌سازی با پشتیبانی تماس بگیرید.
+        </div>
+    }
+    else
+    {
+        @Body
+    }
 </div>
+
+@code {
+    private Seller? _seller;
+    private bool _denied;
+    private DotNetObjectReference<SellerLayout>? _selfRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var auth = await AuthState.GetAuthenticationStateAsync();
+        var uid = Guid.TryParse(auth.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value, out var g) ? g : Guid.Empty;
+        if (uid != Guid.Empty)
+            _seller = await Db.Sellers.AsNoTracking().FirstOrDefaultAsync(s => s.OwnerUserId == uid);
+
+        Evaluate();
+        Nav.LocationChanged += (_, _) => { Evaluate(); InvokeAsync(StateHasChanged); };
+    }
+
+    private void Evaluate()
+    {
+        if (_seller is null) { _denied = false; return; }
+
+        var uri = new Uri(Nav.Uri);
+        var q = QueryHelpers.ParseQuery(uri.Query);
+        string? needed = uri.AbsolutePath.TrimEnd('/') switch
+        {
+            "/seller/offer" => q.ContainsKey("id") ? "edit-offer" : "offer",
+            "/seller/new-product" => "new-product",
+            "/seller/settings" => "settings",
+            _ => null
+        };
+
+        _denied = needed is not null && !_seller.HasPermission(needed);
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= (_, _) => { Evaluate(); InvokeAsync(StateHasChanged); };
+        _selfRef?.Dispose();
+    }
+}

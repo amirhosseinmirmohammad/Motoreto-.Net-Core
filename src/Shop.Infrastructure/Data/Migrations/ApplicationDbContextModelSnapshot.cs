@@ -2041,6 +2041,10 @@ namespace Shop.Infrastructure.Data.Migrations
                         .HasColumnType("text")
                         .HasColumnName("payment_methods");
 
+                    b.Property<string>("Permissions")
+                        .HasColumnType("text")
+                        .HasColumnName("permissions");
+
                     b.Property<string>("Phone")
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")

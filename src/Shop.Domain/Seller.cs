@@ -125,6 +125,29 @@ public class Seller
     /// <summary>روش‌های پرداخت پذیرفته فروشگاه: online,cash,cod (جداشده با کاما).</summary>
     public string? PaymentMethods { get; set; }
 
+    /// <summary>
+    /// دسترسی‌های پنل فروشنده — CSV مثل "offer,new-product,settings".
+    /// خالی/null = همه دسترسی‌ها (سازگار با فروشندگان فعلی).
+    /// </summary>
+    public string? Permissions { get; set; }
+
+    public static readonly (string Key, string Label)[] PermissionKeys =
+    [
+        ("offer", "ثبت آفر جدید"),
+        ("new-product", "پیشنهاد کالای جدید"),
+        ("edit-offer", "ویرایش آفرهای خود"),
+        ("settings", "تنظیمات فروشگاه"),
+        ("stats", "مشاهده آمار")
+    ];
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public List<string> PermissionList =>
+        string.IsNullOrWhiteSpace(Permissions)
+            ? PermissionKeys.Select(p => p.Key).ToList()
+            : Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    public bool HasPermission(string key) => PermissionList.Contains(key);
+
     /// <summary>موقعیت جغرافیایی فروشگاه (نمایش روی نقشه).</summary>
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
