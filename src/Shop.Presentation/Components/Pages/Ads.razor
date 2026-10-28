@@ -29,11 +29,42 @@
             <option value="exp">گران‌ترین</option>
             <option value="view">پربازدیدترین</option>
         </select>
+        <input type="number" class="form-control" style="max-width:130px" placeholder="قیمت از" dir="ltr"
+               value="@_pFrom?.ToString()" @oninput="e => _pFrom = long.TryParse(e.Value?.ToString(), out var v) ? v : null" @onchange="@(async () => await LoadAsync())" />
+        <input type="number" class="form-control" style="max-width:130px" placeholder="قیمت تا" dir="ltr"
+               value="@_pTo?.ToString()" @oninput="e => _pTo = long.TryParse(e.Value?.ToString(), out var v) ? v : null" @onchange="@(async () => await LoadAsync())" />
         <button class="btn btn-outline-success" title="با انتشار آگهی منطبق، اعلان می‌گیرید" disabled="@_busy" @onclick="SaveSearchAsync">
             <i class="bi bi-bell-plus"></i> ذخیره جستجو
         </button>
         <NavLink href="/ads/post" class="btn btn-primary px-4 ms-auto">+ ثبت آگهی</NavLink>
     </div>
+
+    @if (_catId > 0 && _filterAttrs.Count > 0)
+    {
+        <div class="row g-2 mt-2">
+            @foreach (var a in _filterAttrs)
+            {
+                <div class="col-md-3">
+                    <label class="form-label small text-muted mb-0">@a.Name</label>
+                    @if (a.Type == "select")
+                    {
+                        <select class="form-select form-select-sm" value="@AttrVal(a.Id)" @onchange="e => { SetAttrVal(a.Id, e.Value?.ToString() ?? string.Empty); _ = LoadAsync(); }">
+                            <option value="">همه</option>
+                            @foreach (var opt in (a.Options ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                            {
+                                <option value="@opt">@opt</option>
+                            }
+                        </select>
+                    }
+                    else
+                    {
+                        <input type="text" class="form-control form-control-sm" placeholder="فیلتر..."
+                               value="@AttrVal(a.Id)" @oninput="e => SetAttrVal(a.Id, e.Value?.ToString() ?? string.Empty)" @onchange="@(async () => await LoadAsync())" />
+                    }
+                </div>
+            }
+        </div>
+    }
     <div class="d-flex gap-2 flex-wrap mt-3">
         <button class="btn btn-sm @(_catId == 0 ? "btn-primary" : "btn-outline-secondary") rounded-pill" @onclick="@(async () => await SetCat(0))">همه</button>
         @foreach (var c in _cats)
@@ -97,7 +128,7 @@ else
     private List<City> _cities = new();
     private List<AdRow> _ads = new();
 
-    private sealed record AdRow(long Id, string Title, long? Price, string City, string? Image, DateTime Date, int CatId, bool Urgent);
+    private sealed record AdRow(long Id, string Title, long? Price, string City, string? Image, DateTime Date, int CatId, bool Urgent, string? AttrJson);
 
     protected override async Task OnInitializedAsync()
     {
@@ -150,9 +181,26 @@ else
         }
     }
 
-    private async Task SetCat(int id) { _catId = id; await LoadAsync(); }
-    private async Task CityChanged(ChangeEventArgs e) { _cityId = int.TryParse(e.Value?.ToString(), out var v) ? v : 0; await LoadAsync(); }
-    private async Task SortChanged(ChangeEventArgs e) { _sort = e.Value?.ToString() ?? "new"; await LoadAsync(); }
+    private async Task CityChanged(ChangeEventArgs e) { _cityId = int.TryParse(e.Value?.ToString(), out var v) ? v : 0; await LoadAsync(); }    private async Task SortChanged(ChangeEventArgs e) { _sort = e.Value?.ToString() ?? "new"; await LoadAsync(); }
+
+    private async Task SetCat(int id)
+    {
+        _catId = id;
+        _attrVals.Clear();
+        _filterAttrs = _catId == 0
+            ? new List<ClassifiedAttribute>()
+            : await Db.ClassifiedAttributes.AsNoTracking()
+                .Where(a => a.CategoryId == _catId && (a.Type == "select" || a.Type == "text" || a.Type == "number"))
+                .OrderBy(a => a.SortOrder).ToListAsync();
+        await LoadAsync();
+    }
+
+    private long? _pFrom, _pTo;
+    private List<ClassifiedAttribute> _filterAttrs = new();
+    private Dictionary<int, string> _attrVals = new();
+
+    private string AttrVal(int id) => _attrVals.TryGetValue(id, out var v) ? v : "";
+    private void SetAttrVal(int id, string v) => _attrVals[id] = v;
 
     private async Task LoadAsync()
     {
@@ -162,6 +210,8 @@ else
 
         if (_catId > 0) query = query.Where(a => a.ClassifiedCategoryId == _catId);
         if (_cityId > 0) query = query.Where(a => a.CityId == _cityId);
+        if (_pFrom is not null) query = query.Where(a => a.Price != null && a.Price >= _pFrom);
+        if (_pTo is not null) query = query.Where(a => a.Price != null && a.Price <= _pTo);
         if (!string.IsNullOrWhiteSpace(_q))
             query = query.Where(a => a.Title.Contains(_q) || a.Description.Contains(_q));
 
@@ -174,8 +224,27 @@ else
         };
 
         _ads = await query.Take(60)
-            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.City.Name, a.MainImage, a.CreatedAt, a.ClassifiedCategoryId, a.IsUrgent))
+            .Select(a => new AdRow(a.Id, a.Title, a.Price, a.City.Name, a.MainImage, a.CreatedAt, a.ClassifiedCategoryId, a.IsUrgent, a.AttributesJson))
             .ToListAsync();
+
+        // فیلتر ویژگی‌های داینامیک دسته (درون‌حافظه‌ای روی AttributesJson)
+        var active = _attrVals.Where(v => !string.IsNullOrWhiteSpace(v.Value)).ToList();
+        if (active.Count > 0)
+        {
+            bool Match(AdRow r, string name, string val) =>
+                (System.Text.Json.JsonDocument.Parse(r.AttrJson ?? "[]").RootElement.EnumerateArray()
+                    .Where(e => (e.GetProperty("name").GetString() ?? "") == name)
+                    .Select(e => e.GetProperty("value").GetString() ?? "")
+                    .FirstOrDefault() is string v2 && v2.Contains(val, StringComparison.OrdinalIgnoreCase));
+
+            _ads = _ads.Where(r => active.All(kv =>
+            {
+                var attr = _filterAttrs.First(x => x.Id == kv.Key);
+                try { return Match(r, attr.Name, kv.Value); }
+                catch { return false; }
+            })).ToList();
+        }
+
         _loading = false;
     }
 }

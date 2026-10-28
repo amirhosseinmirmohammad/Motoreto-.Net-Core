@@ -15,6 +15,15 @@
 }
 else
 {
+    <div class="d-flex gap-2 mb-3">
+        <NavLink href="/manage/blog/new" class="btn btn-primary btn-sm">+ مقاله جدید</NavLink>
+        <select class="form-select" style="max-width:200px" value="@_sort" @onchange="SortChanged">
+            <option value="new">جدیدترین</option>
+            <option value="old">قدیمی‌ترین</option>
+            <option value="view">پربازدیدترین</option>
+        </select>
+    </div>
+
     <div class="card border-0 shadow-sm rounded-4 p-3">
         <div class="table-responsive">
             <table class="table table-hover align-middle">
@@ -60,8 +69,15 @@ else
 
 @code {
     private bool _loading = true, _busy;
+    private string _sort = "new";
     private int _page = 1, _totalPages = 1;
     private List<BRow> _rows = new();
+
+    private async Task SortChanged(ChangeEventArgs e)
+    {
+        _sort = e.Value?.ToString() ?? "new";
+        await LoadAsync();
+    }
 
     private async Task GoPage(int p)
     {
@@ -75,9 +91,14 @@ else
 
     private async Task LoadAsync()
     {
-        _rows = await Db.Blogs
-            .AsNoTracking()
-            .OrderByDescending(b => b.Id)
+        var query = Db.Blogs.AsNoTracking();
+        query = _sort switch
+        {
+            "old" => query.OrderBy(b => b.Id),
+            "view" => query.OrderByDescending(b => b.ViewCount),
+            _ => query.OrderByDescending(b => b.Id)
+        };
+        _rows = await query
             .Skip((_page - 1) * 20)
             .Take(20)
             .Select(b => new BRow(b.Id, b.Title, b.CoverImage, b.ViewCount, b.CreatedAt, b.IsVisible))

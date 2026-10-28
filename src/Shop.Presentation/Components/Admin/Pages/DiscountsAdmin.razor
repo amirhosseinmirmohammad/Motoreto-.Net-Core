@@ -3,7 +3,15 @@
 @attribute [Authorize]
 @inject ApplicationDbContext Db
 
-<h4 class="fw-bold mb-1">🎟️ کدهای تخفیف</h4>
+    <h4 class="fw-bold mb-1">🎟️ کدهای تخفیف</h4>
+
+    <div class="d-flex gap-2 mb-3">
+        <select class="form-select" style="max-width:220px" value="@_sort" @onchange="SortChanged">
+            <option value="new">جدیدترین</option>
+            <option value="expire">نزدیک‌ترین انقضا</option>
+            <option value="used">پراستفاده‌ترین</option>
+        </select>
+    </div>
 
 <div class="row g-4">
     <div class="col-lg-4">
@@ -139,7 +147,14 @@
     private long _min;
     private bool _busy;
     private string? _err;
+    private string _sort = "new";
     private int _page = 1, _totalPages = 1;
+
+    private async Task SortChanged(ChangeEventArgs e)
+    {
+        _sort = e.Value?.ToString() ?? "new";
+        await LoadAsync();
+    }
     private List<DRow> _rows = new();
 
     private async Task GoPage(int p)
@@ -154,9 +169,16 @@
 
     private async Task LoadAsync()
     {
-        _rows = await Db.Discounts
-            .AsNoTracking()
-            .OrderByDescending(d => d.Id)
+        var query = Db.Discounts.AsNoTracking();
+
+        query = _sort switch
+        {
+            "expire" => query.OrderBy(d => d.ExpireAt ?? DateTime.MaxValue),
+            "used" => query.OrderByDescending(d => d.UsedCount),
+            _ => query.OrderByDescending(d => d.Id)
+        };
+
+        _rows = await query
             .Skip((_page - 1) * 20)
             .Take(20)
             .Select(d => new DRow(d.Id, d.Code, d.Percent, d.MaxAmount, d.UsedCount, d.UsageLimit, d.ExpireAt, d.IsActive))
