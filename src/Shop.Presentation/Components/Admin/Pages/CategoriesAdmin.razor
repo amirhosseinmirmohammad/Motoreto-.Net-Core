@@ -2,6 +2,7 @@
 @layout AdminLayout
 @attribute [Authorize]
 @inject ApplicationDbContext Db
+@inject IJSRuntime JS
 
 <h4 class="fw-bold mb-1">🗂️ دسته‌بندی‌ها</h4>
 <p class="text-muted small">ساختار درختی منوی فروشگاه — والد و فرزند.</p>
@@ -279,6 +280,7 @@
 
     private async Task DeleteAsync(int id)
     {
+        if (!await JS.InvokeAsync<bool>("confirm", "دسته و ویژگی‌هایش حذف می‌شوند. مطمئنید؟")) return;
         _error = null;
         if (_catInfo.TryGetValue(id, out var info))
         {

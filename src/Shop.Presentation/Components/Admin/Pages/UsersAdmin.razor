@@ -5,6 +5,7 @@
 @inject ApplicationDbContext Db
 @inject UserManager<User> UserManager
 @inject IEventPublisher Events
+@inject IJSRuntime JS
 
 <h4 class="fw-bold mb-3">👥 کاربران</h4>
 
@@ -287,6 +288,7 @@ else
 
     private async Task DeleteAsync(Guid id)
     {
+        if (!await JS.InvokeAsync<bool>("confirm", "کاربر و داده‌های وابسته (سبد/نظرات/کیف پول) حذف می‌شوند. مطمئنید؟")) return;
         _pageError = null;
         _busy = true;
         try

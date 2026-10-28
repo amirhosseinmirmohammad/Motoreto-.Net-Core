@@ -2,6 +2,7 @@
 @layout AdminLayout
 @attribute [Authorize]
 @inject ApplicationDbContext Db
+@inject IJSRuntime JS
 
     <h4 class="fw-bold mb-1">🎟️ کدهای تخفیف</h4>
 
@@ -290,6 +291,7 @@
 
     private async Task DeleteAsync(int id)
     {
+        if (!await JS.InvokeAsync<bool>("confirm", "کد تخفیف حذف شود؟")) return;
         _busy = true;
         _err = null;
         try

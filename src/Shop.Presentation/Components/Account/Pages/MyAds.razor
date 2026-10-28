@@ -5,6 +5,7 @@
 @inject AuthenticationStateProvider AuthState
 @inject NavigationManager Nav
 @inject IEventPublisher Events
+@inject IJSRuntime JS
 
 <h5 class="fw-bold mb-3">📢 آگهی‌ها و گفتگوهای من</h5>
 
@@ -114,9 +115,14 @@ else
                                     @if (a.Status == ClassifiedAdStatus.Approved)
                                     {
                                         var p = _catPrices.GetValueOrDefault(a.CatId);
-                                        <button class="btn btn-sm btn-outline-warning" disabled="@_busy" title="۷ روز بالای لیست" @onclick="() => PromoteAsync(a.Id, K.Bump)">⬆️ @p.Bump.ToString("N0")</button>
-                                        <button class="btn btn-sm btn-outline-danger" disabled="@_busy" title="۷ روز برچسب فوری" @onclick="() => PromoteAsync(a.Id, K.Urgent)">⚡ @p.Urgent.ToString("N0")</button>
-                                        <button class="btn btn-sm btn-outline-success" disabled="@_busy" title="فوری + نردبان همزمان" @onclick="() => PromoteAsync(a.Id, K.Combo)">⚡⬆️ @p.Combo.ToString("N0")</button>
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-warning dropdown-toggle" data-bs-toggle="dropdown">🚀 ارتقا</button>
+                                            <div class="dropdown-menu dropdown-menu-end">
+                                                <button class="dropdown-item small" disabled="@_busy" @onclick="() => PromoteAsync(a.Id, K.Bump)">⬆️ نردبان (۷ روز) — @p.Bump.ToString("N0") تومان</button>
+                                                <button class="dropdown-item small" disabled="@_busy" @onclick="() => PromoteAsync(a.Id, K.Urgent)">⚡ فوری (۷ روز) — @p.Urgent.ToString("N0") تومان</button>
+                                                <button class="dropdown-item small text-success" disabled="@_busy" @onclick="() => PromoteAsync(a.Id, K.Combo)">⚡⬆️ کمبو (هر دو) — @p.Combo.ToString("N0") تومان</button>
+                                            </div>
+                                        </div>
                                     }
                                     <button class="btn btn-sm btn-outline-danger" disabled="@_busy" @onclick="() => DeleteAsync(a.Id)">حذف</button>
                                 </td>
@@ -311,6 +317,7 @@ else
 
     private async Task DeleteAsync(long id)
     {
+        if (!await JS.InvokeAsync<bool>("confirm", "آگهی و گفتگوهای آن برای همیشه حذف می‌شوند. مطمئنید؟")) return;
         _busy = true;
         await Db.ClassifiedChatMessages.Where(m => m.AdId == id && m.Ad.UserId == _uid).ExecuteDeleteAsync();
         await Db.ClassifiedFavorites.Where(f => f.AdId == id).ExecuteDeleteAsync();

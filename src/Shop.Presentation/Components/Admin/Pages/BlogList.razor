@@ -2,6 +2,7 @@
 @layout AdminLayout
 @attribute [Authorize]
 @inject ApplicationDbContext Db
+@inject IJSRuntime JS
 @inject NavigationManager Nav
 
 <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
@@ -123,6 +124,7 @@ else
 
     private async Task DeleteAsync(int id)
     {
+        if (!await JS.InvokeAsync<bool>("confirm", "مقاله و نظراتش برای همیشه حذف می‌شوند. مطمئنید؟")) return;
         _busy = true;
         try
         {

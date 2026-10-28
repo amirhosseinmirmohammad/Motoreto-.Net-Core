@@ -2,6 +2,7 @@
 @layout AdminLayout
 @attribute [Authorize]
 @inject ApplicationDbContext Db
+@inject IJSRuntime JS
 
 <h4 class="fw-bold mb-1">💳 درگاه‌های پرداخت</h4>
 <p class="text-muted small">درگاه‌های پرداخت آنلاین را تعریف و فعال کنید. کاربر در تسویه حساب، درگاه فعال را انتخاب می‌کند.</p>
@@ -261,6 +262,7 @@ else
 
     private async Task DeleteAsync(int id)
     {
+        if (!await JS.InvokeAsync<bool>("confirm", "درگاه حذف شود؟")) return;
         _busy = true;
         var g = await Db.PaymentGateways.FirstAsync(x => x.Id == id);
         Db.PaymentGateways.Remove(g);

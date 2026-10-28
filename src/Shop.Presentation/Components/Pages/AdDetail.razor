@@ -28,11 +28,11 @@ else
             @if (_gallery.Count > 0)
             {
                 <div class="d-flex gap-2 mt-2">
-                    <img src="@_active" class="rounded-3 @(1 == 1 ? "border border-2 border-primary" : "")" style="width:72px;height:56px;object-fit:cover;cursor:pointer" @onclick="() => SetActive(null)" />
+                    <img src="@_active" class="rounded-3 @(_active == _ad.MainImage ? "border border-2 border-primary" : "")" style="width:72px;height:56px;object-fit:cover;cursor:pointer" @onclick="() => SetActive(null)" />
                     @foreach (var g in _gallery)
                     {
                         var img = g;
-                        <img src="@img" class="rounded-3" style="width:72px;height:56px;object-fit:cover;cursor:pointer" @onclick="() => SetActive(img)" />
+                        <img src="@img" class="rounded-3 @(img == _active ? "border border-2 border-primary" : "")" style="width:72px;height:56px;object-fit:cover;cursor:pointer" @onclick="() => SetActive(img)" />
                     }
                 </div>
             }

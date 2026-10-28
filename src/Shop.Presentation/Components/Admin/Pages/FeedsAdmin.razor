@@ -4,6 +4,7 @@
 @using Shop.Presentation.Services
 @inject ApplicationDbContext Db
 @inject FeedImportService Importer
+@inject IJSRuntime JS
 
 <h4 class="fw-bold mb-1">🔌 فروشگاه‌های متصل (Feed)</h4>
 <p class="text-muted small">مدل تروب: فروشگاه feed JSON می‌دهد (title, price_toman, stock, image_url, category, external_id) و سیستم خودکار import/همگام می‌کند.</p>
@@ -192,6 +193,7 @@ else
 
     private async Task DeleteAsync(int id)
     {
+        if (!await JS.InvokeAsync<bool>("confirm", "فروشگاه متصل حذف و کالاهایش قطع نسبت می‌شوند. مطمئنید؟")) return;
         _busy = true;
         try
         {
