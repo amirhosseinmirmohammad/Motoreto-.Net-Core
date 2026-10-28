@@ -1144,6 +1144,64 @@ namespace Shop.Infrastructure.Data.Migrations
                     b.ToTable("payments", (string)null);
                 });
 
+            modelBuilder.Entity("Shop.Domain.PaymentGateway", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("FeePercent")
+                        .HasColumnType("numeric")
+                        .HasColumnName("fee_percent");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<bool>("IsSandbox")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_sandbox");
+
+                    b.Property<string>("MerchantId")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("merchant_id");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("SecretKey")
+                        .HasColumnType("text")
+                        .HasColumnName("secret_key");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("TerminalKey")
+                        .HasColumnType("text")
+                        .HasColumnName("terminal_key");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id")
+                        .HasName("pk_payment_gateways");
+
+                    b.ToTable("payment_gateways", (string)null);
+                });
+
             modelBuilder.Entity("Shop.Domain.PriceHistory", b =>
                 {
                     b.Property<long>("Id")
